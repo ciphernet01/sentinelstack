@@ -12,8 +12,11 @@ WORKDIR /usr/src/app
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         ca-certificates \
+        git \
         openssl \
         libssl3 \
+        build-essential \
+        pkg-config \
         python3 \
         python3-venv \
         python3-pip \
@@ -54,6 +57,11 @@ RUN apt-get update \
 
 # Copy package files
 COPY package*.json ./
+
+# Make installs more resilient on flaky networks (common on free CI builders)
+RUN npm config set fetch-retries 5 \
+    && npm config set fetch-retry-mintimeout 20000 \
+    && npm config set fetch-retry-maxtimeout 600000
 
 # Install dependencies (includes dev deps so we can compile TypeScript during image build)
 # Use BuildKit cache to avoid re-downloading packages every build.
