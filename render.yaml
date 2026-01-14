@@ -9,6 +9,7 @@ services:
   - type: web
     name: sentinelstack-api
     env: docker
+    plan: free
     # Uses the root Dockerfile
     autoDeploy: true
     healthCheckPath: /health
@@ -50,6 +51,7 @@ services:
   - type: web
     name: sentinelstack-web
     env: node
+    plan: free
     autoDeploy: true
     buildCommand: npm ci && npm run build:frontend
     startCommand: npm run start:frontend:render
