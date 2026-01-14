@@ -1,0 +1,5 @@
+-- CreateEnum
+CREATE TYPE "Persona" AS ENUM ('SECURITY_ANALYST', 'COMPLIANCE_MANAGER', 'EXECUTIVE', 'ADMINISTRATOR');
+
+-- AlterTable
+ALTER TABLE "Finding" ADD COLUMN     "persona" "Persona";

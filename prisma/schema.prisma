@@ -1,0 +1,191 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id                        String       @id @default(cuid())
+  firebaseId                String       @unique
+  email                     String       @unique
+  name                      String?
+  organization              String?      @default("Acme Corporation")
+  role                      Role         @default(CLIENT)
+  persona                   Persona?
+
+  // Multi-tenancy (active organization context)
+  activeOrganizationId      String?
+  activeOrganization        Organization? @relation("ActiveOrganization", fields: [activeOrganizationId], references: [id], onDelete: SetNull)
+  
+  // Email verification
+  emailVerified             Boolean      @default(false)
+  emailVerificationToken    String?      @unique
+  emailVerificationExpiry   DateTime?
+  
+  // Password reset
+  passwordResetToken        String?      @unique
+  passwordResetExpiry       DateTime?
+  
+  // Account security
+  failedLoginAttempts       Int          @default(0)
+  lockedUntil               DateTime?
+  lastPasswordChange        DateTime?
+  passwordHistory           String[]     @default([])
+  
+  // Session management
+  lastLoginAt               DateTime?
+  lastLoginIp               String?
+  
+  memberships               OrganizationMember[]
+  invitationsSent           OrganizationInvitation[] @relation("OrganizationInvitationInvitedBy")
+  assessments               Assessment[]
+  auditLogs                 AuditLog[]
+  createdAt                 DateTime     @default(now())
+  updatedAt                 DateTime     @updatedAt
+
+  @@index([activeOrganizationId])
+}
+
+enum OrganizationRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+model Organization {
+  id            String                 @id @default(cuid())
+  name          String
+  activeUsers   User[]                 @relation("ActiveOrganization")
+  members       OrganizationMember[]
+  invitations   OrganizationInvitation[]
+  assessments   Assessment[]
+  createdAt     DateTime               @default(now())
+  updatedAt     DateTime               @updatedAt
+}
+
+model OrganizationMember {
+  id              String            @id @default(cuid())
+  organizationId  String
+  organization    Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  userId          String
+  user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role            OrganizationRole  @default(MEMBER)
+  createdAt       DateTime          @default(now())
+
+  @@unique([organizationId, userId])
+  @@index([userId])
+  @@index([organizationId])
+}
+
+model OrganizationInvitation {
+  id              String            @id @default(cuid())
+  organizationId  String
+  organization    Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  email           String
+  role            OrganizationRole  @default(MEMBER)
+  token           String            @unique
+  expiresAt       DateTime
+  invitedByUserId String
+  invitedByUser   User              @relation("OrganizationInvitationInvitedBy", fields: [invitedByUserId], references: [id], onDelete: Cascade)
+  acceptedAt      DateTime?
+  createdAt       DateTime          @default(now())
+
+  @@index([organizationId, createdAt])
+  @@index([email])
+  @@unique([organizationId, email])
+}
+
+enum Role {
+  CLIENT
+  ADMIN
+}
+
+enum Persona {
+  SECURITY_ANALYST
+  COMPLIANCE_MANAGER
+  EXECUTIVE
+  ADMINISTRATOR
+}
+
+model Assessment {
+  id                       String             @id @default(cuid())
+  name                     String
+  targetUrl                String
+  toolPreset               String
+  status                   AssessmentStatus   @default(PENDING)
+  authorizationConfirmed Boolean
+  notes                    String?
+  riskScore                Int?
+  organizationId           String
+  organization             Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  userId                   String
+  user                     User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  findings                 Finding[]
+  report                   Report?
+  createdAt                DateTime           @default(now())
+  updatedAt                DateTime           @updatedAt
+
+  @@index([organizationId, createdAt])
+}
+
+enum AssessmentStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  REJECTED
+}
+
+model Finding {
+  id                String   @id @default(cuid())
+  assessmentId      String
+  assessment        Assessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  toolName          String
+  title             String
+  description       String
+  severity          Severity
+  remediation       String
+  evidence          Json
+  complianceMapping String[]
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@unique([assessmentId, title])
+}
+
+enum Severity {
+  CRITICAL
+  HIGH
+  MEDIUM
+  LOW
+  INFO
+}
+
+model Report {
+  id           String     @id @default(cuid())
+  assessmentId String     @unique
+  assessment   Assessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  filePath     String
+  storageType  String // e.g., 'LOCAL', 'S3'
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  action      String   // LOGIN, LOGOUT, PASSWORD_CHANGE, etc.
+  ipAddress   String?
+  userAgent   String?
+  metadata    Json?
+  createdAt   DateTime @default(now())
+  
+  @@index([userId, createdAt])
+}

@@ -1,0 +1,413 @@
+{
+  "entities": {
+    "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "User",
+      "type": "object",
+      "description": "Represents a user of the Sentinel Stack platform.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the user entity."
+        },
+        "firstName": {
+          "type": "string",
+          "description": "First name of the user."
+        },
+        "lastName": {
+          "type": "string",
+          "description": "Last name of the user."
+        },
+        "email": {
+          "type": "string",
+          "description": "Email address of the user.",
+          "format": "email"
+        },
+        "organizationId": {
+          "type": "string",
+          "description": "Reference to the Organization. (Relationship: Organization 1:N User)"
+        },
+        "role": {
+          "type": "string",
+          "description": "Role of the user within the platform (e.g., admin, client)."
+        }
+      },
+      "required": [
+        "id",
+        "firstName",
+        "lastName",
+        "email",
+        "organizationId",
+        "role"
+      ]
+    },
+    "Organization": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Organization",
+      "type": "object",
+      "description": "Represents an organization using the Sentinel Stack platform.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the organization entity."
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the organization."
+        },
+        "subscriptionTierId": {
+          "type": "string",
+          "description": "Reference to the SubscriptionTier. (Relationship: SubscriptionTier 1:N Organization)"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "subscriptionTierId"
+      ]
+    },
+    "Assessment": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Assessment",
+      "type": "object",
+      "description": "Represents a security assessment performed on a target.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the assessment entity."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to the User. (Relationship: User 1:N Assessment)"
+        },
+        "target": {
+          "type": "string",
+          "description": "Target of the assessment (e.g., domain, API endpoint)."
+        },
+        "scope": {
+          "type": "string",
+          "description": "Scope of the assessment (e.g., domain, API, app)."
+        },
+        "preset": {
+          "type": "string",
+          "description": "Preset used for the assessment (e.g., Quick, Full, Compliance)."
+        },
+        "status": {
+          "type": "string",
+          "description": "Status of the assessment (e.g., Queued, Running, Completed)."
+        },
+        "riskScore": {
+          "type": "number",
+          "description": "Overall risk score for the assessment (0-100)."
+        },
+        "reportId": {
+          "type": "string",
+          "description": "Reference to the Report. (Relationship: Report 1:1 Assessment)"
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "target",
+        "scope",
+        "preset",
+        "status",
+        "riskScore",
+        "reportId"
+      ]
+    },
+    "Finding": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Finding",
+      "type": "object",
+      "description": "Represents a security finding identified during an assessment.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the finding entity."
+        },
+        "assessmentId": {
+          "type": "string",
+          "description": "Reference to the Assessment. (Relationship: Assessment 1:N Finding)"
+        },
+        "toolName": {
+          "type": "string",
+          "description": "Name of the tool that identified the finding."
+        },
+        "severity": {
+          "type": "string",
+          "description": "Severity of the finding (e.g., Critical, High, Medium, Low)."
+        },
+        "description": {
+          "type": "string",
+          "description": "Description of the finding."
+        },
+        "evidence": {
+          "type": "string",
+          "description": "Raw JSON output from the tool for the finding."
+        },
+        "confidence": {
+          "type": "number",
+          "description": "Confidence score for the finding (0-1)."
+        },
+        "owaspMapping": {
+          "type": "array",
+          "description": "Array of OWASP Top 10 mappings for the finding.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "cweMapping": {
+          "type": "array",
+          "description": "Array of CWE mappings for the finding.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "pciMapping": {
+          "type": "array",
+          "description": "Array of PCI DSS mappings for the finding.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "gdprMapping": {
+          "type": "array",
+          "description": "Array of GDPR mappings for the finding.",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "assessmentId",
+        "toolName",
+        "severity",
+        "description",
+        "evidence",
+        "confidence"
+      ]
+    },
+    "Report": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Report",
+      "type": "object",
+      "description": "Represents a generated PDF report for an assessment.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the report entity."
+        },
+        "executiveSummary": {
+          "type": "string",
+          "description": "Executive summary of the report."
+        },
+        "businessRiskImpact": {
+          "type": "string",
+          "description": "Business risk impact analysis in the report."
+        },
+        "attackSurfaceOverview": {
+          "type": "string",
+          "description": "Attack surface overview in the report."
+        },
+        "keyFindings": {
+          "type": "string",
+          "description": "Key findings summarized in the report."
+        },
+        "technicalDetails": {
+          "type": "string",
+          "description": "Technical details included in the report."
+        },
+        "complianceMapping": {
+          "type": "string",
+          "description": "Compliance mapping information in the report."
+        },
+        "remediationRoadmap": {
+          "type": "string",
+          "description": "Remediation roadmap provided in the report."
+        },
+        "reportURL": {
+          "type": "string",
+          "description": "URL where the generated report can be accessed.",
+          "format": "uri"
+        }
+      },
+      "required": [
+        "id",
+        "executiveSummary",
+        "businessRiskImpact",
+        "attackSurfaceOverview",
+        "keyFindings",
+        "technicalDetails",
+        "complianceMapping",
+        "remediationRoadmap",
+        "reportURL"
+      ]
+    },
+    "SubscriptionTier": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "SubscriptionTier",
+      "type": "object",
+      "description": "Represents a subscription tier with its associated limits and features.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the subscription tier."
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the subscription tier (e.g., Starter, Professional, Enterprise)."
+        },
+        "toolLimit": {
+          "type": "number",
+          "description": "Maximum number of tools allowed in this tier."
+        },
+        "assessmentLimit": {
+          "type": "number",
+          "description": "Maximum number of assessments allowed per month."
+        },
+        "reportBranding": {
+          "type": "boolean",
+          "description": "Indicates whether report branding is allowed in this tier."
+        },
+        "sla": {
+          "type": "string",
+          "description": "Service Level Agreement details for this tier."
+        },
+        "price": {
+          "type": "number",
+          "description": "Price of the subscription tier."
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "toolLimit",
+        "assessmentLimit",
+        "reportBranding",
+        "sla",
+        "price"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Stores user profiles. Path-based ownership ensures only the user can access their profile data.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/organizations/{organizationId}",
+        "definition": {
+          "entityName": "Organization",
+          "schema": {
+            "$ref": "#/backend/entities/Organization"
+          },
+          "description": "Stores organization details. Accessible by admins and members of the organization. Consider adding a 'members' map for role-based access control if collaborative features are added in the future.",
+          "params": [
+            {
+              "name": "organizationId",
+              "description": "The unique identifier for the organization."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/subscriptionTiers/{subscriptionTierId}",
+        "definition": {
+          "entityName": "SubscriptionTier",
+          "schema": {
+            "$ref": "#/backend/entities/SubscriptionTier"
+          },
+          "description": "Stores subscription tier information. Accessible by admins.",
+          "params": [
+            {
+              "name": "subscriptionTierId",
+              "description": "The unique identifier for the subscription tier."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/assessments/{assessmentId}",
+        "definition": {
+          "entityName": "Assessment",
+          "schema": {
+            "$ref": "#/backend/entities/Assessment"
+          },
+          "description": "Stores assessment data associated with a user. Includes denormalized 'userId' for authorization independence. This structure uses path-based ownership so only the user can manage their assessments.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user."
+            },
+            {
+              "name": "assessmentId",
+              "description": "The unique identifier for the assessment."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/assessments/{assessmentId}/findings/{findingId}",
+        "definition": {
+          "entityName": "Finding",
+          "schema": {
+            "$ref": "#/backend/entities/Finding"
+          },
+          "description": "Stores findings associated with an assessment. This nested structure ensures that only the user owning the assessment can access the findings. It benefits from path-based authorization",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user."
+            },
+            {
+              "name": "assessmentId",
+              "description": "The unique identifier for the assessment."
+            },
+            {
+              "name": "findingId",
+              "description": "The unique identifier for the finding."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/reports/{reportId}",
+        "definition": {
+          "entityName": "Report",
+          "schema": {
+            "$ref": "#/backend/entities/Report"
+          },
+          "description": "Stores report data. While reports have a one-to-one relation with Assessments, the report is top-level since it's likely accessed less frequently and potentially by different services (e.g., a reporting microservice). Security is based on the reportId, which is stored on the Assessment.",
+          "params": [
+            {
+              "name": "reportId",
+              "description": "The unique identifier for the report."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore data structure is designed to ensure Authorization Independence, Clarity of Intent, and support secure list operations (QAPs). Authorization Independence is achieved through denormalization. For example, user roles within an organization are denormalized into the assessment document, avoiding the need for `get()` calls to the organization document during security rule evaluation. Structural Segregation is applied by using dedicated collections for different data types with varying security requirements (e.g., `users`, `organizations`, and `assessments`). Access Modeling follows consistent patterns: path-based ownership for user-owned data (e.g., `/users/{userId}/assessments/{assessmentId}`), and membership maps for collaborative entities where applicable (although not explicitly used in this initial structure, it's the standard for future collaborative features). QAPs are supported by segregating data based on access needs. For example, listing assessments is secured by scoping them within the user's document, ensuring that only authorized users can list their own assessments. Overall, the structure prioritizes clear, explicit authorization and simplifies security rules for easy maintenance and debugging. The data structure includes collections for `users`, `organizations`, `subscriptionTiers`, `assessments`, `findings`, and `reports`. Each collection is designed to support the application's core features, including automated security assessments, risk scoring, interactive dashboards, and customizable PDF report generation."
+  }
+}
