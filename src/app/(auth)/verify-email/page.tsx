@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
 import api from '@/lib/api';
+import { usePageTitle } from '@/hooks/use-page-title';
 
 const resendSchema = z.object({
   email: z.string().email('Please enter a valid email address.'),
@@ -22,6 +23,8 @@ const resendSchema = z.object({
 type ResendFormData = z.infer<typeof resendSchema>;
 
 function VerifyEmailContent() {
+  usePageTitle('Verify Email');
+
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();

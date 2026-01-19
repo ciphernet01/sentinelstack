@@ -13,6 +13,11 @@ const router = Router();
 // @access  Private (Client or Admin)
 router.post('/', firebaseAuth, validateAssessmentCreation, assessmentController.createAssessment);
 
+// @route   POST /api/assessments/reset
+// @desc    DEV ONLY: Delete all assessments for the current org
+// @access  Private
+router.post('/reset', firebaseAuth, assessmentController.resetAssessmentsForOrg);
+
 // @route   GET /api/assessments
 // @desc    Get all assessments for the logged-in user (or all for admin)
 // @access  Private

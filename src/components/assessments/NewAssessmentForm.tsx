@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useForm, FormProvider, useFormContext } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -24,7 +24,7 @@ const formSchema = z.object({
   name: z.string().min(2, 'Assessment name must be at least 2 characters.'),
   targetUrl: z.string().url('Please enter a valid URL (e.g., https://example.com).'),
   scope: z.enum(['WEB', 'API', 'AUTH', 'FULL']),
-  toolPreset: z.enum(['default', 'deep', 'enterprise']),
+  toolPreset: z.enum(['default', 'access-control', 'deep', 'enterprise']),
   authorizationConfirmed: z.boolean().refine(val => val === true, { message: 'You must confirm you have permission to scan this target.' }),
   notes: z.string().optional(),
 });
@@ -34,6 +34,7 @@ type FormData = z.infer<typeof formSchema>;
 export function NewAssessmentForm() {
   const [step, setStep] = useState(1);
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -48,6 +49,51 @@ export function NewAssessmentForm() {
       notes: ''
     },
   });
+
+  useEffect(() => {
+    const raw = searchParams.get('target');
+    const target = String(raw ?? '').trim();
+    if (!target) return;
+
+    const currentTarget = String(form.getValues('targetUrl') ?? '').trim();
+    if (!currentTarget) {
+      form.setValue('targetUrl', target, { shouldDirty: true, shouldTouch: true });
+    }
+
+    const currentName = String(form.getValues('name') ?? '').trim();
+    if (!currentName) {
+      try {
+        const u = new URL(target);
+        const suggested = `Scan ${u.hostname}`;
+        form.setValue('name', suggested, { shouldDirty: true, shouldTouch: true });
+      } catch {
+        // ignore invalid URL; user will correct
+      }
+    }
+  }, [searchParams, form]);
+
+  useEffect(() => {
+    const preset = String(searchParams.get('toolPreset') ?? '').trim();
+    const scope = String(searchParams.get('scope') ?? '').trim();
+
+    if (preset) {
+      const current = form.getValues('toolPreset');
+      if (current === 'default') {
+        if (preset === 'access-control' || preset === 'deep' || preset === 'enterprise' || preset === 'default') {
+          form.setValue('toolPreset', preset as any, { shouldDirty: true, shouldTouch: true });
+        }
+      }
+    }
+
+    if (scope) {
+      const current = form.getValues('scope');
+      if (current === 'WEB') {
+        if (scope === 'WEB' || scope === 'API' || scope === 'AUTH' || scope === 'FULL') {
+          form.setValue('scope', scope as any, { shouldDirty: true, shouldTouch: true });
+        }
+      }
+    }
+  }, [searchParams, form]);
 
   const { trigger } = form;
 
@@ -241,6 +287,7 @@ function Step2() {
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="default">Default (safe baseline)</SelectItem>
+                              <SelectItem value="access-control">Access Control QuickScan (IDOR)</SelectItem>
                               <SelectItem value="deep">Deep (expanded checks)</SelectItem>
                               <SelectItem value="enterprise">Enterprise (heavy tools)</SelectItem>
                             </SelectContent>
@@ -286,6 +333,7 @@ function Step3() {
 
     const toolPresetMap: Record<string, string> = {
       default: "Default",
+      'access-control': 'Access Control QuickScan (IDOR)',
       deep: "Deep",
       enterprise: "Enterprise",
     };

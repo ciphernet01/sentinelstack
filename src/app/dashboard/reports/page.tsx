@@ -5,10 +5,13 @@ import api from '@/lib/api';
 import type { Assessment } from '@prisma/client';
 import { Loader2 } from 'lucide-react';
 import { ReportList } from '@/components/reports/ReportList';
+import { usePageTitle } from '@/hooks/use-page-title';
 
 export type AssessmentWithReport = Assessment & { report: { id: string } | null };
 
 export default function ReportsPage() {
+  usePageTitle('Reports');
+
   const { data: assessments, isLoading, error } = useQuery<AssessmentWithReport[], Error>({
     queryKey: ['assessmentsForReportPage'],
     queryFn: async () => {

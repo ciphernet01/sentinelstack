@@ -11,6 +11,7 @@ import Report from '@/components/report/Report';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useState } from 'react';
+import { usePageTitle } from '@/hooks/use-page-title';
 
 type AssessmentPageProps = {
   params: {
@@ -31,6 +32,8 @@ export default function ReportPage({ params }: AssessmentPageProps) {
       return response.data;
     },
   });
+
+  usePageTitle(assessment?.name ? `Report: ${assessment.name}` : 'Report');
 
   const generatePdfMutation = useMutation<ReportType, Error, string>({
     mutationFn: (assessmentId) => api.post(`/reports/assessments/${assessmentId}/generate`).then(res => res.data.report),

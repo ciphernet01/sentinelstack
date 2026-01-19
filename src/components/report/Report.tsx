@@ -49,9 +49,63 @@ const getRiskTier = (score: number | null) => {
 
 const getFindingCode = (index: number) => `F-${String(index + 1).padStart(3, '0')}`;
 
+function impactPlainLanguage(description: string, severity: Severity) {
+  const normalized = String(description || '').replace(/\s+/g, ' ').trim();
+  if (!normalized) {
+    if (severity === 'CRITICAL' || severity === 'HIGH') return 'This could enable unauthorized access or data exposure.';
+    return 'This can weaken security posture or increase attack surface.';
+  }
+  // Use the first sentence as an "impact" proxy.
+  const firstSentence = normalized.split(/(?<=[.!?])\s+/)[0] || normalized;
+  return firstSentence;
+}
+
+function extractReproductionSteps(evidence: unknown, targetUrl: string): string[] {
+  const ev = evidence as any;
+  const steps: string[] = [];
+
+  // Common shapes across scanners.
+  const endpoint = ev?.endpoint || ev?.path || ev?.url || ev?.testedUrl;
+  const method = ev?.method || ev?.httpMethod;
+  const request = ev?.request;
+
+  if (endpoint) {
+    const fullUrl = String(endpoint).startsWith('http') ? String(endpoint) : `${targetUrl.replace(/\/$/, '')}${String(endpoint).startsWith('/') ? '' : '/'}${String(endpoint)}`;
+    steps.push(`Open ${fullUrl}${method ? ` (${String(method).toUpperCase()})` : ''}`);
+  }
+
+  if (request?.url) {
+    steps.push(`Send request to ${request.url}${request.method ? ` (${String(request.method).toUpperCase()})` : ''}`);
+  }
+
+  if (Array.isArray(ev?.steps)) {
+    for (const s of ev.steps) {
+      if (typeof s === 'string' && s.trim()) steps.push(s.trim());
+    }
+  }
+
+  if (steps.length === 0) {
+    steps.push('Review the Evidence section for concrete request/response details.');
+    steps.push('Attempt the same action as a lower-privileged user or without authentication.');
+    steps.push('Confirm whether data/behavior changes indicate an access control bypass.');
+  }
+
+  return steps.slice(0, 4);
+}
+
 export default function Report({ assessment }: ReportProps) {
-  const { name, targetUrl, createdAt, riskScore, findings } = assessment;
+  const { name, targetUrl, createdAt, riskScore, findings, toolPreset, scannerConfig, endedEarly, endedEarlyReason } = assessment as any;
   const summary = getSeverityCounts(findings);
+
+  const cfg = (scannerConfig ?? null) as any;
+  const effectivePreset = String(cfg?.preset || toolPreset || 'default');
+  const scope = String(cfg?.scope || '').trim();
+  const runtime = String(cfg?.runtime || '').trim();
+  const timeoutMs = typeof cfg?.timeoutMs === 'number' ? (cfg.timeoutMs as number) : null;
+  const timeoutSource = String(cfg?.timeoutSource || '').trim();
+  const timeoutLabel = timeoutMs
+    ? `${Math.round(timeoutMs / 1000)}s${timeoutSource ? ` (${timeoutSource})` : ''}`
+    : '';
 
   const generatedAt = new Date();
   const riskTier = getRiskTier(riskScore ?? null);
@@ -114,6 +168,36 @@ export default function Report({ assessment }: ReportProps) {
                 <dt className="text-xs text-gray-500">Classification</dt>
                 <dd className="text-sm font-medium text-gray-900">Confidential</dd>
               </div>
+              <div>
+                <dt className="text-xs text-gray-500">Preset</dt>
+                <dd className="text-sm font-medium text-gray-900">{effectivePreset}</dd>
+              </div>
+              {scope ? (
+                <div>
+                  <dt className="text-xs text-gray-500">Scope</dt>
+                  <dd className="text-sm font-medium text-gray-900">{scope}</dd>
+                </div>
+              ) : null}
+              {runtime || timeoutLabel ? (
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <dt className="text-xs text-gray-500">Runtime</dt>
+                    <dd className="text-sm font-medium text-gray-900">{runtime || 'local'}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs text-gray-500">Time limit</dt>
+                    <dd className="text-sm font-medium text-gray-900">{timeoutLabel || '—'}</dd>
+                  </div>
+                </div>
+              ) : null}
+              {endedEarly ? (
+                <div className="rounded-md border border-amber-200 bg-amber-50 p-3">
+                  <dt className="text-xs font-semibold text-amber-800 uppercase tracking-wider">Notice</dt>
+                  <dd className="mt-1 text-sm text-amber-900">
+                    This scan ended early{endedEarlyReason ? ` (${String(endedEarlyReason)})` : ''}. Results may be incomplete.
+                  </dd>
+                </div>
+              ) : null}
             </dl>
           </div>
 
@@ -156,6 +240,17 @@ export default function Report({ assessment }: ReportProps) {
               <span className={`font-semibold ${getRiskScoreColor(riskScore ?? 0)}`}>{riskScore ?? 'N/A'}</span>{' '}
               indicates the aggregated severity of findings.
             </p>
+
+            <div className="mt-5 rounded-lg border border-gray-200 p-4">
+              <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">Executive highlights (5 bullets)</p>
+              <ul className="mt-3 list-disc list-inside space-y-1 text-gray-700 text-sm">
+                <li>Overall score: <span className="font-semibold">{riskScore ?? 'N/A'}</span> ({riskTier.label})</li>
+                <li>Preset used: <span className="font-semibold">{toolPreset || 'default'}</span></li>
+                <li>Critical: <span className="font-semibold">{summary?.CRITICAL ?? 0}</span> • High: <span className="font-semibold">{summary?.HIGH ?? 0}</span> • Medium: <span className="font-semibold">{summary?.MEDIUM ?? 0}</span></li>
+                <li>Top issue: <span className="font-semibold">{topFindings[0]?.title || 'No critical/high findings'}</span></li>
+                <li>Recommended next step: <span className="font-semibold">Fix Critical/High first, then rerun Access Control QuickScan</span></li>
+              </ul>
+            </div>
             <div className="mt-5 rounded-lg border border-gray-200 p-4">
               <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">Scope & Methodology</p>
               <ul className="mt-3 list-disc list-inside space-y-1 text-gray-700 text-sm">
@@ -301,11 +396,23 @@ export default function Report({ assessment }: ReportProps) {
 
               <div className="mt-4 grid grid-cols-2 gap-6">
                 <div>
-                  <h4 className="text-xs font-semibold uppercase tracking-wider text-gray-500">Description</h4>
-                  <p className="mt-2 text-sm text-gray-700 leading-relaxed">{finding.description}</p>
+                  <h4 className="text-xs font-semibold uppercase tracking-wider text-gray-500">Risk rating</h4>
+                  <p className="mt-2 text-sm text-gray-700 leading-relaxed">
+                    <span className="font-semibold" style={{ color: severityColors[finding.severity] }}>{finding.severity}</span>
+                  </p>
+
+                  <h4 className="mt-4 text-xs font-semibold uppercase tracking-wider text-gray-500">Impact (plain language)</h4>
+                  <p className="mt-2 text-sm text-gray-700 leading-relaxed">{impactPlainLanguage(finding.description, finding.severity)}</p>
                 </div>
                 <div>
-                  <h4 className="text-xs font-semibold uppercase tracking-wider text-gray-500">Remediation</h4>
+                  <h4 className="text-xs font-semibold uppercase tracking-wider text-gray-500">Reproduction steps</h4>
+                  <ol className="mt-2 list-decimal list-inside text-sm text-gray-700 space-y-1">
+                    {extractReproductionSteps(finding.evidence, targetUrl).map((s, i) => (
+                      <li key={i}>{s}</li>
+                    ))}
+                  </ol>
+
+                  <h4 className="mt-4 text-xs font-semibold uppercase tracking-wider text-gray-500">Exact fix guidance</h4>
                   <p className="mt-2 text-sm text-gray-700 leading-relaxed">{finding.remediation}</p>
                 </div>
               </div>

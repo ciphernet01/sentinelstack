@@ -4,6 +4,43 @@ import { AuthenticatedRequest } from '../middleware/auth';
 import { prisma } from '../config/db';
 import { Prisma } from '@prisma/client';
 import { startAssessmentWorker } from '../services/worker.service';
+import fs from 'fs';
+import path from 'path';
+
+const safeUnlinkReportFile = (relativePath: string) => {
+  try {
+    const reportsDir = path.join(process.cwd(), 'reports');
+    const absolute = path.join(process.cwd(), relativePath);
+
+    // Safety: only delete files inside ./reports
+    const normalizedReportsDir = path.resolve(reportsDir) + path.sep;
+    const normalizedAbsolute = path.resolve(absolute);
+    if (!normalizedAbsolute.startsWith(normalizedReportsDir)) return;
+
+    if (fs.existsSync(normalizedAbsolute)) {
+      fs.unlinkSync(normalizedAbsolute);
+    }
+  } catch {
+    // Best-effort cleanup only
+  }
+};
+
+const normalizeToolPreset = (raw: unknown): string => {
+  const key = String(raw || 'default').trim().toLowerCase();
+
+  // Canonical presets
+  if (key === 'default' || key === 'deep' || key === 'enterprise') return key;
+
+  // Backwards-compatible aliases
+  if (key === 'web' || key === 'api' || key === 'auth' || key === 'full') return key;
+
+  // Access control quickscan aliases (what we market in the UI)
+  if (key === 'access-control' || key === 'access_control') return 'access-control';
+  if (key.includes('access') && key.includes('control')) return 'access-control';
+  if (key.includes('idor')) return 'access-control';
+
+  return key;
+};
 
 class AssessmentController {
   
@@ -23,7 +60,7 @@ class AssessmentController {
     }
 
     try {
-      const normalizedPreset = String(toolPreset || "default").trim().toLowerCase();
+      const normalizedPreset = normalizeToolPreset(toolPreset);
 
       const assessment = await prisma.assessment.create({
         data: {
@@ -153,6 +190,46 @@ class AssessmentController {
       } catch (error) {
           next(error);
       }
+  }
+
+  // @route   POST /api/assessments/reset
+  // @desc    DEV ONLY: Delete all assessments for the current org (and cascading findings/reports)
+  // @access  Private
+  async resetAssessmentsForOrg(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      const allowDevReset =
+        process.env.NODE_ENV !== 'production' || process.env.ENABLE_DEV_RESET === 'true';
+
+      if (!allowDevReset) {
+        return res
+          .status(404)
+          .json({ message: 'Not found. (Set ENABLE_DEV_RESET=true to enable locally.)' });
+      }
+
+      const organizationId = req.user?.organizationId;
+      if (!organizationId) {
+        return res.status(403).json({ message: 'Organization context missing for this user.' });
+      }
+
+      const assessments = await prisma.assessment.findMany({
+        where: { organizationId },
+        select: {
+          id: true,
+          report: { select: { filePath: true } },
+        },
+      });
+
+      for (const a of assessments) {
+        const filePath = a.report?.filePath;
+        if (filePath) safeUnlinkReportFile(filePath);
+      }
+
+      const deleted = await prisma.assessment.deleteMany({ where: { organizationId } });
+
+      return res.status(200).json({ deletedAssessments: deleted.count });
+    } catch (error) {
+      next(error);
+    }
   }
 }
 

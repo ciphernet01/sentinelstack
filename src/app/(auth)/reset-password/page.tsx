@@ -15,6 +15,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { useToast } from '@/hooks/use-toast';
 import api from '@/lib/api';
 import { Eye, EyeOff, Lock } from '@/lib/icons';
+import { usePageTitle } from '@/hooks/use-page-title';
 
 const formSchema = z.object({
   newPassword: z.string()
@@ -32,6 +33,8 @@ const formSchema = z.object({
 type FormData = z.infer<typeof formSchema>;
 
 function ResetPasswordContent() {
+  usePageTitle('Reset Password');
+
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();

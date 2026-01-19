@@ -10,8 +10,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useToast } from '@/hooks/use-toast';
 import api from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
+import { usePageTitle } from '@/hooks/use-page-title';
 
 function InviteContent() {
+  usePageTitle('Invitation');
+
   const searchParams = useSearchParams();
   const router = useRouter();
   const { toast } = useToast();

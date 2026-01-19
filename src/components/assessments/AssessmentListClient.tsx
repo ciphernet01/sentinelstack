@@ -35,6 +35,7 @@ import { cn } from '@/lib/utils';
 
 type AssessmentListClientProps = {
   assessments: Assessment[];
+  targetFilter?: string | null;
 };
 
 const getRiskScoreColor = (score: number | null) => {
@@ -55,7 +56,7 @@ const getStatusBadgeVariant = (status: AssessmentStatus) => {
     }
 }
 
-export function AssessmentListClient({ assessments: initialAssessments }: AssessmentListClientProps) {
+export function AssessmentListClient({ assessments: initialAssessments, targetFilter }: AssessmentListClientProps) {
     const assessments = initialAssessments;
     const [tab, setTab] = useState<AssessmentStatus | 'ALL'>('ALL');
 
@@ -65,6 +66,16 @@ export function AssessmentListClient({ assessments: initialAssessments }: Assess
         return assessment.status === tab;
       });
     }, [assessments, tab]);
+
+    const targetFilteredAssessments = useMemo(() => {
+      const raw = String(targetFilter ?? '').trim();
+      if (!raw) return filteredAssessments;
+
+      const needle = raw.toLowerCase();
+      return filteredAssessments.filter((assessment) =>
+        String(assessment.targetUrl ?? '').toLowerCase().includes(needle)
+      );
+    }, [filteredAssessments, targetFilter]);
 
   return (
     <Tabs value={tab} onValueChange={(value) => setTab(value as any)}>
@@ -103,6 +114,17 @@ export function AssessmentListClient({ assessments: initialAssessments }: Assess
           </Button>
         </div>
       </div>
+
+      {String(targetFilter ?? '').trim() ? (
+        <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
+          <Badge variant="outline">Filtered target</Badge>
+          <span className="text-muted-foreground break-all">{String(targetFilter).trim()}</span>
+          <Button asChild variant="ghost" size="sm" className="h-7">
+            <Link href="/dashboard/assessments">Clear</Link>
+          </Button>
+        </div>
+      ) : null}
+
       <TabsContent value={tab}>
         <Card>
           <CardHeader>
@@ -126,17 +148,27 @@ export function AssessmentListClient({ assessments: initialAssessments }: Assess
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredAssessments.map((assessment) => (
+                {targetFilteredAssessments.map((assessment) => (
                   <TableRow key={assessment.id}>
                     <TableCell className="font-medium">{assessment.name}</TableCell>
                     <TableCell className="hidden md:table-cell font-mono">{assessment.targetUrl}</TableCell>
                     <TableCell className="hidden md:table-cell">
-                      <Badge 
-                        variant={getStatusBadgeVariant(assessment.status)}
-                        className={cn(assessment.status === 'IN_PROGRESS' && 'animate-pulse')}
-                      >
-                        {assessment.status}
-                      </Badge>
+                      <div className="flex items-center gap-2">
+                        <Badge
+                          variant={getStatusBadgeVariant(assessment.status)}
+                          className={cn(assessment.status === 'IN_PROGRESS' && 'animate-pulse')}
+                        >
+                          {assessment.status}
+                        </Badge>
+                        {assessment.endedEarly ? (
+                          <Badge
+                            variant="secondary"
+                            className="bg-sky-500/15 text-sky-200 border border-sky-500/25"
+                          >
+                            Partial
+                          </Badge>
+                        ) : null}
+                      </div>
                     </TableCell>
                     <TableCell className="hidden md:table-cell">{new Date(assessment.createdAt).toLocaleDateString()}</TableCell>
                     <TableCell className={`text-right font-bold ${getRiskScoreColor(assessment.riskScore)}`}>
@@ -154,7 +186,7 @@ export function AssessmentListClient({ assessments: initialAssessments }: Assess
           </CardContent>
           <CardFooter>
             <div className="text-xs text-muted-foreground">
-              Showing <strong>{filteredAssessments.length}</strong> of <strong>{assessments.length}</strong> assessments
+              Showing <strong>{targetFilteredAssessments.length}</strong> of <strong>{assessments.length}</strong> assessments
             </div>
           </CardFooter>
         </Card>

@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
 import api from '@/lib/api';
+import { usePageTitle } from '@/hooks/use-page-title';
 
 const formSchema = z.object({
   email: z.string().email('Please enter a valid email address.'),
@@ -22,6 +23,8 @@ const formSchema = z.object({
 type FormData = z.infer<typeof formSchema>;
 
 export default function ForgotPasswordPage() {
+  usePageTitle('Forgot Password');
+
   const router = useRouter();
   const { toast } = useToast();
   const [emailSent, setEmailSent] = useState(false);

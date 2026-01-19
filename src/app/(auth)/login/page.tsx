@@ -22,6 +22,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { Eye, EyeOff, Lock, Mail } from '@/lib/icons';
 import api from '@/lib/api';
+import { usePageTitle } from '@/hooks/use-page-title';
 
 const formSchema = z.object({
   email: z.string().email('Please enter a valid email address.'),
@@ -31,6 +32,8 @@ const formSchema = z.object({
 type FormData = z.infer<typeof formSchema>;
 
 function LoginPageContent() {
+  usePageTitle('Login');
+
   const searchParams = useSearchParams();
   const { login } = useAuth();
   const { toast } = useToast();

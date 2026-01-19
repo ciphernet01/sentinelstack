@@ -4,6 +4,7 @@ import { calculateRiskScore } from './riskScoring.service';
 import logger from '../utils/logger';
 import { spawn } from 'child_process';
 import type { Prisma } from '@prisma/client';
+import { getEffectiveScannerConfig, isScannerTimeoutFinding } from './scannerConfig.service';
 
 // A simple in-memory queue to prevent multiple workers on the same assessment.
 const activeWorkers = new Set<string>();
@@ -23,15 +24,15 @@ const runPythonScanner = (
     authorizationConfirmed: boolean = false,
 ): Promise<Prisma.FindingCreateManyInput[]> => {
     return new Promise((resolve, reject) => {
-        const runtime = String(process.env.SCANNER_RUNTIME || 'local').toLowerCase();
-
-        const stuckWarnMs = Number(process.env.SCANNER_STUCK_WARN_MS || 2 * 60 * 1000);
-        const toolStuckWarnMs = Number(process.env.SCANNER_TOOL_STUCK_WARN_MS || 5 * 60 * 1000);
-        const killOnStuck = String(process.env.SCANNER_KILL_ON_STUCK || 'false').toLowerCase() === 'true';
-        const watchdogIntervalMs = Number(process.env.SCANNER_WATCHDOG_INTERVAL_MS || 30 * 1000);
-
-        // Normalize preset names to avoid registry warnings.
-        const normalizedPreset = String(preset || 'default').trim().toLowerCase();
+        const config = getEffectiveScannerConfig(preset, scope);
+        const runtime = config.runtime;
+        const timeoutMs = config.timeoutMs;
+        const timeoutSource = config.timeoutSource;
+        const stuckWarnMs = config.stuckWarnMs;
+        const toolStuckWarnMs = config.toolStuckWarnMs;
+        const killOnStuck = config.killOnStuck;
+        const watchdogIntervalMs = config.watchdogIntervalMs;
+        const normalizedPreset = config.preset;
 
         // Assumes a master script `scanner.py` exists in a `scanners` directory at the project root.
         // This script is responsible for orchestrating the actual Python tools.
@@ -82,6 +83,23 @@ const runPythonScanner = (
 
         let findingsOutput = '';
         let errorOutput = '';
+
+        let settled = false;
+        const safeResolve = (value: Prisma.FindingCreateManyInput[]) => {
+            if (settled) return;
+            settled = true;
+            stopWatchdog();
+            clearTimeout(timeoutTimer);
+            resolve(value);
+        };
+
+        const safeReject = (err: Error) => {
+            if (settled) return;
+            settled = true;
+            stopWatchdog();
+            clearTimeout(timeoutTimer);
+            reject(err);
+        };
 
         // Watchdog state: helps detect when scans look stuck.
         let lastProgressAt = Date.now();
@@ -140,6 +158,40 @@ const runPythonScanner = (
             }
         };
 
+        const timeoutTimer = setTimeout(() => {
+            logger.warn(
+                `Scanner timeout after ${timeoutMs}ms (runtime=${runtime}, preset=${normalizedPreset}, assessmentId=${assessmentId}). Killing process pid=${pythonProcess.pid}.`,
+            );
+
+            try {
+                pythonProcess.kill('SIGKILL');
+            } catch {
+                // ignore
+            }
+
+            safeResolve([
+                {
+                    assessmentId,
+                    toolName: 'scanner',
+                    title: 'Scan reached time limit (results may be incomplete)',
+                    description:
+                        `This run stopped after ${Math.round(timeoutMs / 1000)}s due to the configured time limit (${timeoutSource}). Some tools may not have finished, so results may be incomplete.`,
+                    severity: 'INFO',
+                    remediation:
+                        `If you want deeper coverage, rerun with a longer timeout (set SCANNER_TIMEOUT_MS) and/or choose a deeper preset.`,
+                    evidence: {
+                        timeoutMs,
+                        timeoutSource,
+                        runtime,
+                        preset: normalizedPreset,
+                        scope,
+                    } as any,
+                    complianceMapping: [],
+                },
+            ]);
+        }, timeoutMs);
+        timeoutTimer.unref?.();
+
         logger.info(
             `Spawning scanner runtime=${runtime} for ${targetUrl} with scope ${scope}, preset ${normalizedPreset} (assessmentId=${assessmentId}, authorizationConfirmed=${authorizationConfirmed})`,
         );
@@ -186,25 +238,29 @@ const runPythonScanner = (
         });
 
         pythonProcess.on('close', (code) => {
+            if (settled) return;
             stopWatchdog();
+            clearTimeout(timeoutTimer);
             if (code !== 0) {
                 logger.error(`Python scanner exited with code ${code}: ${errorOutput}`);
-                return reject(new Error(`Scanner failed: ${errorOutput}`));
+                return safeReject(new Error(`Scanner failed: ${errorOutput}`));
             }
             try {
                 // The Python script should print a JSON array of findings to stdout.
                 const findings = JSON.parse(findingsOutput);
-                resolve(findings);
+                safeResolve(findings);
             } catch (e) {
                 logger.error('Failed to parse JSON output from Python script.');
-                reject(e);
+                safeReject(e as Error);
             }
         });
 
         pythonProcess.on('error', (err) => {
+            if (settled) return;
             stopWatchdog();
+            clearTimeout(timeoutTimer);
             logger.error(`Failed to spawn scanner process (runtime=${runtime}):`, err);
-            reject(err);
+            safeReject(err);
         });
     });
 };
@@ -233,10 +289,20 @@ export const startAssessmentWorker = async (
     logger.info(`Starting worker for assessment ID: ${assessmentId}`);
 
     try {
-        // 1. Mark assessment as IN_PROGRESS
+        const effectiveConfig = getEffectiveScannerConfig(preset, scope);
+
+        // 1. Mark assessment as IN_PROGRESS and persist effective config for auditability.
         await prisma.assessment.update({
             where: { id: assessmentId },
-            data: { status: 'IN_PROGRESS' },
+            data: {
+                status: 'IN_PROGRESS',
+                scannerConfig: {
+                    ...effectiveConfig,
+                    capturedAt: new Date().toISOString(),
+                } as any,
+                endedEarly: false,
+                endedEarlyReason: null,
+            },
         });
 
         logger.info(`Assessment ${assessmentId} marked as IN_PROGRESS.`);
@@ -254,6 +320,8 @@ export const startAssessmentWorker = async (
             preset,
             Boolean(assessment?.authorizationConfirmed),
         );
+
+        const endedEarlyReason = findings.some(isScannerTimeoutFinding) ? 'TIMEOUT' : null;
         
         if (findings.length > 0) {
             // 3. Save the findings from the script to the database
@@ -280,7 +348,9 @@ export const startAssessmentWorker = async (
             where: { id: assessmentId },
             data: { 
                 status: 'COMPLETED',
-                riskScore: riskScore
+                riskScore: riskScore,
+                endedEarly: Boolean(endedEarlyReason),
+                endedEarlyReason,
             },
         });
         

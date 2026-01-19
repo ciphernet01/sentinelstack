@@ -1,6 +1,7 @@
 'use client';
 
 import Link from "next/link";
+import { useSearchParams } from 'next/navigation';
 import { PlusCircle, Loader2 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 
@@ -8,8 +9,14 @@ import { Button } from "@/components/ui/button";
 import { AssessmentListClient } from "@/components/assessments/AssessmentListClient";
 import api from "@/lib/api";
 import type { Assessment } from "@prisma/client";
+import { usePageTitle } from '@/hooks/use-page-title';
 
 export default function AssessmentsPage() {
+  usePageTitle('Assessments');
+
+  const searchParams = useSearchParams();
+  const targetFilter = searchParams.get('target');
+
   const { data: assessments, isLoading, error } = useQuery<Assessment[], Error>({
     queryKey: ['assessments'],
     queryFn: async () => {
@@ -52,7 +59,7 @@ export default function AssessmentsPage() {
         </div>
       )}
 
-      {assessments && <AssessmentListClient assessments={assessments} />}
+      {assessments && <AssessmentListClient assessments={assessments} targetFilter={targetFilter} />}
     </div>
   );
 }

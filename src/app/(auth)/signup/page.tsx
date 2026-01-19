@@ -23,6 +23,7 @@ import { cn } from '@/lib/utils';
 import { Eye, EyeOff, Lock, Mail } from '@/lib/icons';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useAuth } from '@/context/AuthContext';
+import { usePageTitle } from '@/hooks/use-page-title';
 
 const formSchema = z.object({
   name: z.string().min(2, 'Please enter your full name.').max(80, 'Name is too long.'),
@@ -47,6 +48,8 @@ const roles = [
 ] as const;
 
 export default function SignupPage() {
+  usePageTitle('Sign Up');
+
     const router = useRouter();
     const { toast } = useToast();
     const { signup } = useAuth();

@@ -7,9 +7,12 @@ import { Loader2 } from 'lucide-react';
 import api from '@/lib/api';
 import RiskAnalyticsView from '@/components/dashboard/RiskAnalyticsView';
 import { useToast } from '@/hooks/use-toast';
+import { usePageTitle } from '@/hooks/use-page-title';
 
 export default function RiskAnalyticsPage() {
   const { toast } = useToast();
+
+  usePageTitle('Risk Analytics');
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['riskAnalytics'],

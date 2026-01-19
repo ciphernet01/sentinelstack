@@ -6,95 +6,110 @@ import path from 'path';
 import logger from '../utils/logger';
 import puppeteer from 'puppeteer';
 
-class ReportController {
+const buildClientUrlForPuppeteer = (): string => {
+    const clientUrlRaw = process.env.CLIENT_URL || 'http://localhost:3000';
+    const isDocker = fs.existsSync('/.dockerenv') || process.env.DOCKER === 'true';
+    const dockerHostForClient = process.env.DOCKER_HOSTNAME_FOR_CLIENT || 'host.docker.internal';
 
-    private buildClientUrlForPuppeteer(): string {
-        const clientUrlRaw = process.env.CLIENT_URL || 'http://localhost:3000';
-        const isDocker = fs.existsSync('/.dockerenv') || process.env.DOCKER === 'true';
-        const dockerHostForClient = process.env.DOCKER_HOSTNAME_FOR_CLIENT || 'host.docker.internal';
-
-        let clientUrl = clientUrlRaw.trim();
-        try {
-            const parsed = new URL(clientUrl);
-            const host = parsed.hostname.toLowerCase();
-            if (isDocker && (host === 'localhost' || host === '127.0.0.1')) {
-                parsed.hostname = dockerHostForClient;
-                clientUrl = parsed.toString();
-            }
-        } catch {
-            // If CLIENT_URL isn't a valid URL, keep it as-is and let Puppeteer fail with a clear log.
+    let clientUrl = clientUrlRaw.trim();
+    try {
+        const parsed = new URL(clientUrl);
+        const host = parsed.hostname.toLowerCase();
+        if (isDocker && (host === 'localhost' || host === '127.0.0.1')) {
+            parsed.hostname = dockerHostForClient;
+            clientUrl = parsed.toString();
         }
-
-        return clientUrl.replace(/\/$/, '');
+    } catch {
+        // If CLIENT_URL isn't a valid URL, keep it as-is and let Puppeteer fail with a clear log.
     }
 
-    private async renderAssessmentPdfFromClient(assessmentId: string): Promise<Buffer> {
-        const clientUrl = this.buildClientUrlForPuppeteer();
-        const pdfRenderSecret = process.env.PDF_RENDER_SECRET;
+    return clientUrl.replace(/\/$/, '');
+};
 
-        if (!pdfRenderSecret) {
-            throw new Error('Server misconfigured: PDF_RENDER_SECRET is not set.');
+const renderAssessmentPdfFromClient = async (assessmentId: string): Promise<Buffer> => {
+    const clientUrl = buildClientUrlForPuppeteer();
+    const pdfRenderSecret = process.env.PDF_RENDER_SECRET;
+
+    if (!pdfRenderSecret) {
+        throw new Error('Server misconfigured: PDF_RENDER_SECRET is not set.');
+    }
+
+    const reportUrl = `${clientUrl}/print/report/${assessmentId}`;
+
+    logger.info(`Rendering PDF from URL: ${reportUrl}`);
+
+    const candidatePaths = [
+        process.env.PUPPETEER_EXECUTABLE_PATH,
+        '/usr/bin/chromium',
+        '/usr/bin/chromium-browser',
+        '/usr/bin/google-chrome',
+        '/usr/bin/google-chrome-stable',
+    ].filter(Boolean) as string[];
+
+    const executablePath = candidatePaths.find((p) => fs.existsSync(p));
+
+    const browser = await puppeteer.launch({
+        headless: true,
+        executablePath,
+        args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    });
+
+    try {
+        const page = await browser.newPage();
+        await page.setViewport({ width: 794, height: 1123 });
+        await page.setExtraHTTPHeaders({ 'x-internal-secret': pdfRenderSecret });
+
+        const response = await page.goto(reportUrl, { waitUntil: 'networkidle0' });
+        const status = response?.status();
+        if (!status || status >= 400) {
+            throw new Error(`Failed to render report page (status=${status ?? 'unknown'}): ${reportUrl}`);
         }
-
-        const reportUrl = `${clientUrl}/print/report/${assessmentId}`;
-
-        logger.info(`Rendering PDF from URL: ${reportUrl}`);
-
-        const browser = await puppeteer.launch({
-            headless: true,
-            args: ['--no-sandbox', '--disable-setuid-sandbox'],
-        });
-
-        try {
-            const page = await browser.newPage();
-            await page.setViewport({ width: 794, height: 1123 });
-            await page.setExtraHTTPHeaders({ 'x-internal-secret': pdfRenderSecret });
-
-            await page.goto(reportUrl, { waitUntil: 'networkidle0' });
-            await page.emulateMediaType('print');
-            await page.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: 'light' }]);
-            await page.addStyleTag({
-                content: `
+        await page.emulateMediaType('print');
+        await page.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: 'light' }]);
+        await page.addStyleTag({
+            content: `
                     :root { color-scheme: light !important; }
                     html, body { background: #ffffff !important; }
                 `,
-            });
+        });
 
-            await page.evaluate(() => {
-                const fonts = (document as any).fonts;
-                if (fonts?.ready) return fonts.ready;
-                return Promise.resolve();
-            });
+        await page.evaluate(() => {
+            const fonts = (document as any).fonts;
+            if (fonts?.ready) return fonts.ready;
+            return Promise.resolve();
+        });
 
-            return await page.pdf({
-                format: 'A4',
-                landscape: (process.env.PDF_LANDSCAPE ?? 'false') === 'true',
-                printBackground: true,
-                preferCSSPageSize: true,
-                displayHeaderFooter: true,
-                headerTemplate: `
+        return await page.pdf({
+            format: 'A4',
+            landscape: (process.env.PDF_LANDSCAPE ?? 'false') === 'true',
+            printBackground: true,
+            preferCSSPageSize: true,
+            displayHeaderFooter: true,
+            headerTemplate: `
                     <div style="width:100%; padding: 0 20px; font-size: 9px; color: #6b7280; display:flex; justify-content:space-between; align-items:center; border-bottom: 1px solid #e5e7eb;">
                         <span>Sentinel Stack — Security Assessment Report</span>
                         <span>${new Date().toLocaleDateString()}</span>
                     </div>
                 `,
-                footerTemplate: `
+            footerTemplate: `
                     <div style="width:100%; padding: 0 20px; font-size: 9px; color: #6b7280; display:flex; justify-content:space-between; align-items:center; border-top: 1px solid #e5e7eb;">
                         <span>Confidential</span>
                         <span><span class="pageNumber"></span> / <span class="totalPages"></span></span>
                     </div>
                 `,
-                margin: { top: '16mm', right: '14mm', bottom: '16mm', left: '14mm' },
-            });
-        } finally {
-            await browser.close();
-        }
+            margin: { top: '16mm', right: '14mm', bottom: '16mm', left: '14mm' },
+        });
+    } finally {
+        await browser.close();
     }
+};
+
+class ReportController {
   
   async generateReport(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     const { id } = req.params; // assessmentId
     const user = req.user;
-    const reportUrl = `${this.buildClientUrlForPuppeteer()}/print/report/${id}`;
+        const reportUrl = `${buildClientUrlForPuppeteer()}/print/report/${id}`;
 
     try {
       const assessment = await prisma.assessment.findUnique({ where: { id } });
@@ -114,7 +129,7 @@ class ReportController {
       
     logger.info(`Generating PDF for assessment ${id} from URL: ${reportUrl}`);
 
-    const pdfBuffer = await this.renderAssessmentPdfFromClient(id);
+    const pdfBuffer = await renderAssessmentPdfFromClient(id);
       
       const reportsDir = path.join(process.cwd(), 'reports');
       if (!fs.existsSync(reportsDir)){
@@ -185,7 +200,7 @@ class ReportController {
               // Instead of 404ing, regenerate the PDF from the canonical Next.js print route.
               logger.warn(`Report file missing at path: ${absoluteFilePath}. Regenerating on-demand.`);
 
-              const pdfBuffer = await this.renderAssessmentPdfFromClient(report.assessmentId);
+                            const pdfBuffer = await renderAssessmentPdfFromClient(report.assessmentId);
               res.setHeader('Content-Type', 'application/pdf');
               res.setHeader(
                 'Content-Disposition',

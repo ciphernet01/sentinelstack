@@ -121,7 +121,19 @@ export function ReportList({ assessments }: ReportListProps) {
             )}
             {assessments.map((assessment) => (
               <TableRow key={assessment.id}>
-                <TableCell className="font-medium">{assessment.name}</TableCell>
+                <TableCell className="font-medium">
+                  <div className="flex items-center gap-2">
+                    <span className="truncate">{assessment.name}</span>
+                    {assessment.endedEarly ? (
+                      <Badge
+                        variant="secondary"
+                        className="bg-sky-500/15 text-sky-200 border border-sky-500/25"
+                      >
+                        Partial
+                      </Badge>
+                    ) : null}
+                  </div>
+                </TableCell>
                 <TableCell className="hidden md:table-cell font-mono">{assessment.targetUrl}</TableCell>
                 <TableCell className="hidden md:table-cell">{new Date(assessment.updatedAt).toLocaleDateString()}</TableCell>
                 <TableCell className={`text-right font-bold ${getRiskScoreColor(assessment.riskScore)}`}>

@@ -8,6 +8,7 @@ import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { Copy, ExternalLink, Loader2, MailPlus, RefreshCw, Trash2, Users } from 'lucide-react';
+import { usePageTitle } from '@/hooks/use-page-title';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -141,6 +142,8 @@ const buildInviteLink = (token: string) => {
 };
 
 export default function SettingsPage() {
+  usePageTitle('Settings');
+
   const { user } = useAuth();
   const { toast } = useToast();
 

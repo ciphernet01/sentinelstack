@@ -14,6 +14,8 @@ import type { Assessment, Finding } from '@prisma/client';
 import { useToast } from '@/hooks/use-toast';
 import { useEffect } from 'react';
 import { ThemeToggle } from '@/components/layout/ThemeToggle';
+import Link from 'next/link';
+import { usePageTitle } from '@/hooks/use-page-title';
 
 
 const userAvatar = PlaceHolderImages.find(img => img.id === 'user-avatar-1');
@@ -41,6 +43,8 @@ interface DashboardData {
 }
 
 function DashboardPage() {
+    usePageTitle('Dashboard');
+
     const { user } = useAuth();
     const { toast } = useToast();
 
@@ -86,7 +90,29 @@ function DashboardPage() {
                 )}
 
                 {data && !isLoading && (
-                    <Overview stats={data.stats} recentAssessments={data.recentAssessments} findingsOverTime={data.findingsOverTime} />
+                                        <>
+                                            {data.stats.totalAssessments === 0 && (
+                                                <div className="rounded-lg border border-dashed bg-card p-5">
+                                                    <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                                                        <div>
+                                                            <div className="font-semibold">Run your first preset</div>
+                                                            <div className="text-sm text-muted-foreground mt-1">
+                                                                Start with the Broken Access Control (IDOR) preset and get a clean report you can share.
+                                                            </div>
+                                                        </div>
+                                                        <div className="flex gap-2">
+                                                            <Button asChild>
+                                                                <Link href="/dashboard/onboarding">Get started</Link>
+                                                            </Button>
+                                                            <Button asChild variant="outline">
+                                                                <Link href="/dashboard/assessments/new">New assessment</Link>
+                                                            </Button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            )}
+                                            <Overview stats={data.stats} recentAssessments={data.recentAssessments} findingsOverTime={data.findingsOverTime} />
+                                        </>
                 )}
                 
                 {error && !isLoading && (

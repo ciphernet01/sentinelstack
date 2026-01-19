@@ -3,7 +3,7 @@ import { SentinelStackLogo } from "@/lib/icons";
 import { getSeverityCounts } from "@/services/riskScoring.service";
 
 type PrintReportProps = {
-  assessment: Assessment & { findings: Finding[] };
+  assessment: Assessment & { findings: Finding[]; scannerConfig?: any | null };
 };
 
 const severityOrder: Record<Severity, number> = {
@@ -42,13 +42,65 @@ const getRiskTier = (score: number | null) => {
   return "Low";
 };
 
+function impactPlainLanguage(description: string, severity: Severity) {
+  const normalized = String(description || '').replace(/\s+/g, ' ').trim();
+  if (!normalized) {
+    if (severity === 'CRITICAL' || severity === 'HIGH') return 'This could enable unauthorized access or data exposure.';
+    return 'This can weaken security posture or increase attack surface.';
+  }
+  const firstSentence = normalized.split(/(?<=[.!?])\s+/)[0] || normalized;
+  return firstSentence;
+}
+
+function extractReproductionSteps(evidence: unknown, targetUrl: string): string[] {
+  const ev = evidence as any;
+  const steps: string[] = [];
+
+  const endpoint = ev?.endpoint || ev?.path || ev?.url || ev?.testedUrl;
+  const method = ev?.method || ev?.httpMethod;
+  const request = ev?.request;
+
+  if (endpoint) {
+    const fullUrl = String(endpoint).startsWith('http') ? String(endpoint) : `${targetUrl.replace(/\/$/, '')}${String(endpoint).startsWith('/') ? '' : '/'}${String(endpoint)}`;
+    steps.push(`Open ${fullUrl}${method ? ` (${String(method).toUpperCase()})` : ''}`);
+  }
+
+  if (request?.url) {
+    steps.push(`Send request to ${request.url}${request.method ? ` (${String(request.method).toUpperCase()})` : ''}`);
+  }
+
+  if (Array.isArray(ev?.steps)) {
+    for (const s of ev.steps) {
+      if (typeof s === 'string' && s.trim()) steps.push(s.trim());
+    }
+  }
+
+  if (steps.length === 0) {
+    steps.push('Review the Evidence section for concrete request/response details.');
+    steps.push('Attempt the same action as a lower-privileged user or without authentication.');
+    steps.push('Confirm whether data/behavior changes indicate an access control bypass.');
+  }
+
+  return steps.slice(0, 4);
+}
+
 function Page({ children }: { children: React.ReactNode }) {
   return <section className="pdf-page">{children}</section>;
 }
 
 export default function PrintReport({ assessment }: PrintReportProps) {
-  const { name, targetUrl, createdAt, riskScore, findings } = assessment;
+  const { name, targetUrl, createdAt, riskScore, findings, toolPreset, scannerConfig, endedEarly, endedEarlyReason } = assessment as any;
   const generatedAt = new Date();
+
+  const cfg = (scannerConfig ?? null) as any;
+  const effectivePreset = String(cfg?.preset || toolPreset || 'default');
+  const scope = String(cfg?.scope || '').trim();
+  const runtime = String(cfg?.runtime || '').trim();
+  const timeoutMs = typeof cfg?.timeoutMs === 'number' ? (cfg.timeoutMs as number) : null;
+  const timeoutSource = String(cfg?.timeoutSource || '').trim();
+  const timeoutLabel = timeoutMs
+    ? `${Math.round(timeoutMs / 1000)}s${timeoutSource ? ` (${timeoutSource})` : ''}`
+    : '';
 
   const sortedFindings = [...findings].sort((a, b) => {
     const bySeverity = severityOrder[a.severity] - severityOrder[b.severity];
@@ -131,6 +183,39 @@ export default function PrintReport({ assessment }: PrintReportProps) {
 
               <div className="text-xs text-gray-500">Classification</div>
               <div className="text-sm font-semibold text-gray-900">Confidential</div>
+
+              <div className="text-xs text-gray-500">Preset</div>
+              <div className="text-sm font-semibold text-gray-900">{effectivePreset}</div>
+
+              {scope ? (
+                <>
+                  <div className="text-xs text-gray-500">Scope</div>
+                  <div className="text-sm font-semibold text-gray-900">{scope}</div>
+                </>
+              ) : null}
+
+              {runtime ? (
+                <>
+                  <div className="text-xs text-gray-500">Runtime</div>
+                  <div className="text-sm font-semibold text-gray-900">{runtime}</div>
+                </>
+              ) : null}
+
+              {timeoutLabel ? (
+                <>
+                  <div className="text-xs text-gray-500">Time limit</div>
+                  <div className="text-sm font-semibold text-gray-900">{timeoutLabel}</div>
+                </>
+              ) : null}
+
+              {endedEarly ? (
+                <>
+                  <div className="text-xs text-gray-500">Run integrity</div>
+                  <div className="text-sm font-semibold text-amber-700">
+                    Ended early{endedEarlyReason ? ` (${String(endedEarlyReason)})` : ''} — results may be incomplete
+                  </div>
+                </>
+              ) : null}
             </div>
           </div>
 
@@ -142,6 +227,8 @@ export default function PrintReport({ assessment }: PrintReportProps) {
                 <div className="mt-2 text-4xl font-bold text-gray-900">{riskScore ?? "N/A"}</div>
                 <div className="mt-1">
                   <span className="inline-block rounded-full bg-gray-100 px-3 py-1 text-[10px] font-semibold text-gray-900">
+                    <div className="text-xs text-gray-500">Preset</div>
+                    <div className="text-sm font-semibold text-gray-900">{effectivePreset}</div>
                     {getRiskTier(riskScore ?? null)}
                   </span>
                 </div>
@@ -189,6 +276,17 @@ export default function PrintReport({ assessment }: PrintReportProps) {
           This report summarizes the automated security assessment performed against{" "}
           <span className="font-semibold">{targetUrl}</span> on <span className="font-semibold">{formatDate(createdAt)}</span>.
           It highlights key risks, current challenges, actions taken, and a prioritized remediation plan.
+        </div>
+
+        <div className="mt-6 rounded-md border border-gray-200 p-4 pdf-avoid-break">
+          <div className="text-xs font-semibold uppercase tracking-wider text-gray-500">Executive highlights (5 bullets)</div>
+          <ul className="mt-3 list-disc list-inside space-y-1 text-sm text-gray-700">
+            <li>Overall score: <span className="font-semibold">{riskScore ?? 'N/A'}</span> ({getRiskTier(riskScore ?? null)})</li>
+            <li>Preset used: <span className="font-semibold">{toolPreset || 'default'}</span></li>
+            <li>Critical: <span className="font-semibold">{severityCounts?.CRITICAL ?? 0}</span> • High: <span className="font-semibold">{severityCounts?.HIGH ?? 0}</span> • Medium: <span className="font-semibold">{severityCounts?.MEDIUM ?? 0}</span></li>
+            <li>Top issue: <span className="font-semibold">{topFindings[0]?.title || 'No critical/high findings'}</span></li>
+            <li>Recommended next step: <span className="font-semibold">Fix Critical/High first, then rerun QuickScan</span></li>
+          </ul>
         </div>
 
         <div className="mt-7 grid grid-cols-2 gap-8">
@@ -374,13 +472,23 @@ export default function PrintReport({ assessment }: PrintReportProps) {
                 </div>
               </div>
 
-              <div className="mt-4 grid grid-cols-2 gap-8">
+              <div className="mt-4 grid grid-cols-2 gap-6">
                 <div>
-                  <div className="text-xs font-semibold uppercase tracking-wider text-gray-500">Description</div>
-                  <div className="mt-2 text-sm text-gray-700 leading-relaxed">{f.description}</div>
+                  <div className="text-xs font-semibold uppercase tracking-wider text-gray-500">Risk rating</div>
+                  <div className="mt-2 text-sm font-semibold" style={{ color: severityColors[f.severity] }}>{f.severity}</div>
+
+                  <div className="mt-4 text-xs font-semibold uppercase tracking-wider text-gray-500">Impact (plain language)</div>
+                  <div className="mt-2 text-sm text-gray-700 leading-relaxed">{impactPlainLanguage(f.description, f.severity)}</div>
                 </div>
                 <div>
-                  <div className="text-xs font-semibold uppercase tracking-wider text-gray-500">Remediation</div>
+                  <div className="text-xs font-semibold uppercase tracking-wider text-gray-500">Reproduction steps</div>
+                  <ol className="mt-2 list-decimal list-inside space-y-1 text-sm text-gray-700">
+                    {extractReproductionSteps(f.evidence, targetUrl).map((s, i) => (
+                      <li key={i}>{s}</li>
+                    ))}
+                  </ol>
+
+                  <div className="mt-4 text-xs font-semibold uppercase tracking-wider text-gray-500">Exact fix guidance</div>
                   <div className="mt-2 text-sm text-gray-700 leading-relaxed">{f.remediation}</div>
                 </div>
               </div>

@@ -16,6 +16,10 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { SentinelStackLogo } from '@/lib/icons';
 import { Badge } from '../ui/badge';
+import api from '@/lib/api';
+import { useToast } from '@/hooks/use-toast';
+import { useRouter } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 
 const navItems = [
   { href: '/dashboard', icon: LayoutGrid, label: 'Dashboard' },
@@ -27,6 +31,32 @@ const navItems = [
 export function Sidebar() {
   const pathname = usePathname();
   const { user, logout } = useAuth();
+  const { toast } = useToast();
+  const router = useRouter();
+  const queryClient = useQueryClient();
+
+  const canReset =
+    process.env.NODE_ENV !== 'production' || process.env.NEXT_PUBLIC_ENABLE_DEV_RESET === 'true';
+
+  const resetAssessments = async () => {
+    try {
+      const res = await api.post('/assessments/reset');
+      const deleted = res.data?.deletedAssessments ?? 0;
+      toast({
+        title: 'Reset complete',
+        description: `Deleted ${deleted} assessment(s).`,
+      });
+      queryClient.invalidateQueries({ queryKey: ['assessments'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboardData'] });
+      router.push('/dashboard/onboarding');
+    } catch (e: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Reset failed',
+        description: e?.response?.data?.message || e?.message || 'Could not reset assessments.',
+      });
+    }
+  };
 
   // Correctly identify the active link. The dashboard link should only be active
   // when the path is exactly '/dashboard'. Other links are active if the path
@@ -97,6 +127,17 @@ export function Sidebar() {
               </span>
             </Link>
           </Button>
+
+          {canReset && (
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full h-auto justify-center text-sm font-semibold whitespace-normal py-2"
+              onClick={resetAssessments}
+            >
+              Reset Assessments (Dev)
+            </Button>
+          )}
         </div>
 
         {/* Navigation */}

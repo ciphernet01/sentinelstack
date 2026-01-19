@@ -39,6 +39,23 @@ PRESETS: Dict[str, ToolPreset] = {
             "scanners.tools.ai30_header_ssl_analyzer",
         ],
     ),
+    "access-control": ToolPreset(
+        name="access-control",
+        module_paths=[
+            *DEFAULT_TOOL_MODULES,
+            # Higher-signal authz checks (still conservative defaults)
+            "scanners.tools.ai30_broken_access_control",
+            "scanners.tools.ai30_authzscope",
+        ],
+    ),
+    "access_control": ToolPreset(
+        name="access_control",
+        module_paths=[
+            *DEFAULT_TOOL_MODULES,
+            "scanners.tools.ai30_broken_access_control",
+            "scanners.tools.ai30_authzscope",
+        ],
+    ),
     "enterprise": ToolPreset(
         name="enterprise",
         module_paths=[
@@ -68,6 +85,25 @@ PRESETS: Dict[str, ToolPreset] = {
 }
 
 
-def resolve_preset_modules(preset: str | None) -> List[str]:
+def _normalize_preset_key(preset: str | None) -> str:
     key = (preset or "default").strip().lower()
+
+    # Normalize common separators
+    key = key.replace("_", "-").replace(" ", "-")
+    while "--" in key:
+        key = key.replace("--", "-")
+
+    # Access control quickscan aliases
+    if key in {"access-control", "access-control-quickscan", "access-control-quickscan-(idor)", "access-control-quickscan-idor"}:
+        return "access-control"
+    if "access" in key and "control" in key:
+        return "access-control"
+    if "idor" in key:
+        return "access-control"
+
+    return key
+
+
+def resolve_preset_modules(preset: str | None) -> List[str]:
+    key = _normalize_preset_key(preset)
     return PRESETS.get(key, PRESETS["default"]).module_paths

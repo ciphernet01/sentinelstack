@@ -123,6 +123,9 @@ model Assessment {
   authorizationConfirmed Boolean
   notes                    String?
   riskScore                Int?
+  scannerConfig            Json?
+  endedEarly               Boolean            @default(false)
+  endedEarlyReason         String?
   organizationId           String
   organization             Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   userId                   String

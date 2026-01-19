@@ -5,7 +5,10 @@ import { AppProviders } from '@/components/layout/AppProviders';
 import { ThemeProvider } from '@/components/layout/ThemeProvider';
 
 export const metadata: Metadata = {
-  title: 'SentinelStack — Enterprise Security Intelligence',
+  title: {
+    default: 'SentinelStack | Enterprise Security Assessment Platform',
+    template: '%s | SentinelStack',
+  },
   description: 'Real-time risk assessment and security posture analysis',
   icons: {
     icon: '/favicon.ico',

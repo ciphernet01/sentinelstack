@@ -3,10 +3,12 @@
 import { useQuery } from '@tanstack/react-query';
 import { notFound } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
 import api from '@/lib/api';
 import type { Assessment, Finding } from '@prisma/client';
 
 import { AssessmentDetails } from '@/components/assessments/AssessmentDetails';
+import { usePageTitle } from '@/hooks/use-page-title';
 
 type AssessmentPageProps = {
   params: {
@@ -17,6 +19,9 @@ type AssessmentPageProps = {
 export type AssessmentWithDetails = Assessment & { findings: Finding[] };
 
 export default function AssessmentPage({ params }: AssessmentPageProps) {
+  const searchParams = useSearchParams();
+  const fromOnboarding = searchParams.get('from') === 'onboarding';
+
   const { data: assessment, isLoading, error } = useQuery<AssessmentWithDetails, Error>({
     queryKey: ['assessment', params.id],
     queryFn: async () => {
@@ -30,6 +35,8 @@ export default function AssessmentPage({ params }: AssessmentPageProps) {
       return shouldPoll ? 3000 : false;
     },
   });
+
+  usePageTitle(assessment?.name || 'Assessment');
 
   if (isLoading) {
     return (
@@ -55,7 +62,7 @@ export default function AssessmentPage({ params }: AssessmentPageProps) {
 
   return (
     <div className="p-6 flex-1">
-      <AssessmentDetails assessment={assessment} />
+      <AssessmentDetails assessment={assessment} showOnboardingCta={fromOnboarding} />
     </div>
   );
 }

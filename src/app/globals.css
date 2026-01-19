@@ -68,3 +68,24 @@
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   }
 }
+
+@layer utilities {
+  @keyframes deeplinkPulse {
+    0% {
+      box-shadow: 0 0 0 0 hsl(var(--primary) / 0.0);
+    }
+    15% {
+      box-shadow: 0 0 0 6px hsl(var(--primary) / 0.20);
+    }
+    45% {
+      box-shadow: 0 0 0 10px hsl(var(--primary) / 0.12);
+    }
+    100% {
+      box-shadow: 0 0 0 0 hsl(var(--primary) / 0.0);
+    }
+  }
+
+  .deeplink-pulse {
+    animation: deeplinkPulse 2s ease-out 1;
+  }
+}

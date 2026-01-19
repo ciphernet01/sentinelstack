@@ -18,6 +18,7 @@ RUN apt-get update \
         python3-venv \
         python3-pip \
         python-is-python3 \
+        chromium \
         fonts-liberation \
         libasound2 \
         libatk-bridge2.0-0 \
@@ -52,13 +53,16 @@ RUN apt-get update \
         libxtst6 \
     && rm -rf /var/lib/apt/lists/*
 
+# Use system Chromium (we run npm ci with --ignore-scripts, so Puppeteer won't auto-download Chrome)
+ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
+
 # Copy package files
 COPY package*.json ./
 
 # Install dependencies (includes dev deps so we can compile TypeScript during image build)
 # Use BuildKit cache to avoid re-downloading packages every build.
 RUN --mount=type=cache,target=/root/.npm \
-    npm ci --no-audit --no-fund
+    npm ci --no-audit --no-fund --ignore-scripts
 
 # Copy Prisma schema and generate Prisma client
 COPY prisma ./prisma/
