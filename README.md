@@ -94,6 +94,10 @@ The API will be available at `http://localhost:3001`.
 
 See [docs/SECURITY_CHECKLIST.md](docs/SECURITY_CHECKLIST.md) for key rotation and safe env setup.
 
+## 🚢 Deployment (Render)
+
+See [docs/RENDER_DEPLOY.md](docs/RENDER_DEPLOY.md).
+
 ## 📖 API Endpoints
 
 A Postman collection or further API documentation would typically be provided here, detailing all routes, required headers, and request/response bodies.

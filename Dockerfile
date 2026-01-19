@@ -12,8 +12,11 @@ WORKDIR /usr/src/app
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         ca-certificates \
+        git \
         openssl \
         libssl3 \
+        build-essential \
+        pkg-config \
         python3 \
         python3-venv \
         python3-pip \
@@ -59,6 +62,11 @@ ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 # Copy package files
 COPY package*.json ./
 
+# Make installs more resilient on flaky networks (common on free CI builders)
+RUN npm config set fetch-retries 5 \
+    && npm config set fetch-retry-mintimeout 20000 \
+    && npm config set fetch-retry-maxtimeout 600000
+
 # Install dependencies (includes dev deps so we can compile TypeScript during image build)
 # Use BuildKit cache to avoid re-downloading packages every build.
 RUN --mount=type=cache,target=/root/.npm \
@@ -91,4 +99,4 @@ RUN npm prune --omit=dev
 EXPOSE 3001
 
 # Start command
-CMD [ "node", "dist/server.js" ]
+CMD ["sh", "-c", "npx prisma migrate deploy && node dist/server.js"]
