@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -37,6 +37,7 @@ function LoginPageContent() {
   const searchParams = useSearchParams();
   const { login } = useAuth();
   const { toast } = useToast();
+  const router = useRouter();
   const [showPassword, setShowPassword] = React.useState(false);
   const [resending, setResending] = React.useState(false);
 
