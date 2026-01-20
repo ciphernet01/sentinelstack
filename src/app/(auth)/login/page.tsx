@@ -117,7 +117,7 @@ function LoginPageContent() {
         description: "Welcome back! Redirecting you to the dashboard.",
       });
       // The redirection is now handled by the AuthContext, so we remove it from here.
-      router.push('/dashboard');
+      // router.push('/dashboard');
     } catch (error: any) {
       toast({
         variant: 'destructive',
