@@ -1,4 +1,6 @@
 import nodemailer from 'nodemailer';
+import formData from 'form-data';
+import Mailgun from 'mailgun.js';
 
 interface EmailOptions {
   to: string;
@@ -9,6 +11,7 @@ interface EmailOptions {
 
 class EmailService {
   private transporter: nodemailer.Transporter | null = null;
+  private mailgunClient: any = null;
   private fromEmail: string;
   private fromName: string;
 
@@ -85,17 +88,14 @@ class EmailService {
           console.warn('EMAIL_SERVICE=mailgun set, but MAILGUN_API_KEY or MAILGUN_DOMAIN missing. Emails will be logged to console.');
           return;
         }
-        // Mailgun via nodemailer
-        this.transporter = nodemailer.createTransport({
-          host: 'smtp.mailgun.org',
-          port: 587,
-          auth: {
-            user: 'postmaster@' + process.env.MAILGUN_DOMAIN,
-            pass: process.env.MAILGUN_API_KEY,
-          },
+        // Mailgun via Web API
+        const mg = new Mailgun(formData);
+        this.mailgunClient = mg.client({
+          username: 'api',
+          key: process.env.MAILGUN_API_KEY,
+          url: 'https://api.mailgun.net',
         });
-
-        console.info(`Email service configured: mailgun (from=${this.fromEmail})`);
+        console.info(`Email service configured: mailgun (Web API) (from=${this.fromEmail})`);
     } else {
       // Development mode: log to console
       console.warn('No email service configured. Emails will be logged to console.');
@@ -104,7 +104,26 @@ class EmailService {
 
   async sendEmail(options: EmailOptions): Promise<boolean> {
     try {
-      if (!this.transporter) {
+      if (this.mailgunClient) {
+        // Use Mailgun Web API
+        await this.mailgunClient.messages.create(process.env.MAILGUN_DOMAIN, {
+          from: `"${this.fromName}" <${this.fromEmail}>`,
+          to: options.to,
+          subject: options.subject,
+          text: options.text,
+          html: options.html,
+        });
+        return true;
+      } else if (this.transporter) {
+        await this.transporter.sendMail({
+          from: `"${this.fromName}" <${this.fromEmail}>`,
+          to: options.to,
+          subject: options.subject,
+          text: options.text,
+          html: options.html,
+        });
+        return true;
+      } else {
         // Development mode: log email to console
         console.log('📧 [EMAIL] Would send email:');
         console.log(`To: ${options.to}`);
@@ -112,16 +131,6 @@ class EmailService {
         console.log(`Body:\n${options.text || options.html}`);
         return true;
       }
-
-      await this.transporter.sendMail({
-        from: `"${this.fromName}" <${this.fromEmail}>`,
-        to: options.to,
-        subject: options.subject,
-        text: options.text,
-        html: options.html,
-      });
-
-      return true;
     } catch (error) {
       console.error('Error sending email:', error);
       return false;
