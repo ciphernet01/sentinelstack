@@ -73,6 +73,22 @@ class EmailService {
       });
 
       console.info(`Email service configured: sendgrid (from=${this.fromEmail})`);
+      } else if (emailService === 'mailgun') {
+        if (!process.env.MAILGUN_API_KEY || !process.env.MAILGUN_DOMAIN) {
+          console.warn('EMAIL_SERVICE=mailgun set, but MAILGUN_API_KEY or MAILGUN_DOMAIN missing. Emails will be logged to console.');
+          return;
+        }
+        // Mailgun via nodemailer
+        this.transporter = nodemailer.createTransport({
+          host: 'smtp.mailgun.org',
+          port: 587,
+          auth: {
+            user: 'postmaster@' + process.env.MAILGUN_DOMAIN,
+            pass: process.env.MAILGUN_API_KEY,
+          },
+        });
+
+        console.info(`Email service configured: mailgun (from=${this.fromEmail})`);
     } else {
       // Development mode: log to console
       console.warn('No email service configured. Emails will be logged to console.');
