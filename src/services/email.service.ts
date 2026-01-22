@@ -19,6 +19,13 @@ class EmailService {
   }
 
   private initializeTransporter() {
+    // Debug log for environment variables
+    console.log('DEBUG ENV:', {
+      EMAIL_SERVICE: process.env.EMAIL_SERVICE,
+      MAILGUN_API_KEY: process.env.MAILGUN_API_KEY,
+      MAILGUN_DOMAIN: process.env.MAILGUN_DOMAIN,
+      EMAIL_FROM: process.env.EMAIL_FROM
+    });
     // Check for email service configuration
     const emailService = process.env.EMAIL_SERVICE;
 
