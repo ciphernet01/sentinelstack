@@ -2,6 +2,7 @@ import { Response, NextFunction, Request } from 'express';
 import { AuthenticatedRequest } from '../middleware/auth';
 import { prisma } from '../config/db';
 import { emailService } from '../services/email.service';
+import { ResendEmailService } from '../services/email.service';
 import { generateTokenWithExpiry } from '../utils/password';
 
 const INVITE_EXPIRY_HOURS = 72;
@@ -237,12 +238,13 @@ class OrgController {
       const org = await prisma.organization.findUnique({ where: { id: organizationId } });
       const inviter = await prisma.user.findUnique({ where: { id: invitedByUserId }, select: { name: true, email: true } });
 
-      await emailService.sendOrganizationInvitationEmail(
-        email,
-        token,
-        org?.name || 'your organization',
-        inviter?.name || inviter?.email || undefined
-      );
+          const emailer = new ResendEmailService();
+          await emailer.sendWorkspaceInvite(
+            email,
+            org?.name || 'your organization',
+            inviter?.name || inviter?.email || undefined,
+            token
+          );
 
       res.status(201).json({
         invitation: {
@@ -318,12 +320,13 @@ class OrgController {
       const org = await prisma.organization.findUnique({ where: { id: organizationId } });
       const inviter = await prisma.user.findUnique({ where: { id: invitedByUserId }, select: { name: true, email: true } });
 
-      await emailService.sendOrganizationInvitationEmail(
-        invitation.email,
-        invitation.token,
-        org?.name || 'your organization',
-        inviter?.name || inviter?.email || undefined
-      );
+          const emailer = new ResendEmailService();
+          await emailer.sendWorkspaceInvite(
+            invitation.email,
+            invitation.token,
+            org?.name || 'your organization',
+            inviter?.name || inviter?.email || undefined
+          );
 
       res.status(200).json({ invitation: { id: invitation.id, email: invitation.email, role: invitation.role, token: invitation.token, expiresAt: invitation.expiresAt } });
     } catch (error) {

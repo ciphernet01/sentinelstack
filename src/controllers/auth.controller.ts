@@ -4,6 +4,7 @@ import { AuthenticatedRequest } from '../middleware/auth';
 import { prisma } from '../config/db';
 import * as admin from 'firebase-admin';
 import { emailService } from '../services/email.service';
+import { ResendEmailService } from '../services/email.service';
 import { generateTokenWithExpiry, PasswordValidator } from '../utils/password';
 
 const parsePersona = (raw: unknown): 'SECURITY_ANALYST' | 'COMPLIANCE_MANAGER' | 'EXECUTIVE' | 'ADMINISTRATOR' | null => {
@@ -443,7 +444,8 @@ class AuthController {
       }
 
       // Send verification email
-      await emailService.sendVerificationEmail(user.email, token, user.name || undefined);
+      const emailer = new ResendEmailService();
+      await emailer.sendVerificationEmail(user.email, token);
 
       // IMPORTANT: Do NOT treat a newly-created unverified user as authenticated.
       // Keep behavior consistent with the existing-user path above.
@@ -535,7 +537,8 @@ class AuthController {
         },
       });
 
-      await emailService.sendVerificationEmail(user.email, token, user.name || undefined);
+      const emailer = new ResendEmailService();
+      await emailer.sendVerificationEmail(user.email, token);
 
       res.status(200).json({ message: 'Verification email sent successfully.' });
     } catch (error) {

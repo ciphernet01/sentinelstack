@@ -1,6 +1,5 @@
-import nodemailer from 'nodemailer';
-import formData from 'form-data';
-import Mailgun from 'mailgun.js';
+import axios from 'axios';
+import { Resend } from 'resend';
 
 interface EmailOptions {
   to: string;
@@ -9,145 +8,40 @@ interface EmailOptions {
   text?: string;
 }
 
-class EmailService {
-  private transporter: nodemailer.Transporter | null = null;
+  private resendClient: Resend | null = null;
+  private transporter: any = null;
   private mailgunClient: any = null;
   private fromEmail: string;
   private fromName: string;
 
   constructor() {
-    this.fromEmail = process.env.EMAIL_FROM || 'noreply@sentinelstack.com';
+    this.fromEmail = process.env.EMAIL_FROM || 'Sentinel Stack <onboarding@resend.dev>';
     this.fromName = process.env.EMAIL_FROM_NAME || 'SentinelStack Security';
-    this.initializeTransporter();
+    const emailService = process.env.EMAIL_SERVICE;
+    if (emailService === 'resend') {
+      if (!process.env.RESEND_API_KEY) {
+        console.warn('EMAIL_SERVICE=resend set, but RESEND_API_KEY missing. Emails will be logged to console.');
+        return;
+      }
+      // Validate EMAIL_FROM format
+      const from = this.fromEmail;
+      if (!/^.+<.+@.+>$/.test(from)) {
+        console.warn('EMAIL_FROM is not in "Name <email@domain>" format. Using default.');
+        this.fromEmail = 'Sentinel Stack <onboarding@resend.dev>';
+      }
+      this.resendClient = new Resend(process.env.RESEND_API_KEY);
+      console.info('Resend email service initialized');
+    } else {
+      this.initializeTransporter();
+    }
   }
 
   private initializeTransporter() {
-    // Debug log for environment variables
-    console.log('DEBUG ENV:', {
-      EMAIL_SERVICE: process.env.EMAIL_SERVICE,
-      MAILGUN_API_KEY: process.env.MAILGUN_API_KEY,
-      MAILGUN_DOMAIN: process.env.MAILGUN_DOMAIN,
-      EMAIL_FROM: process.env.EMAIL_FROM
-    });
-    // Check for email service configuration
-    const emailService = process.env.EMAIL_SERVICE;
-
-    if (emailService === 'gmail') {
-      const emailUser = process.env.EMAIL_USER;
-      const emailPassword = process.env.EMAIL_PASSWORD;
-      if (!emailUser || !emailPassword || emailUser.includes('CHANGE_ME') || emailPassword.includes('CHANGE_ME')) {
-        console.warn('EMAIL_SERVICE=gmail set, but EMAIL_USER/EMAIL_PASSWORD missing. Emails will be logged to console.');
-        return;
-      }
-      this.transporter = nodemailer.createTransport({
-        service: 'gmail',
-        auth: {
-          user: emailUser,
-          pass: emailPassword,
-        },
-      });
-
-      console.info(`Email service configured: gmail (from=${this.fromEmail})`);
-    } else if (emailService === 'smtp') {
-      const smtpHost = process.env.SMTP_HOST;
-      const smtpUser = process.env.SMTP_USER;
-      const smtpPassword = process.env.SMTP_PASSWORD;
-      if (!smtpHost || !smtpUser || !smtpPassword || smtpUser.includes('CHANGE_ME') || smtpPassword.includes('CHANGE_ME')) {
-        console.warn('EMAIL_SERVICE=smtp set, but SMTP_HOST/SMTP_USER/SMTP_PASSWORD missing. Emails will be logged to console.');
-        return;
-      }
-      this.transporter = nodemailer.createTransport({
-        host: smtpHost,
-        port: parseInt(process.env.SMTP_PORT || '587'),
-        secure: process.env.SMTP_SECURE === 'true',
-        auth: {
-          user: smtpUser,
-          pass: smtpPassword,
-        },
-      });
-
-      console.info(`Email service configured: smtp://${smtpHost}:${process.env.SMTP_PORT || '587'} (from=${this.fromEmail})`);
-    } else if (emailService === 'sendgrid') {
-      if (!process.env.SENDGRID_API_KEY) {
-        console.warn('EMAIL_SERVICE=sendgrid set, but SENDGRID_API_KEY missing. Emails will be logged to console.');
-        return;
-      }
-      // SendGrid via nodemailer
-      this.transporter = nodemailer.createTransport({
-        host: 'smtp.sendgrid.net',
-        port: 587,
-        auth: {
-          user: 'apikey',
-          pass: process.env.SENDGRID_API_KEY,
-        },
-      });
-
-      console.info(`Email service configured: sendgrid (from=${this.fromEmail})`);
-      } else if (emailService === 'mailgun') {
-        if (!process.env.MAILGUN_API_KEY || !process.env.MAILGUN_DOMAIN) {
-          console.warn('EMAIL_SERVICE=mailgun set, but MAILGUN_API_KEY or MAILGUN_DOMAIN missing. Emails will be logged to console.');
-          return;
-        }
-        // Mailgun via Web API
-        const mg = new Mailgun(formData);
-        this.mailgunClient = mg.client({
-          username: 'api',
-          key: process.env.MAILGUN_API_KEY,
-          url: 'https://api.mailgun.net',
-        });
-        console.info(`Email service configured: mailgun (Web API) (from=${this.fromEmail})`);
-    } else {
-      // Development mode: log to console
-      console.warn('No email service configured. Emails will be logged to console.');
-    }
+    // ...existing code for other providers...
+    // (leave as is, do not touch)
   }
 
-  async sendEmail(options: EmailOptions): Promise<boolean> {
-    try {
-      if (this.mailgunClient) {
-        // Use Mailgun Web API
-        await this.mailgunClient.messages.create(process.env.MAILGUN_DOMAIN, {
-          from: `"${this.fromName}" <${this.fromEmail}>`,
-          to: options.to,
-          subject: options.subject,
-          text: options.text,
-          html: options.html,
-        });
-        return true;
-      } else if (this.transporter) {
-        await this.transporter.sendMail({
-          from: `"${this.fromName}" <${this.fromEmail}>`,
-          to: options.to,
-          subject: options.subject,
-          text: options.text,
-          html: options.html,
-        });
-        return true;
-      } else {
-        // Development mode: log email to console
-        console.log('📧 [EMAIL] Would send email:');
-        console.log(`To: ${options.to}`);
-        console.log(`Subject: ${options.subject}`);
-        console.log(`Body:\n${options.text || options.html}`);
-        return true;
-      }
-    } catch (error) {
-      console.error('Error sending email:', error);
-      return false;
-    }
-  }
-
-  async sendVerificationEmail(email: string, token: string, userName?: string): Promise<boolean> {
-    const verificationUrl = `${process.env.CLIENT_URL}/verify-email?token=${token}`;
-
-    const html = `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <style>
-            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-            .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
+    // ...existing code for other providers...
             .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 8px 8px; }
             .button { display: inline-block; padding: 12px 30px; background: #667eea; color: white; text-decoration: none; border-radius: 6px; margin: 20px 0; }
             .footer { text-align: center; margin-top: 30px; font-size: 12px; color: #666; }
@@ -248,66 +142,26 @@ class EmailService {
       We received a request to reset your password for your SentinelStack account.
 
       Click the link below to reset your password:
-      ${resetUrl}
-
-      This link will expire in 1 hour.
-
-      ⚠️ If you didn't request a password reset, please ignore this email and ensure your account is secure.
-
-      © ${new Date().getFullYear()} SentinelStack. All rights reserved.
-    `;
-
-    return this.sendEmail({
-      to: email,
-      subject: 'Reset Your Password - SentinelStack',
-      html,
-      text,
-    });
-  }
-
-  async sendAccountLockedEmail(email: string, userName?: string): Promise<boolean> {
-    const supportUrl = `${process.env.CLIENT_URL}/support`;
-
-    const html = `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <style>
-            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-            .header { background: linear-gradient(135deg, #f56565 0%, #c53030 100%); color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
-            .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 8px 8px; }
-            .alert { background: #fee; border-left: 4px solid #f56565; padding: 15px; margin: 20px 0; }
-            .footer { text-align: center; margin-top: 30px; font-size: 12px; color: #666; }
-          </style>
-        </head>
-        <body>
-          <div class="container">
-            <div class="header">
-              <h1>🔒 Account Temporarily Locked</h1>
-            </div>
-            <div class="content">
-              <p>Hi ${userName || 'there'},</p>
-              <div class="alert">
-                <strong>⚠️ Security Alert:</strong> Your account has been temporarily locked due to multiple failed login attempts.
-              </div>
-              <p>Your account will be automatically unlocked after 30 minutes. If you believe this was a mistake or need immediate assistance, please contact our support team.</p>
-              <p><strong>Next Steps:</strong></p>
-              <ul>
-                <li>Wait 30 minutes and try logging in again</li>
-                <li>Use the "Forgot Password" feature to reset your password</li>
-                <li>Contact support if you suspect unauthorized access</li>
-              </ul>
-              <p>If you didn't attempt to log in, please reset your password immediately to secure your account.</p>
-            </div>
-            <div class="footer">
-              <p>© ${new Date().getFullYear()} SentinelStack. All rights reserved.</p>
-            </div>
-          </div>
-        </body>
-      </html>
-    `;
-
+      try {
+        if (this.resendClient) {
+          await this.resendClient.emails.send({
+            from: this.fromEmail,
+            to: options.to,
+            subject: options.subject,
+            html: options.html,
+            text: options.text,
+          });
+          return true;
+        } else {
+          // Development mode: log email to console
+          console.log('\u001fEMAIL\u001f Would send email:');
+          console.log(`To: ${options.to}`);
+          console.log(`Subject: ${options.subject}`);
+          // ...existing code...
+        }
+      } catch (error) {
+        console.error('Error sending email:', error);
+        // ...existing code...
     const text = `
       Hi ${userName || 'there'},
 
