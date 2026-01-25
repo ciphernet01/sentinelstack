@@ -4,7 +4,6 @@ import { AuthenticatedRequest } from '../middleware/auth';
 import { prisma } from '../config/db';
 import * as admin from 'firebase-admin';
 import { emailService } from '../services/email.service';
-import { ResendEmailService } from '../services/email.service';
 import { generateTokenWithExpiry, PasswordValidator } from '../utils/password';
 
 const parsePersona = (raw: unknown): 'SECURITY_ANALYST' | 'COMPLIANCE_MANAGER' | 'EXECUTIVE' | 'ADMINISTRATOR' | null => {
@@ -155,7 +154,9 @@ class AuthController {
                 updateData.lockedUntil = lockUntil;
                 
                 // Send account locked email
-                await emailService.sendAccountLockedEmail(user.email, user.name || undefined);
+                if (typeof emailService.sendAccountLockedEmail === 'function') {
+                  await emailService.sendAccountLockedEmail(user.email, user.name || undefined);
+                }
               }
 
               await prisma.user.update({
@@ -444,7 +445,7 @@ class AuthController {
       }
 
       // Send verification email
-      const emailer = new ResendEmailService();
+      const emailer = emailService;
       await emailer.sendVerificationEmail(user.email, token);
 
       // IMPORTANT: Do NOT treat a newly-created unverified user as authenticated.
@@ -537,7 +538,7 @@ class AuthController {
         },
       });
 
-      const emailer = new ResendEmailService();
+      const emailer = emailService;
       await emailer.sendVerificationEmail(user.email, token);
 
       res.status(200).json({ message: 'Verification email sent successfully.' });
@@ -571,7 +572,9 @@ class AuthController {
         },
       });
 
-      await emailService.sendPasswordResetEmail(user.email, token, user.name || undefined);
+      if (typeof emailService.sendPasswordResetEmail === 'function') {
+        await emailService.sendPasswordResetEmail(user.email, token, user.name || undefined);
+      }
 
       await prisma.auditLog.create({
         data: {

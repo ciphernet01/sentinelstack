@@ -9,8 +9,6 @@ interface EmailOptions {
 
 class EmailService {
   private resendClient: Resend | null = null;
-  private transporter: any = null;
-  private mailgunClient: any = null;
   private fromEmail: string;
   private fromName: string;
   private emailEnabled = false;
@@ -18,43 +16,28 @@ class EmailService {
   constructor() {
     this.fromEmail = process.env.EMAIL_FROM || 'Sentinel Stack <onboarding@resend.dev>';
     this.fromName = process.env.EMAIL_FROM_NAME || 'SentinelStack Security';
-
     const emailService = process.env.EMAIL_SERVICE?.toLowerCase().trim();
-
     if (emailService === 'resend') {
       if (!process.env.RESEND_API_KEY) {
         console.warn('[EMAIL] EMAIL_SERVICE=resend but RESEND_API_KEY missing');
         return;
       }
-
       if (!/^.+<.+@.+>$/.test(this.fromEmail)) {
         console.warn('[EMAIL] Invalid EMAIL_FROM format, using default');
         this.fromEmail = 'Sentinel Stack <onboarding@resend.dev>';
       }
-
       this.resendClient = new Resend(process.env.RESEND_API_KEY);
       this.emailEnabled = true;
       console.info('[EMAIL] Resend email service initialized');
       return;
     }
-
-    if (emailService) {
-      this.initializeTransporter();
-      this.emailEnabled = !!this.transporter || !!this.mailgunClient;
-      return;
-    }
-
     console.warn('[EMAIL] No email service configured. Emails disabled.');
-  }
-
-  private initializeTransporter() {
-    // existing legacy provider code (unchanged)
   }
 
   async sendEmail(options: EmailOptions): Promise<boolean> {
     try {
       if (this.resendClient) {
-        await this.resendClient.emails.send({
+        await this.resendClient.sendEmail({
           from: this.fromEmail,
           to: options.to,
           subject: options.subject,
@@ -63,7 +46,6 @@ class EmailService {
         });
         return true;
       }
-
       if (!this.emailEnabled) {
         console.log('[EMAIL MOCK]', {
           to: options.to,
@@ -71,7 +53,6 @@ class EmailService {
         });
         return true; // behave as success in dev/fallback
       }
-
       return false;
     } catch (error) {
       console.error('[EMAIL] Send failed:', error);
@@ -79,36 +60,39 @@ class EmailService {
     }
   }
 
-  async sendOrganizationInvitationEmail(
-    email: string,
-    token: string,
-    organizationName: string,
-    inviterName?: string
-  ): Promise<boolean> {
-    const inviteUrl = `${process.env.CLIENT_URL}/invite?token=${token}`;
-    const invitedByText = inviterName ? ` by ${inviterName}` : '';
-
-    const html = `
-      <!DOCTYPE html>
-      <html>
-        <body>
-          <h2>You're invited to join ${organizationName}</h2>
-          <p>You’ve been invited${invitedByText}.</p>
-          <a href="${inviteUrl}">Accept Invitation</a>
-        </body>
-      </html>
-    `;
-
-    const text = `
-You've been invited${invitedByText} to join ${organizationName}.
-${inviteUrl}
-    `;
-
+  async sendAccountLockedEmail(email: string, userName?: string): Promise<boolean> {
     return this.sendEmail({
       to: email,
-      subject: `Invitation to join ${organizationName} - SentinelStack`,
-      html,
-      text,
+      subject: 'Account Locked',
+      html: `<p>Hi ${userName || ''}, your account has been locked due to failed login attempts.</p>`,
+      text: `Hi ${userName || ''}, your account has been locked due to failed login attempts.`
+    });
+  }
+
+  async sendVerificationEmail(email: string, token: string): Promise<boolean> {
+    return this.sendEmail({
+      to: email,
+      subject: 'Verify your email',
+      html: `<p>Click <a href="${process.env.CLIENT_URL || ''}/verify?token=${token}">here</a> to verify your email.</p>`,
+      text: `Go to ${(process.env.CLIENT_URL || '')}/verify?token=${token} to verify your email.`
+    });
+  }
+
+  async sendPasswordResetEmail(email: string, token: string, userName?: string): Promise<boolean> {
+    return this.sendEmail({
+      to: email,
+      subject: 'Password Reset',
+      html: `<p>Hi ${userName || ''}, reset your password <a href="${process.env.CLIENT_URL || ''}/reset?token=${token}">here</a>.</p>`,
+      text: `Hi ${userName || ''}, reset your password at ${(process.env.CLIENT_URL || '')}/reset?token=${token}`
+    });
+  }
+
+  async sendWorkspaceInvite(email: string, orgName: string, inviterName: string, token: string): Promise<boolean> {
+    return this.sendEmail({
+      to: email,
+      subject: `Invitation to join ${orgName}`,
+      html: `<p>${inviterName} invited you to join ${orgName}. Accept <a href="${process.env.CLIENT_URL || ''}/invite?token=${token}">here</a>.</p>`,
+      text: `${inviterName} invited you to join ${orgName}. Accept at ${(process.env.CLIENT_URL || '')}/invite?token=${token}`
     });
   }
 }
