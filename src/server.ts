@@ -1,3 +1,4 @@
+console.log('[ENV DEBUG]', JSON.stringify(process.env, null, 2));
 import express from 'express';
 import cors from 'cors';
 import morgan from 'morgan';
