@@ -2,7 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import morgan from 'morgan';
 import helmet from 'helmet';
-import 'dotenv/config';
+
 
 import { initializeFirebaseAdmin } from './config/firebase';
 import apiRoutes from './routes';
