@@ -14,6 +14,12 @@ class EmailService {
   private emailEnabled = false;
 
   constructor() {
+    // Debug: Log environment variables at runtime
+    console.log('[EMAIL DEBUG] EMAIL_SERVICE:', process.env.EMAIL_SERVICE);
+    console.log('[EMAIL DEBUG] RESEND_API_KEY:', process.env.RESEND_API_KEY ? '[set]' : '[not set]');
+    console.log('[EMAIL DEBUG] EMAIL_FROM:', process.env.EMAIL_FROM);
+    console.log('[EMAIL DEBUG] EMAIL_FROM_NAME:', process.env.EMAIL_FROM_NAME);
+
     this.fromEmail = process.env.EMAIL_FROM || 'Sentinel Stack <onboarding@resend.dev>';
     this.fromName = process.env.EMAIL_FROM_NAME || 'SentinelStack Security';
     const emailService = process.env.EMAIL_SERVICE?.toLowerCase().trim();
