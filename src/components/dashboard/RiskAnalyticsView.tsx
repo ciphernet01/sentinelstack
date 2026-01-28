@@ -13,56 +13,7 @@ import {
   Tooltip,
   XAxis,
   YAxis,
-} from 'recharts';
-
-import { ArrowDownRight, ArrowUpRight } from 'lucide-react';
-
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-
-type SeverityDistribution = Record<string, number>;
-
-type SeverityOverTimeRow = {
-  name: string;
-  CRITICAL: number;
-  HIGH: number;
-  MEDIUM: number;
-  LOW: number;
-  INFO: number;
-};
-
-type RecentHighRiskAssessment = {
-  id: string;
-  name: string;
-  targetUrl: string;
-  riskScore: number;
-  createdAt: string;
-  totalFindings: number;
-  criticalCount: number;
-  highCount: number;
-  mediumCount: number;
-  lowCount: number;
-  infoCount: number;
-};
-
-type AnalyticsResponse = {
-  stats: {
-    totalAssessments: number;
-    totalFindings: number;
-    criticalCount: number;
-    highCount: number;
-    mediumCount: number;
-    overallRiskScore: number;
-    deltas?: {
-      overallRiskScore: number;
-      criticalCount: number;
-      highCount: number;
-      totalAssessments: number;
-    };
-  };
-  findingsOverTime: Array<{ name: string; total: number }>;
-  latestAssessmentComparison?: null | {
+// ...existing code...
     latest: {
       id: string;
       name: string;
