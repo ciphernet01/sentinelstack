@@ -79,7 +79,7 @@ export function AssessmentListClient({ assessments: initialAssessments, targetFi
 
   return (
     <Tabs value={tab} onValueChange={(value) => setTab(value as any)}>
-      <div className="flex items-center">
+      <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-0">
         <TabsList>
           <TabsTrigger value="ALL">All</TabsTrigger>
           <TabsTrigger value="COMPLETED">Completed</TabsTrigger>
@@ -87,10 +87,10 @@ export function AssessmentListClient({ assessments: initialAssessments, targetFi
           <TabsTrigger value="PENDING">Pending</TabsTrigger>
           <TabsTrigger value="REJECTED">Rejected</TabsTrigger>
         </TabsList>
-        <div className="ml-auto flex items-center gap-2">
+        <div className="sm:ml-auto flex items-center gap-2 w-full sm:w-auto">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="h-8 gap-1">
+              <Button variant="outline" size="sm" className="h-8 gap-1 w-full sm:w-auto">
                 <ListFilter className="h-3.5 w-3.5" />
                 <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
                   Filter
@@ -106,7 +106,7 @@ export function AssessmentListClient({ assessments: initialAssessments, targetFi
               <DropdownMenuCheckboxItem>Risk Score</DropdownMenuCheckboxItem>
             </DropdownMenuContent>
           </DropdownMenu>
-          <Button size="sm" variant="outline" className="h-8 gap-1">
+          <Button size="sm" variant="outline" className="h-8 gap-1 w-full sm:w-auto">
             <File className="h-3.5 w-3.5" />
             <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
               Export
@@ -134,55 +134,71 @@ export function AssessmentListClient({ assessments: initialAssessments, targetFi
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Assessment Name</TableHead>
-                  <TableHead className="hidden md:table-cell">Target</TableHead>
-                  <TableHead className="hidden md:table-cell">Status</TableHead>
-                  <TableHead className="hidden md:table-cell">Date</TableHead>
-                  <TableHead className="text-right">Risk Score</TableHead>
-                   <TableHead>
-                    <span className="sr-only">Actions</span>
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {targetFilteredAssessments.map((assessment) => (
-                  <TableRow key={assessment.id}>
-                    <TableCell className="font-medium">{assessment.name}</TableCell>
-                    <TableCell className="hidden md:table-cell font-mono">{assessment.targetUrl}</TableCell>
-                    <TableCell className="hidden md:table-cell">
-                      <div className="flex items-center gap-2">
-                        <Badge
-                          variant={getStatusBadgeVariant(assessment.status)}
-                          className={cn(assessment.status === 'IN_PROGRESS' && 'animate-pulse')}
-                        >
-                          {assessment.status}
-                        </Badge>
-                        {assessment.endedEarly ? (
-                          <Badge
-                            variant="secondary"
-                            className="bg-sky-500/15 text-sky-200 border border-sky-500/25"
-                          >
-                            Partial
-                          </Badge>
-                        ) : null}
-                      </div>
-                    </TableCell>
-                    <TableCell className="hidden md:table-cell">{new Date(assessment.createdAt).toLocaleDateString()}</TableCell>
-                    <TableCell className={`text-right font-bold ${getRiskScoreColor(assessment.riskScore)}`}>
-                      {assessment.riskScore ?? 'N/A'}
-                    </TableCell>
-                     <TableCell className="text-right">
-                        <Button asChild variant="outline" size="sm">
-                            <Link href={`/dashboard/assessments/${assessment.id}`}>View</Link>
-                        </Button>
-                    </TableCell>
+            <div className="block md:hidden">
+              {/* Mobile: Stack cards instead of table */}
+              {targetFilteredAssessments.length === 0 && (
+                <div className="h-24 flex items-center justify-center text-center">No assessments found.</div>
+              )}
+              {targetFilteredAssessments.map((assessment) => (
+                <div key={assessment.id} className="mb-4 rounded-lg border bg-card p-4 flex flex-col gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold truncate">{assessment.name}</span>
+                    <Badge variant={getStatusBadgeVariant(assessment.status)} className={cn(assessment.status === 'IN_PROGRESS' && 'animate-pulse')}>{assessment.status}</Badge>
+                    {assessment.endedEarly ? (
+                      <Badge variant="secondary" className="bg-sky-500/15 text-sky-200 border border-sky-500/25">Partial</Badge>
+                    ) : null}
+                  </div>
+                  <div className="text-xs text-muted-foreground font-mono break-all">{assessment.targetUrl}</div>
+                  <div className="text-xs text-muted-foreground">{new Date(assessment.createdAt).toLocaleDateString()}</div>
+                  <div className="flex items-center justify-between mt-2">
+                    <span className={`font-bold ${getRiskScoreColor(assessment.riskScore)}`}>{assessment.riskScore ?? 'N/A'}</span>
+                    <Button asChild variant="outline" size="sm">
+                      <Link href={`/dashboard/assessments/${assessment.id}`}>View</Link>
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="hidden md:block">
+              {/* Desktop: Table view remains unchanged */}
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Assessment Name</TableHead>
+                    <TableHead className="hidden md:table-cell">Target</TableHead>
+                    <TableHead className="hidden md:table-cell">Status</TableHead>
+                    <TableHead className="hidden md:table-cell">Date</TableHead>
+                    <TableHead className="text-right">Risk Score</TableHead>
+                     <TableHead>
+                      <span className="sr-only">Actions</span>
+                    </TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {targetFilteredAssessments.map((assessment) => (
+                    <TableRow key={assessment.id}>
+                      <TableCell className="font-medium">{assessment.name}</TableCell>
+                      <TableCell className="hidden md:table-cell font-mono">{assessment.targetUrl}</TableCell>
+                      <TableCell className="hidden md:table-cell">
+                        <div className="flex items-center gap-2">
+                          <Badge variant={getStatusBadgeVariant(assessment.status)} className={cn(assessment.status === 'IN_PROGRESS' && 'animate-pulse')}>{assessment.status}</Badge>
+                          {assessment.endedEarly ? (
+                            <Badge variant="secondary" className="bg-sky-500/15 text-sky-200 border border-sky-500/25">Partial</Badge>
+                          ) : null}
+                        </div>
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell">{new Date(assessment.createdAt).toLocaleDateString()}</TableCell>
+                      <TableCell className={`text-right font-bold ${getRiskScoreColor(assessment.riskScore)}`}>{assessment.riskScore ?? 'N/A'}</TableCell>
+                       <TableCell className="text-right">
+                          <Button asChild variant="outline" size="sm">
+                              <Link href={`/dashboard/assessments/${assessment.id}`}>View</Link>
+                          </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           </CardContent>
           <CardFooter>
             <div className="text-xs text-muted-foreground">

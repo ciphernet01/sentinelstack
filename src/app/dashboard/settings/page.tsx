@@ -447,21 +447,21 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="p-6 flex-1 space-y-6">
+    <div className="p-4 sm:p-6 flex-1 space-y-6">
       <div>
         <h1 className="text-lg font-semibold md:text-2xl font-headline">Settings</h1>
         <p className="text-muted-foreground">Manage your account and workspace preferences.</p>
       </div>
 
       <Tabs defaultValue="account" className="space-y-4">
-        <TabsList className="w-full justify-start">
+        <TabsList className="w-full justify-start flex-wrap gap-2">
           <TabsTrigger value="account">Account</TabsTrigger>
           <TabsTrigger value="notifications">Notifications</TabsTrigger>
           <TabsTrigger value="workspace">Workspace</TabsTrigger>
         </TabsList>
 
         <TabsContent value="account" className="space-y-6">
-          <Card>
+          <Card className="sm:max-w-xl mx-auto">
             <CardHeader>
               <CardTitle>Profile</CardTitle>
               <CardDescription>Your personal account details.</CardDescription>
@@ -495,7 +495,7 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="sm:max-w-xl mx-auto">
             <CardHeader>
               <CardTitle>Security</CardTitle>
               <CardDescription>Password and sign-in settings.</CardDescription>
@@ -509,7 +509,7 @@ export default function SettingsPage() {
         </TabsContent>
 
         <TabsContent value="notifications" className="space-y-6">
-          <Card>
+          <Card className="sm:max-w-xl mx-auto">
             <CardHeader>
               <CardTitle>Notifications</CardTitle>
               <CardDescription>Choose what you want to be notified about.</CardDescription>
@@ -539,7 +539,7 @@ export default function SettingsPage() {
         </TabsContent>
 
         <TabsContent value="workspace" className="space-y-6">
-          <Card>
+          <Card className="w-full">
             <CardHeader>
               <div className="flex items-start justify-between gap-4">
                 <div>
@@ -638,8 +638,8 @@ export default function SettingsPage() {
 
                   <div className="space-y-3">
                     <h3 className="text-sm font-semibold">Members</h3>
-                    <div className="rounded-md border">
-                      <Table>
+                    <div className="rounded-md border overflow-x-auto">
+                      <Table className="min-w-[600px]">
                         <TableHeader>
                           <TableRow>
                             <TableHead>Name</TableHead>
@@ -668,7 +668,7 @@ export default function SettingsPage() {
                                     onValueChange={(v) => void onUpdateMemberRole(m.id, v as OrganizationRole)}
                                     disabled={Boolean(memberActionBusy[m.id]?.role)}
                                   >
-                                    <SelectTrigger className="h-8 w-[140px]">
+                                    <SelectTrigger className="h-8 w-[120px] text-xs md:w-[140px]">
                                       <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -756,7 +756,7 @@ export default function SettingsPage() {
                     <div className="rounded-lg border p-4">
                       <form
                         onSubmit={inviteForm.handleSubmit(onInviteSubmit)}
-                        className="grid gap-4 md:grid-cols-[1fr_180px_auto]"
+                        className="grid gap-4 grid-cols-1 sm:grid-cols-[1fr_180px_auto]"
                       >
                         <div className="grid gap-2">
                           <Label htmlFor="inviteEmail">Email</Label>
@@ -815,8 +815,8 @@ export default function SettingsPage() {
                       {invitations.length === 0 ? (
                         <div className="text-sm text-muted-foreground">No pending invitations.</div>
                       ) : (
-                        <div className="rounded-md border">
-                          <Table>
+                        <div className="rounded-md border overflow-x-auto">
+                          <Table className="min-w-[500px]">
                             <TableHeader>
                               <TableRow>
                                 <TableHead>Email</TableHead>

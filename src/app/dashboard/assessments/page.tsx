@@ -33,11 +33,11 @@ export default function AssessmentsPage() {
   });
 
   return (
-    <div className="p-6 flex-1">
-      <div className="flex items-center">
-        <h1 className="text-lg font-semibold md:text-2xl font-headline">Assessments</h1>
-        <div className="ml-auto flex items-center gap-2">
-          <Button asChild size="sm">
+    <div className="p-3 sm:p-6 flex-1">
+      <div className="flex flex-col sm:flex-row items-center sm:items-center gap-2 sm:gap-0">
+        <h1 className="text-base sm:text-lg font-semibold md:text-2xl font-headline">Assessments</h1>
+        <div className="sm:ml-auto flex items-center gap-2 w-full sm:w-auto">
+          <Button asChild size="sm" className="w-full sm:w-auto">
             <Link href="/dashboard/assessments/new">
               <PlusCircle className="h-4 w-4 mr-2" />
               New Assessment
@@ -47,13 +47,13 @@ export default function AssessmentsPage() {
       </div>
       
       {isLoading && (
-        <div className="flex items-center justify-center p-16">
+        <div className="flex items-center justify-center p-8 sm:p-16">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
       )}
 
       {error && (
-        <div className="flex flex-col items-center justify-center text-center p-16 border-2 border-dashed rounded-lg bg-card mt-4">
+        <div className="flex flex-col items-center justify-center text-center p-8 sm:p-16 border-2 border-dashed rounded-lg bg-card mt-4">
             <p className="text-destructive-foreground font-semibold">Unable to Load Assessments</p>
             <p className="text-muted-foreground text-sm mt-2">Could not fetch data from the backend.</p>
         </div>
