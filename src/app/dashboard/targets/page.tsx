@@ -86,7 +86,7 @@ export default function TargetDrilldownPage() {
   }, []);
 
   return (
-    <div className="flex-1 p-6 space-y-6">
+    <div className="flex-1 p-4 sm:p-6 space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <h1 className="text-2xl font-bold font-headline text-primary-foreground">Target Drilldown</h1>
@@ -148,7 +148,7 @@ export default function TargetDrilldownPage() {
 
       {data ? (
         <>
-          <div className="grid gap-4 md:grid-cols-4">
+          <div className="grid gap-4 grid-cols-1 md:grid-cols-4">
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium text-muted-foreground">Staleness</CardTitle>
@@ -198,14 +198,15 @@ export default function TargetDrilldownPage() {
             </Card>
           </div>
 
-          <div className="grid gap-6 lg:grid-cols-2">
+          <div className="grid gap-6 grid-cols-1 lg:grid-cols-2">
             <Card>
               <CardHeader>
                 <CardTitle>Risk Score Trend</CardTitle>
               </CardHeader>
-              <CardContent className="h-[300px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={data.riskTimeline.map(r => ({ ...r, label: formatShortDate(r.createdAt) }))}>
+              <CardContent className="h-[300px] overflow-x-auto">
+                <div className="min-w-[350px] md:min-w-0" style={{ width: '100%' }}>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <LineChart data={data.riskTimeline.map(r => ({ ...r, label: formatShortDate(r.createdAt) }))}>
                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
                     <XAxis dataKey="label" interval={0} tick={{ fontSize: 12 }} />
                     <YAxis domain={[0, 100]} />
@@ -220,9 +221,10 @@ export default function TargetDrilldownPage() {
               <CardHeader>
                 <CardTitle>Findings Volume</CardTitle>
               </CardHeader>
-              <CardContent className="h-[300px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={data.riskTimeline.map(r => ({ ...r, label: formatShortDate(r.createdAt) }))}>
+              <CardContent className="h-[300px] overflow-x-auto">
+                <div className="min-w-[350px] md:min-w-0" style={{ width: '100%' }}>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <BarChart data={data.riskTimeline.map(r => ({ ...r, label: formatShortDate(r.createdAt) }))}>
                     <defs>
                       <linearGradient id="target-findingsVolume-total" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="0%" stopColor={chartColors.teal} stopOpacity={0.9} />
@@ -245,50 +247,52 @@ export default function TargetDrilldownPage() {
             <CardHeader>
               <CardTitle>Recurring Findings (last 180 days)</CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="overflow-x-auto">
               {data.recurringFindings.length === 0 ? (
                 <div className="text-sm text-muted-foreground">No recurring findings yet for this target.</div>
               ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Finding</TableHead>
-                      <TableHead>Severity</TableHead>
-                      <TableHead className="text-right">Occurrences</TableHead>
-                      <TableHead>Last Seen</TableHead>
-                      <TableHead className="text-right"> </TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {data.recurringFindings.map((f, idx) => (
-                      <TableRow key={`${f.toolName}-${idx}`}>
-                        <TableCell className="min-w-[340px]">
-                          <div className="font-medium">{f.title}</div>
-                          <div className="text-xs text-muted-foreground">{f.toolName}</div>
-                          {f.remediationPreview ? (
-                            <div className="mt-1 text-xs text-muted-foreground">Fix: {f.remediationPreview}</div>
-                          ) : null}
-                        </TableCell>
-                        <TableCell className="tabular-nums">{f.severity}</TableCell>
-                        <TableCell className="text-right tabular-nums">{f.occurrencesLast180d}</TableCell>
-                        <TableCell className="text-muted-foreground">
-                          {new Date(f.lastSeenAt).toLocaleDateString()}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Button asChild variant="outline" size="sm">
-                            <Link
-                              href={`/dashboard/assessments/${f.lastSeenAssessmentId}?tab=findings&finding=${encodeURIComponent(
-                                `${String(f.toolName).toLowerCase()}::${String(f.title).toLowerCase()}`
-                              )}`}
-                            >
-                              Jump
-                            </Link>
-                          </Button>
-                        </TableCell>
+                <div className="min-w-[600px] md:min-w-0">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Finding</TableHead>
+                        <TableHead>Severity</TableHead>
+                        <TableHead className="text-right">Occurrences</TableHead>
+                        <TableHead>Last Seen</TableHead>
+                        <TableHead className="text-right"> </TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {data.recurringFindings.map((f, idx) => (
+                        <TableRow key={`${f.toolName}-${idx}`}>
+                          <TableCell className="min-w-[340px]">
+                            <div className="font-medium">{f.title}</div>
+                            <div className="text-xs text-muted-foreground">{f.toolName}</div>
+                            {f.remediationPreview ? (
+                              <div className="mt-1 text-xs text-muted-foreground">Fix: {f.remediationPreview}</div>
+                            ) : null}
+                          </TableCell>
+                          <TableCell className="tabular-nums">{f.severity}</TableCell>
+                          <TableCell className="text-right tabular-nums">{f.occurrencesLast180d}</TableCell>
+                          <TableCell className="text-muted-foreground">
+                            {new Date(f.lastSeenAt).toLocaleDateString()}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button asChild variant="outline" size="sm">
+                              <Link
+                                href={`/dashboard/assessments/${f.lastSeenAssessmentId}?tab=findings&finding=${encodeURIComponent(
+                                  `${String(f.toolName).toLowerCase()}::${String(f.title).toLowerCase()}`
+                                )}`}
+                              >
+                                Jump
+                              </Link>
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
               )}
             </CardContent>
           </Card>
