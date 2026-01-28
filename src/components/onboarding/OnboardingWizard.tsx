@@ -113,7 +113,7 @@ export default function OnboardingWizard() {
 
   return (
     <form onSubmit={submit}>
-      <Card>
+      <Card className="w-full max-w-xl mx-auto">
         {step === 1 && (
           <>
             <CardHeader>
@@ -218,7 +218,7 @@ export default function OnboardingWizard() {
           </>
         )}
 
-        <CardFooter className="flex justify-between">
+        <CardFooter className="flex flex-col gap-3 sm:flex-row sm:justify-between">
           {step > 1 ? (
             <Button type="button" variant="outline" onClick={goBack} disabled={mutation.isPending}>
               <ArrowLeft className="mr-2 h-4 w-4" /> Back
