@@ -94,9 +94,14 @@ class EmailService {
   }
 
   async sendWorkspaceInvite(email: string, orgName: string, inviterName: string, token: string): Promise<boolean> {
+    // If orgName looks like a hash, use a generic name
+    let displayOrgName = orgName;
+    if (/^[a-f0-9]{32,}$/.test(orgName)) {
+      displayOrgName = 'your organization';
+    }
     return this.sendEmail({
       to: email,
-      subject: `Invitation to join ${orgName} on Sentinel Stack`,
+      subject: `Invitation to join ${displayOrgName} on Sentinel Stack`,
       html: `
         <table style="width:100%;max-width:600px;margin:auto;font-family:sans-serif;border:1px solid #eaeaea;border-radius:8px;overflow:hidden;">
           <tr>
@@ -106,10 +111,10 @@ class EmailService {
           </tr>
           <tr>
             <td style="padding:32px 24px 24px 24px;">
-              <h2 style="margin:0 0 16px 0;color:#18181b;">You’ve been invited to join <span style="color:#6366f1;">${orgName}</span></h2>
+              <h2 style="margin:0 0 16px 0;color:#18181b;">You’ve been invited to join <span style="color:#6366f1;">${displayOrgName}</span></h2>
               <p style="font-size:16px;color:#444;">Hi,</p>
               <p style="font-size:16px;color:#444;">
-                <strong>${inviterName}</strong> has invited you to join <strong>${orgName}</strong> on Sentinel Stack.<br>
+                <strong>${inviterName}</strong> has invited you to join <strong>${displayOrgName}</strong> on Sentinel Stack.<br>
                 Click the button below to accept your invitation and get started:
               </p>
               <div style="text-align:center;margin:32px 0;">
@@ -129,7 +134,7 @@ class EmailService {
           </tr>
         </table>
       `,
-      text: `${inviterName} has invited you to join ${orgName} on Sentinel Stack.\n\nAccept your invitation: ${(process.env.CLIENT_URL || '')}/invite?token=${token}\n\nIf you did not expect this invitation, you can ignore this email.\n\nBest,\nThe Sentinel Stack Team`
+      text: `${inviterName} has invited you to join ${displayOrgName} on Sentinel Stack.\n\nAccept your invitation: ${(process.env.CLIENT_URL || '')}/invite?token=${token}\n\nIf you did not expect this invitation, you can ignore this email.\n\nBest,\nThe Sentinel Stack Team`
     });
   }
 }
