@@ -110,39 +110,39 @@ export default function Home() {
     <div className="flex min-h-screen flex-col bg-background">
       <Header />
       <main className="flex-1">
-        <section className="w-full py-20 md:py-32 lg:py-40 bg-card">
-          <div className="container px-4 md:px-6">
-            <div className="grid gap-6 lg:grid-cols-2 lg:gap-16">
-              <div className="flex flex-col justify-center space-y-6">
-                <div className="inline-block rounded-lg bg-secondary px-3 py-1 text-sm text-secondary-foreground">Enterprise Security Assessment Platform</div>
-                <h1 className="text-4xl font-bold tracking-tighter sm:text-5xl xl:text-6xl/none font-headline">
+        <section className="w-full py-10 sm:py-16 md:py-32 lg:py-40 bg-card">
+          <div className="container px-2 sm:px-4 md:px-6">
+            <div className="grid gap-10 sm:gap-12 lg:grid-cols-2 lg:gap-16">
+              <div className="flex flex-col justify-center space-y-6 text-center lg:text-left">
+                <div className="inline-block rounded-lg bg-secondary px-3 py-1 text-xs sm:text-sm text-secondary-foreground">Enterprise Security Assessment Platform</div>
+                <h1 className="text-3xl sm:text-4xl font-bold tracking-tighter sm:text-5xl xl:text-6xl/none font-headline">
                   Continuous Security, On-Demand.
                 </h1>
-                <p className="max-w-[600px] text-muted-foreground md:text-xl">
+                <p className="max-w-full sm:max-w-[600px] text-muted-foreground text-base sm:text-lg md:text-xl mx-auto lg:mx-0">
                   Sentinel Stack empowers you to run comprehensive security assessments, visualize risks on an interactive dashboard, and generate actionable reports—all automated.
                 </p>
-                <div className="flex flex-col gap-2 min-[400px]:flex-row">
-                  <Button asChild size="lg" className="group">
+                <div className="flex flex-col gap-2 w-full sm:w-auto sm:flex-row justify-center lg:justify-start">
+                  <Button asChild size="lg" className="group w-full sm:w-auto">
                     <Link href="/dashboard">
                       Get Started Free <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
                     </Link>
                   </Button>
-                  <Button asChild variant="outline" size="lg">
+                  <Button asChild variant="outline" size="lg" className="w-full sm:w-auto">
                     <Link href="/login">
                       Request a Demo
                     </Link>
                   </Button>
                 </div>
               </div>
-              <div className="flex items-center justify-center">
+              <div className="flex items-center justify-center mt-8 lg:mt-0">
                 {heroImage && (
                   <Image
                     src={heroImage.imageUrl}
-                    width={1200}
-                    height={800}
+                    width={600}
+                    height={400}
                     alt={heroImage.description}
                     data-ai-hint={heroImage.imageHint}
-                    className="overflow-hidden rounded-xl object-cover shadow-2xl"
+                    className="overflow-hidden rounded-xl object-cover shadow-2xl w-full max-w-xs sm:max-w-md md:max-w-lg lg:max-w-full"
                     priority
                   />
                 )}
@@ -151,20 +151,20 @@ export default function Home() {
           </div>
         </section>
 
-        <section id="features" className="w-full py-20 md:py-32">
-          <div className="container px-4 md:px-6">
-            <div className="flex flex-col items-center justify-center space-y-4 text-center mb-16">
-              <h2 className="text-3xl font-bold tracking-tighter sm:text-5xl font-headline">Everything You Need to Secure Your Stack</h2>
-              <p className="max-w-[900px] text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
+        <section id="features" className="w-full py-10 sm:py-16 md:py-32">
+          <div className="container px-2 sm:px-4 md:px-6">
+            <div className="flex flex-col items-center justify-center space-y-4 text-center mb-10 sm:mb-16">
+              <h2 className="text-2xl sm:text-3xl font-bold tracking-tighter sm:text-5xl font-headline">Everything You Need to Secure Your Stack</h2>
+              <p className="max-w-full sm:max-w-[900px] text-muted-foreground text-base sm:text-lg md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
                 From automated scanning to AI-augmented reporting, Sentinel Stack provides a complete solution for modern security teams and consultants.
               </p>
             </div>
-            <div className="mx-auto grid max-w-5xl items-start gap-12 sm:grid-cols-1 md:grid-cols-3">
+            <div className="mx-auto grid max-w-2xl sm:max-w-5xl items-start gap-8 sm:gap-12 grid-cols-1 md:grid-cols-3">
               {features.map((feature, index) => (
                 <div key={index} className="grid gap-4 text-center">
                   <div className="mx-auto">{feature.icon}</div>
-                  <h3 className="text-xl font-bold font-headline">{feature.title}</h3>
-                  <p className="text-muted-foreground">{feature.description}</p>
+                  <h3 className="text-lg sm:text-xl font-bold font-headline">{feature.title}</h3>
+                  <p className="text-muted-foreground text-sm sm:text-base">{feature.description}</p>
                 </div>
               ))}
             </div>
