@@ -61,8 +61,21 @@ export default function AssessmentPage({ params }: AssessmentPageProps) {
   }
 
   return (
-    <div className="p-6 flex-1">
-      <AssessmentDetails assessment={assessment} showOnboardingCta={fromOnboarding} />
+    <div
+      className="flex-1 px-2 py-4 sm:px-4 md:px-6 lg:px-8 w-full max-w-full"
+      style={{
+        maxWidth: '100vw',
+        overflowX: 'hidden',
+      }}
+    >
+      <div
+        className="mx-auto w-full"
+        style={{
+          maxWidth: '600px',
+        }}
+      >
+        <AssessmentDetails assessment={assessment} showOnboardingCta={fromOnboarding} />
+      </div>
     </div>
   );
 }

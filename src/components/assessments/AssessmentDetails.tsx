@@ -220,11 +220,11 @@ export function AssessmentDetails({ assessment, showOnboardingCta }: AssessmentD
           </div>
         </div>
       )}
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-lg font-semibold md:text-2xl font-headline">{assessment.name}</h1>
+      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between w-full">
+        <div className="flex-1 min-w-0">
+          <h1 className="text-lg font-semibold md:text-2xl font-headline break-words">{assessment.name}</h1>
           <div className="mt-1 flex flex-wrap items-center gap-2">
-            <p className="text-sm text-muted-foreground">Target: {assessment.targetUrl}</p>
+            <p className="text-sm text-muted-foreground break-all">Target: {assessment.targetUrl}</p>
             <Badge
               variant={getStatusBadgeVariant(assessment.status)}
               className={assessment.status === 'IN_PROGRESS' ? 'animate-pulse' : undefined}
@@ -249,22 +249,22 @@ export function AssessmentDetails({ assessment, showOnboardingCta }: AssessmentD
             </p>
           )}
         </div>
-        <div className="flex gap-2">
-            <AISummaryButton findings={JSON.stringify(findings, null, 2)} />
-            <Button asChild disabled={!canGenerateReport}>
-              <Link href={`/dashboard/report/${assessment.id}`} target="_blank" aria-disabled={!canGenerateReport}>
-                <FileText className="mr-2 h-4 w-4" />
-                Generate Report
-              </Link>
-            </Button>
+        <div className="flex flex-row flex-wrap gap-2 mt-4 md:mt-0 md:flex-col md:items-end">
+          <AISummaryButton findings={JSON.stringify(findings, null, 2)} />
+          <Button asChild disabled={!canGenerateReport}>
+            <Link href={`/dashboard/report/${assessment.id}`} target="_blank" aria-disabled={!canGenerateReport}>
+              <FileText className="mr-2 h-4 w-4" />
+              Generate Report
+            </Link>
+          </Button>
         </div>
       </div>
-      <Tabs value={tab} onValueChange={(v) => setTab(v as any)} className="mt-4">
+      <Tabs value={tab} onValueChange={(v) => setTab(v as any)} className="mt-4 w-full">
         <TabsList>
           <TabsTrigger value="summary">Summary</TabsTrigger>
           <TabsTrigger value="findings">Findings ({findings.length})</TabsTrigger>
         </TabsList>
-        <TabsContent value="summary" className="mt-4">
+        <TabsContent value="summary" className="mt-4 w-full">
           <Card className="mb-4">
             <CardHeader>
               <CardTitle>Top 5 Issues</CardTitle>
@@ -297,7 +297,7 @@ export function AssessmentDetails({ assessment, showOnboardingCta }: AssessmentD
             </CardContent>
           </Card>
 
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">Risk Score</CardTitle>
@@ -324,36 +324,38 @@ export function AssessmentDetails({ assessment, showOnboardingCta }: AssessmentD
             ))}
           </div>
           <Card className="mt-4">
-              <CardHeader>
-                  <CardTitle>Findings Distribution</CardTitle>
-              </CardHeader>
-              <CardContent className="flex items-center justify-center pt-6">
-                  <ChartContainer config={chartConfig} className="aspect-square w-full max-w-[250px]">
-                      <PieChart>
-                          <ChartTooltipContent hideLabel />
-                          <Pie
-                              data={pieData}
-                              dataKey="value"
-                              nameKey="name"
-                              cx="50%"
-                              cy="50%"
-                              outerRadius={100}
-                              innerRadius={70}
-                              strokeWidth={2}
-                              labelLine={false}
-                          >
-                                {pieData.map((entry) => (
-                                    <Cell key={entry.name} fill={entry.fill} stroke={entry.fill} />
-                                ))}
-                          </Pie>
-                          <ChartLegend content={<ChartLegendContent nameKey="name" />} />
-                      </PieChart>
-                  </ChartContainer>
-              </CardContent>
+            <CardHeader>
+              <CardTitle>Findings Distribution</CardTitle>
+            </CardHeader>
+            <CardContent className="flex items-center justify-center pt-6 overflow-x-auto">
+              <div className="w-full min-w-[220px] max-w-[320px] sm:max-w-[250px]">
+                <ChartContainer config={chartConfig} className="aspect-square w-full">
+                  <PieChart>
+                    <ChartTooltipContent hideLabel />
+                    <Pie
+                      data={pieData}
+                      dataKey="value"
+                      nameKey="name"
+                      cx="50%"
+                      cy="50%"
+                      outerRadius={100}
+                      innerRadius={70}
+                      strokeWidth={2}
+                      labelLine={false}
+                    >
+                      {pieData.map((entry) => (
+                        <Cell key={entry.name} fill={entry.fill} stroke={entry.fill} />
+                      ))}
+                    </Pie>
+                    <ChartLegend content={<ChartLegendContent nameKey="name" />} />
+                  </PieChart>
+                </ChartContainer>
+              </div>
+            </CardContent>
           </Card>
         </TabsContent>
-        <TabsContent value="findings" className="mt-4">
-          <Card>
+        <TabsContent value="findings" className="mt-4 w-full">
+          <Card className="overflow-x-auto">
             <CardHeader>
               <CardTitle>All Findings</CardTitle>
               <CardDescription>
