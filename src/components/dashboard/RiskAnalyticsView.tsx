@@ -13,72 +13,7 @@ import {
   Tooltip,
   XAxis,
   YAxis,
-// ...existing code...
-      infoCount: number;
-    };
-    delta: {
-      riskScore: number;
-      totalFindings: number;
-      criticalCount: number;
-      highCount: number;
-      mediumCount: number;
-      lowCount: number;
-      infoCount: number;
-    };
-    topNewFindings: Array<{ toolName: string; title: string; severity: string }>;
-    topResolvedFindings: Array<{ toolName: string; title: string; severity: string }>;
-    regressions?: null | {
-      newCriticalCount: number;
-      newHighCount: number;
-      topNewSevereFindings: Array<{ toolName: string; title: string; severity: string }>;
-    };
-  };
-  severityOverTime: SeverityOverTimeRow[];
-  riskScoreOverTime: Array<{ name: string; avgRiskScore: number }>;
-  severityDistribution: SeverityDistribution;
-  topTools: Array<{ toolName: string; total: number; CRITICAL: number; HIGH: number; MEDIUM: number }>;
-  topTargets: Array<{ targetUrl: string; avgRiskScore: number; assessments: number }>;
-  recentHighRiskAssessments: RecentHighRiskAssessment[];
 
-  mttr?: null | {
-    windowDays: number;
-    latestAssessmentId: string;
-    bySeverity: Array<{
-      severity: string;
-      resolvedCount: number;
-      openCount: number;
-      avgResolvedDays: number;
-      medianResolvedDays: number;
-      avgOpenAgeDays: number;
-    }>;
-  };
-
-  remediationPlan?: Array<{
-    toolName: string;
-    title: string;
-    severity: string;
-    occurrencesLast90d: number;
-    lastSeenAt: string;
-    lastSeenAssessmentId: string;
-    remediationPreview: string;
-  }>;
-  coverageGaps?: {
-    staleThresholdDays: number;
-    staleTargets: Array<{
-      targetUrl: string;
-      daysSinceLastCompleted: number;
-      lastCompletedAt: string;
-      lastAssessmentId: string;
-      lastRiskScore: number | null;
-    }>;
-    neverCompletedTargets: Array<{
-      targetUrl: string;
-      lastAttemptAt: string;
-      lastAssessmentId: string;
-      lastAttemptStatus: string;
-    }>;
-  };
-};
 
 const chartColors = {
   cyan: '#00E5FF',
