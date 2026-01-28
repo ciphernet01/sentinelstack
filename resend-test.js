@@ -7,10 +7,9 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 
 async function testResend() {
   try {
-    // Replace with your email for a real test, or just check API key validity
     const result = await resend.sendEmail({
-      from: process.env.EMAIL_FROM || 'Sentinel Stack <onboarding@resend.dev>',
-      to: process.env.TEST_EMAIL_TO || 'test@example.com',
+      from: process.env.EMAIL_FROM || 'Sentinel Stack <no-reply@sentinel-stack.tech>',
+      to: 'devanshgaur2019@gmail.com',
       subject: 'Resend API Test',
       html: '<p>This is a test email from Resend API integration.</p>',
     });

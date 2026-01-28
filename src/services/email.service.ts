@@ -96,9 +96,40 @@ class EmailService {
   async sendWorkspaceInvite(email: string, orgName: string, inviterName: string, token: string): Promise<boolean> {
     return this.sendEmail({
       to: email,
-      subject: `Invitation to join ${orgName}`,
-      html: `<p>${inviterName} invited you to join ${orgName}. Accept <a href="${process.env.CLIENT_URL || ''}/invite?token=${token}">here</a>.</p>`,
-      text: `${inviterName} invited you to join ${orgName}. Accept at ${(process.env.CLIENT_URL || '')}/invite?token=${token}`
+      subject: `Invitation to join ${orgName} on Sentinel Stack`,
+      html: `
+        <table style="width:100%;max-width:600px;margin:auto;font-family:sans-serif;border:1px solid #eaeaea;border-radius:8px;overflow:hidden;">
+          <tr>
+            <td style="background:#18181b;padding:24px 0;text-align:center;">
+              <span style="color:#fff;font-size:28px;font-weight:bold;letter-spacing:1px;">Sentinel Stack</span>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:32px 24px 24px 24px;">
+              <h2 style="margin:0 0 16px 0;color:#18181b;">You’ve been invited to join <span style="color:#6366f1;">${orgName}</span></h2>
+              <p style="font-size:16px;color:#444;">Hi,</p>
+              <p style="font-size:16px;color:#444;">
+                <strong>${inviterName}</strong> has invited you to join <strong>${orgName}</strong> on Sentinel Stack.<br>
+                Click the button below to accept your invitation and get started:
+              </p>
+              <div style="text-align:center;margin:32px 0;">
+                <a href="${process.env.CLIENT_URL || ''}/invite?token=${token}" style="background:#6366f1;color:#fff;text-decoration:none;padding:14px 32px;border-radius:6px;font-size:16px;font-weight:bold;display:inline-block;">
+                  Accept Invitation
+                </a>
+              </div>
+              <p style="font-size:14px;color:#888;">
+                If the button above does not work, copy and paste the following link into your browser:<br>
+                <a href="${process.env.CLIENT_URL || ''}/invite?token=${token}" style="color:#6366f1;">${process.env.CLIENT_URL || ''}/invite?token=${token}</a>
+              </p>
+              <p style="font-size:14px;color:#888;margin-top:32px;">
+                If you did not expect this invitation, you can safely ignore this email.
+              </p>
+              <p style="font-size:16px;color:#444;margin-top:32px;">Best regards,<br><strong>The Sentinel Stack Team</strong></p>
+            </td>
+          </tr>
+        </table>
+      `,
+      text: `${inviterName} has invited you to join ${orgName} on Sentinel Stack.\n\nAccept your invitation: ${(process.env.CLIENT_URL || '')}/invite?token=${token}\n\nIf you did not expect this invitation, you can ignore this email.\n\nBest,\nThe Sentinel Stack Team`
     });
   }
 }
