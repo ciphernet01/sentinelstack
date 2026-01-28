@@ -99,7 +99,7 @@ const DeltaIndicator = ({ value, unit, higherIsWorse }: { value: number; unit: '
 export function Overview({ stats, recentAssessments, findingsOverTime }: OverviewProps) {
   return (
     <>
-      <div className="grid gap-4 md:grid-cols-2 md:gap-8 lg:grid-cols-4">
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Overall Risk Score</CardTitle>
@@ -143,14 +143,14 @@ export function Overview({ stats, recentAssessments, findingsOverTime }: Overvie
           </CardContent>
         </Card>
       </div>
-      <div className="grid gap-4 md:gap-8 lg:grid-cols-2 xl:grid-cols-3">
-        <Card className="xl:col-span-2">
+      <div className="grid gap-4 grid-cols-1 md:gap-8 md:grid-cols-2 xl:grid-cols-3">
+        <Card className="xl:col-span-2 overflow-x-auto">
           <CardHeader>
             <CardTitle>Recent Assessments</CardTitle>
             <CardDescription>An overview of your latest security scans.</CardDescription>
           </CardHeader>
           <CardContent>
-            <Table>
+            <Table className="min-w-[400px]">
               <TableHeader>
                 <TableRow>
                   <TableHead>Assessment</TableHead>
@@ -190,13 +190,13 @@ export function Overview({ stats, recentAssessments, findingsOverTime }: Overvie
             </Table>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="overflow-x-auto">
           <CardHeader>
             <CardTitle>Findings Over Time</CardTitle>
             <CardDescription>Number of new findings discovered per month.</CardDescription>
           </CardHeader>
           <CardContent>
-            <ChartContainer config={chartConfig} className="min-h-[200px] w-full">
+            <ChartContainer config={chartConfig} className="min-h-[200px] w-full min-w-[320px]">
               <BarChart accessibilityLayer data={findingsOverTime}>
                  <CartesianGrid vertical={false} />
                 <XAxis

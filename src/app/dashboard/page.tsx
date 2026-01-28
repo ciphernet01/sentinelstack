@@ -69,13 +69,13 @@ function DashboardPage() {
 
 
     return (
-        <div className="flex flex-col flex-1 min-h-screen">
-            <div className="flex-1 p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6">
+        <div className="flex flex-col flex-1 min-h-screen w-full max-w-full">
+            <div className="flex-1 p-2 sm:p-4 md:p-6 space-y-4 sm:space-y-6 w-full max-w-full">
                 <div>
                      <h1 className="text-xl sm:text-2xl font-bold font-headline text-primary-foreground">Security Intelligence Dashboard</h1>
                      <p className="text-muted-foreground text-sm sm:text-base">Real-time risk assessment and security posture analysis</p>
                 </div>
-                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center justify-end">
                     <Button variant="outline" className="w-full sm:w-auto">
                         <FileDown className="mr-2 h-4 w-4" />
                         Export PDF Report
@@ -125,7 +125,7 @@ function DashboardPage() {
             </div>
 
             {/* Bottom Status Bar */}
-            <footer className="mt-auto border-t border-border bg-card p-3 sm:p-4 flex flex-col sm:flex-row items-center sm:items-center justify-between gap-3 sm:gap-0">
+            <footer className="mt-auto border-t border-border bg-card p-2 sm:p-4 flex flex-col sm:flex-row items-center sm:items-center justify-between gap-3 sm:gap-0 w-full">
                 <div className="flex items-center gap-3 sm:gap-4 mb-2 sm:mb-0">
                      <ThemeToggle />
                     <Button variant="ghost" size="icon">
