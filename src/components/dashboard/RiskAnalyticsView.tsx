@@ -14,30 +14,6 @@ import {
   XAxis,
   YAxis,
 // ...existing code...
-    latest: {
-      id: string;
-      name: string;
-      targetUrl: string;
-      createdAt: string;
-      riskScore: number;
-      totalFindings: number;
-      criticalCount: number;
-      highCount: number;
-      mediumCount: number;
-      lowCount: number;
-      infoCount: number;
-    };
-    previous: null | {
-      id: string;
-      name: string;
-      targetUrl: string;
-      createdAt: string;
-      riskScore: number;
-      totalFindings: number;
-      criticalCount: number;
-      highCount: number;
-      mediumCount: number;
-      lowCount: number;
       infoCount: number;
     };
     delta: {
