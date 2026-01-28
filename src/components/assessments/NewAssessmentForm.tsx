@@ -137,12 +137,12 @@ export function NewAssessmentForm() {
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)}>
-        <Card>
+        <Card className="w-full max-w-xl mx-auto">
           {step === 1 && <Step1 />}
           {step === 2 && <Step2 />}
           {step === 3 && <Step3 />}
           
-          <CardFooter className="flex justify-between">
+          <CardFooter className="flex flex-col gap-3 sm:flex-row sm:justify-between">
             {step > 1 ? (
                 <Button type="button" variant="outline" onClick={handleBack}><ArrowLeft className="mr-2 h-4 w-4"/> Back</Button>
             ) : <div />}
