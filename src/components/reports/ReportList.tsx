@@ -101,51 +101,26 @@ export function ReportList({ assessments }: ReportListProps) {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Assessment</TableHead>
-              <TableHead className="hidden md:table-cell">Target</TableHead>
-              <TableHead className="hidden md:table-cell">Completed On</TableHead>
-              <TableHead className="text-right">Risk Score</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {assessments.length === 0 && (
-              <TableRow>
-                <TableCell colSpan={5} className="h-24 text-center">
-                  No completed assessments yet.
-                </TableCell>
-              </TableRow>
-            )}
-            {assessments.map((assessment) => (
-              <TableRow key={assessment.id}>
-                <TableCell className="font-medium">
-                  <div className="flex items-center gap-2">
-                    <span className="truncate">{assessment.name}</span>
-                    {assessment.endedEarly ? (
-                      <Badge
-                        variant="secondary"
-                        className="bg-sky-500/15 text-sky-200 border border-sky-500/25"
-                      >
-                        Partial
-                      </Badge>
-                    ) : null}
-                  </div>
-                </TableCell>
-                <TableCell className="hidden md:table-cell font-mono">{assessment.targetUrl}</TableCell>
-                <TableCell className="hidden md:table-cell">{new Date(assessment.updatedAt).toLocaleDateString()}</TableCell>
-                <TableCell className={`text-right font-bold ${getRiskScoreColor(assessment.riskScore)}`}>
-                  {assessment.riskScore ?? 'N/A'}
-                </TableCell>
-                <TableCell className="text-right space-x-2">
+        <div className="block md:hidden">
+          {/* Mobile: Stack cards instead of table */}
+          {assessments.length === 0 && (
+            <div className="h-24 flex items-center justify-center text-center">No completed assessments yet.</div>
+          )}
+          {assessments.map((assessment) => (
+            <div key={assessment.id} className="mb-4 rounded-lg border bg-card p-4 flex flex-col gap-2">
+              <div className="flex items-center gap-2">
+                <span className="font-semibold truncate">{assessment.name}</span>
+                {assessment.endedEarly ? (
+                  <Badge variant="secondary" className="bg-sky-500/15 text-sky-200 border border-sky-500/25">Partial</Badge>
+                ) : null}
+              </div>
+              <div className="text-xs text-muted-foreground font-mono break-all">{assessment.targetUrl}</div>
+              <div className="text-xs text-muted-foreground">{new Date(assessment.updatedAt).toLocaleDateString()}</div>
+              <div className="flex items-center justify-between mt-2">
+                <span className={`font-bold ${getRiskScoreColor(assessment.riskScore)}`}>{assessment.riskScore ?? 'N/A'}</span>
+                <div className="flex gap-2">
                   {assessment.report ? (
-                    <Button 
-                        size="sm" 
-                        onClick={() => downloadPdfMutation.mutate(assessment.report!.id)}
-                        disabled={downloadPdfMutation.isPending && downloadPdfMutation.variables === assessment.report.id}
-                    >
+                    <Button size="sm" onClick={() => downloadPdfMutation.mutate(assessment.report!.id)} disabled={downloadPdfMutation.isPending && downloadPdfMutation.variables === assessment.report.id}>
                       {downloadPdfMutation.isPending && downloadPdfMutation.variables === assessment.report.id ? (
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       ) : (
@@ -154,12 +129,7 @@ export function ReportList({ assessments }: ReportListProps) {
                       Download
                     </Button>
                   ) : (
-                    <Button 
-                        variant="secondary" 
-                        size="sm"
-                        onClick={() => generatePdfMutation.mutate(assessment.id)}
-                        disabled={generatePdfMutation.isPending && generatePdfMutation.variables === assessment.id}
-                    >
+                    <Button variant="secondary" size="sm" onClick={() => generatePdfMutation.mutate(assessment.id)} disabled={generatePdfMutation.isPending && generatePdfMutation.variables === assessment.id}>
                       {generatePdfMutation.isPending && generatePdfMutation.variables === assessment.id ? (
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       ) : (
@@ -168,11 +138,70 @@ export function ReportList({ assessments }: ReportListProps) {
                       Generate
                     </Button>
                   )}
-                </TableCell>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="hidden md:block">
+          {/* Desktop: Table view remains unchanged */}
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Assessment</TableHead>
+                <TableHead className="hidden md:table-cell">Target</TableHead>
+                <TableHead className="hidden md:table-cell">Completed On</TableHead>
+                <TableHead className="text-right">Risk Score</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {assessments.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={5} className="h-24 text-center">
+                    No completed assessments yet.
+                  </TableCell>
+                </TableRow>
+              )}
+              {assessments.map((assessment) => (
+                <TableRow key={assessment.id}>
+                  <TableCell className="font-medium">
+                    <div className="flex items-center gap-2">
+                      <span className="truncate">{assessment.name}</span>
+                      {assessment.endedEarly ? (
+                        <Badge variant="secondary" className="bg-sky-500/15 text-sky-200 border border-sky-500/25">Partial</Badge>
+                      ) : null}
+                    </div>
+                  </TableCell>
+                  <TableCell className="hidden md:table-cell font-mono">{assessment.targetUrl}</TableCell>
+                  <TableCell className="hidden md:table-cell">{new Date(assessment.updatedAt).toLocaleDateString()}</TableCell>
+                  <TableCell className={`text-right font-bold ${getRiskScoreColor(assessment.riskScore)}`}>{assessment.riskScore ?? 'N/A'}</TableCell>
+                  <TableCell className="text-right space-x-2">
+                    {assessment.report ? (
+                      <Button size="sm" onClick={() => downloadPdfMutation.mutate(assessment.report!.id)} disabled={downloadPdfMutation.isPending && downloadPdfMutation.variables === assessment.report.id}>
+                        {downloadPdfMutation.isPending && downloadPdfMutation.variables === assessment.report.id ? (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                          <Download className="mr-2 h-4 w-4" />
+                        )}
+                        Download
+                      </Button>
+                    ) : (
+                      <Button variant="secondary" size="sm" onClick={() => generatePdfMutation.mutate(assessment.id)} disabled={generatePdfMutation.isPending && generatePdfMutation.variables === assessment.id}>
+                        {generatePdfMutation.isPending && generatePdfMutation.variables === assessment.id ? (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                          <FileCog className="mr-2 h-4 w-4" />
+                        )}
+                        Generate
+                      </Button>
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
       </CardContent>
     </Card>
   );
