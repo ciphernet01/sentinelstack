@@ -5,6 +5,7 @@
   "main": "dist/server.js",
   "private": true,
   "scripts": {
+    "render-build": "npm install && npm run build:frontend",
     "prisma:generate:host": "node scripts/run-with-env.js --env .env.host -- npx prisma generate",
     "prisma:migrate:host": "node scripts/run-with-env.js --env .env.host -- npx prisma migrate dev",
     "prisma:deploy:host": "node scripts/run-with-env.js --env .env.host -- npx prisma migrate deploy",
