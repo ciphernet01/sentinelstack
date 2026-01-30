@@ -14,34 +14,60 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, ArrowRight, Loader2, Sparkles, ShieldCheck } from 'lucide-react';
+import { useCompleteOnboarding } from '@/hooks/use-onboarding';
+import { ArrowLeft, ArrowRight, Loader2, Sparkles, ShieldCheck, Zap, Shield, Lock, Globe } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
 
-type PresetKey = 'default' | 'access-control';
+type PresetKey = 'default' | 'access-control' | 'api-security' | 'full-scan';
 
 const presetOptions: Array<{
   key: PresetKey;
   title: string;
   description: string;
   scope: 'WEB' | 'API';
+  duration: string;
+  icon: React.ReactNode;
+  recommended?: boolean;
 }> = [
   {
     key: 'access-control',
-    title: 'Access Control QuickScan (IDOR)',
-    description: 'Best first run for SaaS apps: object-level access issues, authorization gaps, and common API authz mistakes.',
+    title: 'Access Control QuickScan',
+    description: 'IDOR vulnerabilities, authorization gaps, and API authz mistakes. Perfect for SaaS apps.',
     scope: 'API',
+    duration: '~3 min',
+    icon: <Lock className="h-5 w-5" />,
+    recommended: true,
   },
   {
     key: 'default',
-    title: 'Quick Baseline (Default)',
+    title: 'Quick Baseline',
     description: 'Fast, safe baseline across core checks (CORS, JWT, IDOR). Good for a quick sanity pass.',
     scope: 'WEB',
+    duration: '~2 min',
+    icon: <Zap className="h-5 w-5" />,
+  },
+  {
+    key: 'api-security',
+    title: 'API Security Scan',
+    description: 'Comprehensive API testing: auth bypasses, rate limiting, injection points.',
+    scope: 'API',
+    duration: '~5 min',
+    icon: <Globe className="h-5 w-5" />,
+  },
+  {
+    key: 'full-scan',
+    title: 'Full Security Audit',
+    description: 'Complete assessment with all 30+ tools. Best for pre-release or compliance audits.',
+    scope: 'WEB',
+    duration: '~10 min',
+    icon: <Shield className="h-5 w-5" />,
   },
 ];
 
 const formSchema = z.object({
   name: z.string().min(2, 'Assessment name must be at least 2 characters.'),
   targetUrl: z.string().url('Please enter a valid URL (e.g., https://example.com).'),
-  preset: z.enum(['default', 'access-control']),
+  preset: z.enum(['default', 'access-control', 'api-security', 'full-scan']),
   authorizationConfirmed: z.boolean().refine((v) => v === true, {
     message: 'You must confirm you have permission to scan this target.',
   }),
@@ -54,6 +80,7 @@ export default function OnboardingWizard() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [step, setStep] = useState<1 | 2 | 3>(1);
+  const completeOnboarding = useCompleteOnboarding();
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -66,6 +93,7 @@ export default function OnboardingWizard() {
   });
 
   const presetKey = form.watch('preset');
+  const progressValue = step === 1 ? 33 : step === 2 ? 66 : 100;
 
   const selectedPreset = useMemo(() => {
     return presetOptions.find((p) => p.key === presetKey) ?? presetOptions[0];
@@ -83,7 +111,10 @@ export default function OnboardingWizard() {
       };
       return api.post('/assessments', body).then((r) => r.data);
     },
-    onSuccess: (assessment) => {
+    onSuccess: async (assessment) => {
+      // Mark onboarding as complete
+      await completeOnboarding.mutateAsync();
+      
       toast({
         title: 'Assessment Queued',
         description: 'Redirecting to live progress…',
@@ -93,6 +124,16 @@ export default function OnboardingWizard() {
       router.push(`/dashboard/assessments/${assessment.id}?from=onboarding`);
     },
     onError: (error: any) => {
+      const errorCode = error.response?.data?.errorCode;
+      if (errorCode === 'SCAN_LIMIT_REACHED') {
+        toast({
+          variant: 'destructive',
+          title: 'Scan limit reached',
+          description: 'Upgrade your plan to continue scanning.',
+        });
+        router.push('/dashboard/settings/billing');
+        return;
+      }
       toast({
         variant: 'destructive',
         title: 'Failed to start assessment',
@@ -114,11 +155,20 @@ export default function OnboardingWizard() {
   return (
     <form onSubmit={submit}>
       <Card className="w-full max-w-xl mx-auto">
+        {/* Progress indicator */}
+        <div className="px-6 pt-6">
+          <div className="flex items-center justify-between text-sm text-muted-foreground mb-2">
+            <span>Step {step} of 3</span>
+            <span>{step === 1 ? 'Target' : step === 2 ? 'Preset' : 'Confirm'}</span>
+          </div>
+          <Progress value={progressValue} className="h-2" />
+        </div>
+
         {step === 1 && (
           <>
             <CardHeader>
-              <CardTitle>1) Target</CardTitle>
-              <CardDescription>Tell us what you want to assess.</CardDescription>
+              <CardTitle>What do you want to scan?</CardTitle>
+              <CardDescription>Enter the URL of your application or API endpoint.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="space-y-2">
@@ -145,30 +195,43 @@ export default function OnboardingWizard() {
         {step === 2 && (
           <>
             <CardHeader>
-              <CardTitle>2) Preset</CardTitle>
-              <CardDescription>Pick a high-signal preset to run first.</CardDescription>
+              <CardTitle>Choose a scan preset</CardTitle>
+              <CardDescription>Select the type of security assessment to run.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-3">
                 {presetOptions.map((p) => {
                   const active = form.watch('preset') === p.key;
                   return (
                     <button
                       key={p.key}
                       type="button"
-                      className={`text-left rounded-md border-2 p-4 hover:bg-accent hover:text-accent-foreground transition ${
-                        active ? 'border-primary' : 'border-muted'
+                      className={`text-left rounded-lg border-2 p-4 hover:bg-accent/50 transition-all ${
+                        active ? 'border-primary bg-primary/5' : 'border-muted hover:border-muted-foreground/30'
                       }`}
                       onClick={() => form.setValue('preset', p.key, { shouldValidate: true })}
                     >
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <div className="font-semibold">{p.title}</div>
-                          <div className="mt-1 text-sm text-muted-foreground">{p.description}</div>
+                      <div className="flex items-start gap-3">
+                        <div className={`p-2 rounded-md ${active ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+                          {p.icon}
                         </div>
-                        {active && <ShieldCheck className="h-5 w-5 text-primary" />}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold">{p.title}</span>
+                            {p.recommended && (
+                              <span className="text-xs bg-green-500/20 text-green-600 dark:text-green-400 px-2 py-0.5 rounded-full">
+                                Recommended
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-sm text-muted-foreground mt-1">{p.description}</p>
+                          <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
+                            <span>Scope: {p.scope}</span>
+                            <span>Duration: {p.duration}</span>
+                          </div>
+                        </div>
+                        {active && <ShieldCheck className="h-5 w-5 text-primary flex-shrink-0" />}
                       </div>
-                      <div className="mt-3 text-xs text-muted-foreground">Scope: {p.scope}</div>
                     </button>
                   );
                 })}

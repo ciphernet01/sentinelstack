@@ -729,6 +729,44 @@ class AuthController {
       next(error);
     }
   }
+
+  async getOnboardingStatus(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      const user = await prisma.user.findUnique({
+        where: { id: req.user!.id },
+        select: { onboardingComplete: true },
+      });
+
+      if (!user) {
+        return res.status(404).json({ message: 'User not found.' });
+      }
+
+      // Also check if user has any assessments
+      const assessmentCount = await prisma.assessment.count({
+        where: { userId: req.user!.id },
+      });
+
+      res.json({
+        onboardingComplete: user.onboardingComplete,
+        hasAssessments: assessmentCount > 0,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async completeOnboarding(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      await prisma.user.update({
+        where: { id: req.user!.id },
+        data: { onboardingComplete: true },
+      });
+
+      res.json({ success: true, message: 'Onboarding completed.' });
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 export const authController = new AuthController();

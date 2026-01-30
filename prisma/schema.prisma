@@ -43,6 +43,9 @@ model User {
   lastLoginAt               DateTime?
   lastLoginIp               String?
   
+  // Onboarding
+  onboardingComplete        Boolean      @default(false)
+  
   memberships               OrganizationMember[]
   invitationsSent           OrganizationInvitation[] @relation("OrganizationInvitationInvitedBy")
   assessments               Assessment[]

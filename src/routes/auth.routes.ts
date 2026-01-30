@@ -39,4 +39,14 @@ router.post('/reset-password', authController.resetPassword);
 // @access  Private
 router.post('/change-password', firebaseAuth, authController.changePassword);
 
+// @route   GET /api/auth/onboarding-status
+// @desc    Get user's onboarding status
+// @access  Private
+router.get('/onboarding-status', firebaseAuth, authController.getOnboardingStatus);
+
+// @route   POST /api/auth/complete-onboarding
+// @desc    Mark user's onboarding as complete
+// @access  Private
+router.post('/complete-onboarding', firebaseAuth, authController.completeOnboarding);
+
 export default router;
