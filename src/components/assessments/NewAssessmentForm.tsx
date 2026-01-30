@@ -111,6 +111,29 @@ export function NewAssessmentForm() {
       router.push('/dashboard/assessments');
     },
     onError: (error: any) => {
+      const errorCode = error.response?.data?.code;
+      const upgradeUrl = error.response?.data?.upgradeUrl;
+      
+      // Handle scan limit reached error specially
+      if (errorCode === 'SCAN_LIMIT_REACHED') {
+        toast({
+          variant: 'destructive',
+          title: "Scan Limit Reached",
+          description: error.response?.data?.message || "You've reached your monthly scan limit.",
+          action: upgradeUrl ? (
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => router.push(upgradeUrl)}
+              className="border-white/20 hover:bg-white/10"
+            >
+              Upgrade Plan
+            </Button>
+          ) : undefined,
+        });
+        return;
+      }
+      
       toast({
         variant: 'destructive',
         title: "Failed to Start Assessment",

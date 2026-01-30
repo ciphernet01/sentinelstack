@@ -16,6 +16,7 @@ import { useEffect } from 'react';
 import { ThemeToggle } from '@/components/layout/ThemeToggle';
 import Link from 'next/link';
 import { usePageTitle } from '@/hooks/use-page-title';
+import { UsageIndicator } from '@/components/billing/UsageIndicator';
 
 
 const userAvatar = PlaceHolderImages.find(img => img.id === 'user-avatar-1');
@@ -75,8 +76,9 @@ function DashboardPage() {
                      <h1 className="text-xl sm:text-2xl font-bold font-headline text-primary-foreground">Security Intelligence Dashboard</h1>
                      <p className="text-muted-foreground text-sm sm:text-base">Real-time risk assessment and security posture analysis</p>
                 </div>
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center justify-end">
-                    <Button variant="outline" className="w-full sm:w-auto">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center justify-between">
+                    <UsageIndicator compact className="order-2 sm:order-1" />
+                    <Button variant="outline" className="w-full sm:w-auto order-1 sm:order-2">
                         <FileDown className="mr-2 h-4 w-4" />
                         Export PDF Report
                     </Button>

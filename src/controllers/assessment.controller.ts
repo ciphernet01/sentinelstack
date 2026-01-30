@@ -4,6 +4,7 @@ import { AuthenticatedRequest } from '../middleware/auth';
 import { prisma } from '../config/db';
 import { Prisma } from '@prisma/client';
 import { startAssessmentWorker } from '../services/worker.service';
+import { billingService } from '../services/billing.service';
 import fs from 'fs';
 import path from 'path';
 
@@ -60,6 +61,16 @@ class AssessmentController {
     }
 
     try {
+      // Check if organization can perform a scan based on their subscription
+      const canScan = await billingService.canPerformScan(organizationId);
+      if (!canScan.allowed) {
+        return res.status(402).json({ 
+          message: canScan.reason || 'Scan limit reached. Please upgrade your plan.',
+          code: 'SCAN_LIMIT_REACHED',
+          upgradeUrl: '/pricing'
+        });
+      }
+
       const normalizedPreset = normalizeToolPreset(toolPreset);
 
       const assessment = await prisma.assessment.create({
@@ -74,6 +85,9 @@ class AssessmentController {
           // Status defaults to PENDING via schema
         },
       });
+
+      // Increment scan usage for this organization
+      await billingService.incrementScanUsage(organizationId);
 
       // Do not await this. Let it run in the background.
       startAssessmentWorker(assessment.id, assessment.targetUrl, scope, assessment.toolPreset, Boolean(assessment.authorizationConfirmed));
