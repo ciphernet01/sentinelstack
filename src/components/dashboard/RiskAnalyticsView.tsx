@@ -17,6 +17,37 @@ import {
   YAxis
 } from 'recharts';
 
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+
+type AnalyticsResponse = {
+  stats?: {
+    overallRiskScore?: number;
+    totalAssessments?: number;
+    criticalCount?: number;
+    highCount?: number;
+    totalFindings?: number;
+    deltas?: {
+      overallRiskScore?: number;
+      totalAssessments?: number;
+      criticalCount?: number;
+      highCount?: number;
+    };
+  };
+  severityDistribution?: Record<string, number>;
+  topTargets?: Array<{ targetUrl: string; riskScore: number; assessmentCount: number }>;
+  recentHighRiskAssessments?: Array<{ id: string; name: string; riskScore: number; createdAt: string }>;
+  latestAssessmentComparison?: {
+    regressions?: Array<{ toolName: string; title: string; severity: string }>;
+  } | null;
+  remediationPlan?: Array<{ toolName: string; title: string; severity: string; remediation: string }>;
+  coverageGaps?: { missingTools: string[] } | null;
+  mttr?: { avgDays: number } | null;
+  riskScoreOverTime?: Array<{ date: string; score: number }>;
+  findingsOverTime?: Array<{ name: string; total: number }>;
+  topTools?: Array<{ toolName: string; count: number }>;
+  severityOverTime?: Array<{ date: string; critical: number; high: number; medium: number; low: number }>;
+};
+
 const chartColors = {
   cyan: '#00E5FF',
   magenta: '#E91E63',
