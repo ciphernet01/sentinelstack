@@ -62,12 +62,38 @@ enum OrganizationRole {
 model Organization {
   id            String                 @id @default(cuid())
   name          String
+  
+  // Stripe Subscription
+  stripeCustomerId     String?        @unique
+  subscriptionId       String?        @unique
+  subscriptionStatus   SubscriptionStatus @default(FREE)
+  subscriptionTier     SubscriptionTier   @default(FREE)
+  subscriptionPeriodEnd DateTime?
+  
+  // Usage tracking
+  scansUsedThisMonth   Int            @default(0)
+  scansResetAt         DateTime       @default(now())
+  
   activeUsers   User[]                 @relation("ActiveOrganization")
   members       OrganizationMember[]
   invitations   OrganizationInvitation[]
   assessments   Assessment[]
   createdAt     DateTime               @default(now())
   updatedAt     DateTime               @updatedAt
+}
+
+enum SubscriptionStatus {
+  FREE
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  TRIALING
+}
+
+enum SubscriptionTier {
+  FREE
+  PRO
+  ENTERPRISE
 }
 
 model OrganizationMember {

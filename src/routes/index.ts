@@ -5,6 +5,7 @@ import dashboardRoutes from './dashboard.routes';
 import reportRoutes from './report.routes';
 import internalRoutes from './internal.routes';
 import orgRoutes from './org.routes';
+import billingRoutes from './billing.routes';
 
 const router = Router();
 
@@ -14,5 +15,6 @@ router.use('/dashboard', dashboardRoutes);
 router.use('/reports', reportRoutes);
 router.use('/internal', internalRoutes);
 router.use('/org', orgRoutes);
+router.use('/billing', billingRoutes);
 
 export default router;
