@@ -1,8 +1,6 @@
 'use client';
 
-
 import Link from 'next/link';
-import { ArrowUpRight, ArrowDownRight } from 'lucide-react';
 
 import {
   Bar,
@@ -14,40 +12,145 @@ import {
   ResponsiveContainer,
   Tooltip,
   XAxis,
-  YAxis
+  YAxis,
 } from 'recharts';
 
+import { ArrowDownRight, ArrowUpRight } from 'lucide-react';
+
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+
+type SeverityDistribution = Record<string, number>;
+
+type SeverityOverTimeRow = {
+  name: string;
+  CRITICAL: number;
+  HIGH: number;
+  MEDIUM: number;
+  LOW: number;
+  INFO: number;
+};
+
+type RecentHighRiskAssessment = {
+  id: string;
+  name: string;
+  targetUrl: string;
+  riskScore: number;
+  createdAt: string;
+  totalFindings: number;
+  criticalCount: number;
+  highCount: number;
+  mediumCount: number;
+  lowCount: number;
+  infoCount: number;
+};
 
 type AnalyticsResponse = {
-  stats?: {
-    overallRiskScore?: number;
-    totalAssessments?: number;
-    criticalCount?: number;
-    highCount?: number;
-    totalFindings?: number;
+  stats: {
+    totalAssessments: number;
+    totalFindings: number;
+    criticalCount: number;
+    highCount: number;
+    mediumCount: number;
+    overallRiskScore: number;
     deltas?: {
-      overallRiskScore?: number;
-      totalAssessments?: number;
-      criticalCount?: number;
-      highCount?: number;
+      overallRiskScore: number;
+      criticalCount: number;
+      highCount: number;
+      totalAssessments: number;
     };
   };
-  severityDistribution?: Record<string, number>;
-  topTargets?: Array<{ targetUrl: string; riskScore: number; assessmentCount: number }>;
-  recentHighRiskAssessments?: Array<{ id: string; name: string; riskScore: number; createdAt: string }>;
-  latestAssessmentComparison?: {
-    regressions?: Array<{ toolName: string; title: string; severity: string }>;
-  } | null;
-  remediationPlan?: Array<{ toolName: string; title: string; severity: string; remediation: string }>;
-  coverageGaps?: { missingTools: string[] } | null;
-  mttr?: { avgDays: number } | null;
-  riskScoreOverTime?: Array<{ date: string; score: number }>;
-  findingsOverTime?: Array<{ name: string; total: number }>;
-  topTools?: Array<{ toolName: string; count: number }>;
-  severityOverTime?: Array<{ date: string; critical: number; high: number; medium: number; low: number }>;
+  findingsOverTime: Array<{ name: string; total: number }>;
+  latestAssessmentComparison?: null | {
+    latest: {
+      id: string;
+      name: string;
+      targetUrl: string;
+      createdAt: string;
+      riskScore: number;
+      totalFindings: number;
+      criticalCount: number;
+      highCount: number;
+      mediumCount: number;
+      lowCount: number;
+      infoCount: number;
+    };
+    previous: null | {
+      id: string;
+      name: string;
+      targetUrl: string;
+      createdAt: string;
+      riskScore: number;
+      totalFindings: number;
+      criticalCount: number;
+      highCount: number;
+      mediumCount: number;
+      lowCount: number;
+      infoCount: number;
+    };
+    delta: {
+      riskScore: number;
+      totalFindings: number;
+      criticalCount: number;
+      highCount: number;
+      mediumCount: number;
+      lowCount: number;
+      infoCount: number;
+    };
+    topNewFindings: Array<{ toolName: string; title: string; severity: string }>;
+    topResolvedFindings: Array<{ toolName: string; title: string; severity: string }>;
+    regressions?: null | {
+      newCriticalCount: number;
+      newHighCount: number;
+      topNewSevereFindings: Array<{ toolName: string; title: string; severity: string }>;
+    };
+  };
+  severityOverTime: SeverityOverTimeRow[];
+  riskScoreOverTime: Array<{ name: string; avgRiskScore: number }>;
+  severityDistribution: SeverityDistribution;
+  topTools: Array<{ toolName: string; total: number; CRITICAL: number; HIGH: number; MEDIUM: number }>;
+  topTargets: Array<{ targetUrl: string; avgRiskScore: number; assessments: number }>;
+  recentHighRiskAssessments: RecentHighRiskAssessment[];
+
+  mttr?: null | {
+    windowDays: number;
+    latestAssessmentId: string;
+    bySeverity: Array<{
+      severity: string;
+      resolvedCount: number;
+      openCount: number;
+      avgResolvedDays: number;
+      medianResolvedDays: number;
+      avgOpenAgeDays: number;
+    }>;
+  };
+
+  remediationPlan?: Array<{
+    toolName: string;
+    title: string;
+    severity: string;
+    occurrencesLast90d: number;
+    lastSeenAt: string;
+    lastSeenAssessmentId: string;
+    remediationPreview: string;
+  }>;
+  coverageGaps?: {
+    staleThresholdDays: number;
+    staleTargets: Array<{
+      targetUrl: string;
+      daysSinceLastCompleted: number;
+      lastCompletedAt: string;
+      lastAssessmentId: string;
+      lastRiskScore: number | null;
+    }>;
+    neverCompletedTargets: Array<{
+      targetUrl: string;
+      lastAttemptAt: string;
+      lastAssessmentId: string;
+      lastAttemptStatus: string;
+    }>;
+  };
 };
 
 const chartColors = {
