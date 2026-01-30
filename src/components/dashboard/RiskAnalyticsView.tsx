@@ -257,7 +257,7 @@ export default function RiskAnalyticsView({ data }: { data: AnalyticsResponse })
 
   return (
     <div className="space-y-8">
-      <div className="grid gap-4 grid-cols-1 md:grid-cols-5">
+      <div className="grid gap-4 md:grid-cols-5">
         <StatCard
           title="Overall Risk Score"
           value={data.stats?.overallRiskScore ?? 0}
@@ -286,7 +286,7 @@ export default function RiskAnalyticsView({ data }: { data: AnalyticsResponse })
       </div>
 
       {compare?.latest ? (
-        <div className="grid gap-6 grid-cols-1 lg:grid-cols-2">
+        <div className="grid gap-6 lg:grid-cols-2">
           <Card>
             <CardHeader>
               <div className="flex items-start justify-between gap-3">
@@ -476,7 +476,7 @@ export default function RiskAnalyticsView({ data }: { data: AnalyticsResponse })
       ) : null}
 
       {remediationPlan.length > 0 || (coverageGaps && (coverageGaps.staleTargets.length > 0 || coverageGaps.neverCompletedTargets.length > 0)) ? (
-        <div className="grid gap-6 grid-cols-1 lg:grid-cols-2">
+        <div className="grid gap-6 lg:grid-cols-2">
           <Card>
             <CardHeader>
               <CardTitle>Top Remediation Plan</CardTitle>
@@ -581,7 +581,7 @@ export default function RiskAnalyticsView({ data }: { data: AnalyticsResponse })
         </div>
       ) : null}
 
-      <div className="grid gap-6 grid-cols-1 lg:grid-cols-2">
+      <div className="grid gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader>
             <CardTitle>Average Risk Score (12 months)</CardTitle>
@@ -675,10 +675,9 @@ export default function RiskAnalyticsView({ data }: { data: AnalyticsResponse })
           <CardHeader>
             <CardTitle>Severity Distribution</CardTitle>
           </CardHeader>
-          <CardContent className="h-[320px] overflow-x-auto">
-            <div className="min-w-[350px] md:min-w-0" style={{ width: '100%' }}>
-              <ResponsiveContainer width="100%" height={320}>
-                <BarChart data={severityRows} layout="vertical" margin={{ left: 16 }}>
+          <CardContent className="h-[320px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={severityRows} layout="vertical" margin={{ left: 16 }}>
                 <defs>
                   {Object.entries(severityColors).map(([severity, color]) => (
                     <linearGradient
@@ -718,9 +717,9 @@ export default function RiskAnalyticsView({ data }: { data: AnalyticsResponse })
           <CardHeader>
             <CardTitle>Top Tools (by findings)</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4 overflow-x-auto">
-            <div className="h-[320px] min-w-[350px] md:min-w-0" style={{ width: '100%' }}>
-              <ResponsiveContainer width="100%" height={320}>
+          <CardContent className="space-y-4">
+            <div className="h-[320px]">
+              <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={data.topTools ?? []} layout="vertical" margin={{ left: 8, right: 8 }}>
                 <defs>
                   <linearGradient id="ra-topTools-total" x1="0" y1="0" x2="1" y2="0">
@@ -743,10 +742,9 @@ export default function RiskAnalyticsView({ data }: { data: AnalyticsResponse })
         <CardHeader>
           <CardTitle>Severity Trend (12 months)</CardTitle>
         </CardHeader>
-        <CardContent className="h-[360px] overflow-x-auto">
-          <div className="min-w-[350px] md:min-w-0" style={{ width: '100%' }}>
-            <ResponsiveContainer width="100%" height={360}>
-              <BarChart data={data.severityOverTime ?? []}>
+        <CardContent className="h-[360px]">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={data.severityOverTime ?? []}>
               <defs>
                 {Object.entries(severityColors).map(([severity, color]) => (
                   <linearGradient key={severity} id={`ra-severityTrend-${severity}`} x1="0" y1="0" x2="0" y2="1">
@@ -772,8 +770,8 @@ export default function RiskAnalyticsView({ data }: { data: AnalyticsResponse })
         <CardHeader>
           <CardTitle>Top Targets (by avg risk score)</CardTitle>
         </CardHeader>
-        <CardContent className="overflow-x-auto">
-          <div className="space-y-3 min-w-[350px] md:min-w-0">
+        <CardContent>
+          <div className="space-y-3">
             {topTargets.length === 0 ? (
               <div className="text-sm text-muted-foreground">No completed assessments with risk scores yet.</div>
             ) : (
@@ -802,51 +800,49 @@ export default function RiskAnalyticsView({ data }: { data: AnalyticsResponse })
         <CardHeader>
           <CardTitle>Recent High-Risk Assessments</CardTitle>
         </CardHeader>
-        <CardContent className="overflow-x-auto">
+        <CardContent>
           {recent.length === 0 ? (
             <div className="text-sm text-muted-foreground">No completed assessments with risk scores yet.</div>
           ) : (
-            <div className="min-w-[600px] md:min-w-0">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Target</TableHead>
-                    <TableHead>Risk</TableHead>
-                    <TableHead>Findings</TableHead>
-                    <TableHead>Critical/High/Med</TableHead>
-                    <TableHead>Date</TableHead>
-                    <TableHead className="text-right"> </TableHead>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Target</TableHead>
+                  <TableHead>Risk</TableHead>
+                  <TableHead>Findings</TableHead>
+                  <TableHead>Critical/High/Med</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead className="text-right"> </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {recent.map(a => (
+                  <TableRow key={a.id}>
+                    <TableCell className="min-w-[280px]">
+                      <div className="font-medium truncate">
+                        <Link className="underline underline-offset-4" href={`/dashboard/assessments/${a.id}`}>
+                          {a.targetUrl}
+                        </Link>
+                      </div>
+                      <div className="text-xs text-muted-foreground truncate">{a.name}</div>
+                    </TableCell>
+                    <TableCell className="tabular-nums font-semibold">{a.riskScore}</TableCell>
+                    <TableCell className="tabular-nums">{a.totalFindings}</TableCell>
+                    <TableCell className="tabular-nums">
+                      {a.criticalCount}/{a.highCount}/{a.mediumCount}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {new Date(a.createdAt).toLocaleDateString()}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button asChild variant="outline" size="sm">
+                        <Link href={`/dashboard/assessments/${a.id}`}>View</Link>
+                      </Button>
+                    </TableCell>
                   </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {recent.map(a => (
-                    <TableRow key={a.id}>
-                      <TableCell className="min-w-[280px]">
-                        <div className="font-medium truncate">
-                          <Link className="underline underline-offset-4" href={`/dashboard/assessments/${a.id}`}>
-                            {a.targetUrl}
-                          </Link>
-                        </div>
-                        <div className="text-xs text-muted-foreground truncate">{a.name}</div>
-                      </TableCell>
-                      <TableCell className="tabular-nums font-semibold">{a.riskScore}</TableCell>
-                      <TableCell className="tabular-nums">{a.totalFindings}</TableCell>
-                      <TableCell className="tabular-nums">
-                        {a.criticalCount}/{a.highCount}/{a.mediumCount}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {new Date(a.createdAt).toLocaleDateString()}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button asChild variant="outline" size="sm">
-                          <Link href={`/dashboard/assessments/${a.id}`}>View</Link>
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+                ))}
+              </TableBody>
+            </Table>
           )}
         </CardContent>
       </Card>
