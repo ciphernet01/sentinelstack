@@ -155,14 +155,17 @@ export default function PrintReport({ assessment }: PrintReportProps) {
 
       {/* Page 1: Cover */}
       <Page>
-        <div className="flex items-start justify-between">
-          <div>
-            <div className="text-xs tracking-widest uppercase text-gray-500">Security Assessment Report</div>
-            <div className="mt-3 text-[32px] leading-tight font-bold text-gray-900">{name}</div>
-            <div className="mt-3 text-sm text-gray-700">Prepared by Sentinel Stack Platform</div>
-          </div>
-          <div className="pt-1">
-            <SentinelStackLogo width={210} />
+        {/* Header with dark blue background for logo visibility */}
+        <div className="bg-[#0f172a] rounded-lg p-6 -mx-2">
+          <div className="flex items-start justify-between">
+            <div>
+              <div className="text-xs tracking-widest uppercase text-slate-400">Security Assessment Report</div>
+              <div className="mt-3 text-[32px] leading-tight font-bold text-white">{name}</div>
+              <div className="mt-3 text-sm text-slate-300">Prepared by Sentinel Stack Platform</div>
+            </div>
+            <div className="pt-1">
+              <SentinelStackLogo width={210} />
+            </div>
           </div>
         </div>
 
