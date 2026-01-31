@@ -1,131 +1,115 @@
-"""
-Secret Scanner wrapper for AI 30 Days integration
-"""
-import os
+"""Secret Scanner wrapper for AI 30 Days integration"""
+from __future__ import annotations
+
 import sys
-import subprocess
-import json
-from typing import List, Dict, Any
+from pathlib import Path
+from typing import Any, Dict, List
 
-# Add AI 30 Days path
-AI30_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "AI 30 Days")
-sys.path.insert(0, AI30_PATH)
-
-from ..engine import register_tool, ToolContext
+from scanners.engine.registry import register_tool
 
 
-@register_tool("secret_scanner", category="exposure", scope=["WEB", "API", "FULL"])
-def run_secret_scanner(ctx: ToolContext) -> List[Dict[str, Any]]:
-    """
-    Deep Secret/Credential Scanner
+def _repo_root() -> Path:
+    return Path(__file__).resolve().parents[2]
+
+
+def _safe_import_ai30_script(script_filename: str):
+    ai30_dir = _repo_root() / "AI 30 Days"
+    script_path = ai30_dir / script_filename
+    if not script_path.exists():
+        raise FileNotFoundError(f"AI30 script not found: {script_path}")
+
+    import importlib.util
+    module_name = f"ai30_{script_filename.replace('.', '_')}"
+    spec = importlib.util.spec_from_file_location(module_name, script_path)
+    if spec is None or spec.loader is None:
+        raise ImportError(f"Could not load spec for: {script_path}")
+
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[module_name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+def _normalize_severity(raw: str) -> str:
+    raw_upper = str(raw or "CRITICAL").strip().upper()
+    if raw_upper in {"CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"}:
+        return raw_upper
+    return "CRITICAL"
+
+
+def _finding(*, title: str, description: str, severity: str, remediation: str, evidence: Dict[str, Any]) -> Dict[str, Any]:
+    return {
+        "toolName": "Secret Scanner Pro",
+        "title": title,
+        "description": description,
+        "severity": _normalize_severity(severity),
+        "remediation": remediation,
+        "evidence": evidence,
+        "complianceMapping": ["OWASP-A07-2021", "CWE-798"],
+    }
+
+
+@register_tool("secret_scanner")
+class SecretScannerTool:
+    """Deep Secret Scanner - detects exposed credentials, API keys, tokens"""
     
-    Detects exposed:
-    - AWS Access Keys & Secret Keys
-    - GCP API Keys & Service Account Keys
-    - Azure Client Secrets & Connection Strings
-    - GitHub/GitLab/Bitbucket Tokens
-    - Stripe/Slack/Twilio API Keys
-    - Private Keys (RSA, SSH, PGP)
-    - JWTs with sensitive claims
-    - Database Connection Strings
-    - And 30+ more secret patterns
-    """
-    findings = []
+    name = "secret_scanner"
+    supported_scopes = ["WEB", "API", "FULL"]
     
-    try:
-        from secret_scanner_pro import SecretScanner
+    def run(self, ctx) -> List[Dict[str, Any]]:
+        target = str(ctx.target or "").strip()
+        if not target:
+            return []
+
+        if not target.startswith("http://") and not target.startswith("https://"):
+            target = "https://" + target
+
+        findings: List[Dict[str, Any]] = []
         
-        scanner = SecretScanner(ctx.target)
-        results = scanner.run()
-        
-        for secret in results.get("secrets_found", []):
-            # Determine severity based on secret type
-            severity = "CRITICAL"
-            if secret.get("type") in ["jwt", "base64_data"]:
-                severity = "HIGH"
-            elif secret.get("type") in ["api_endpoint", "internal_url"]:
-                severity = "MEDIUM"
+        try:
+            module = _safe_import_ai30_script("secret_scanner_pro.py")
+            scanner = module.SecretScanner(target)
+            results = scanner.run()
+            
+            for secret in results.get("secrets_found", []):
+                secret_type = secret.get("type", "unknown").replace("_", " ").title()
+                severity = "CRITICAL"
+                if secret.get("type") in ["jwt", "base64_data"]:
+                    severity = "HIGH"
+                elif secret.get("type") in ["api_endpoint", "internal_url"]:
+                    severity = "MEDIUM"
                 
-            findings.append({
-                "tool": "secret_scanner",
-                "type": f"EXPOSED_SECRET_{secret.get('type', 'GENERIC').upper()}",
-                "title": f"Exposed {secret.get('type', 'Secret').replace('_', ' ').title()}",
-                "severity": severity,
-                "target": ctx.target,
-                "url": secret.get("url", ctx.target),
-                "secret_type": secret.get("type"),
-                "pattern_matched": secret.get("pattern"),
-                "location": secret.get("location"),
-                # Redacted value for safety
-                "value_preview": secret.get("value", "")[:20] + "..." if secret.get("value") else None,
-                "remediation": "Immediately rotate the exposed credential. Remove from source code and use environment variables or secret management systems.",
-                "cwe": "CWE-798",
-                "owasp": "A07:2021 Identification and Authentication Failures",
-            })
+                findings.append(_finding(
+                    title=f"Exposed {secret_type}",
+                    description=f"Sensitive credential or secret detected: {secret_type}",
+                    severity=severity,
+                    remediation="Rotate the exposed credential immediately. Use environment variables or secret management.",
+                    evidence={
+                        "url": secret.get("url", target),
+                        "secret_type": secret.get("type"),
+                        "location": secret.get("location"),
+                        "value_preview": (secret.get("value", "")[:15] + "...") if secret.get("value") else None,
+                    },
+                ))
             
-        # Check sensitive paths
-        for path in results.get("sensitive_paths", []):
-            findings.append({
-                "tool": "secret_scanner",
-                "type": "SENSITIVE_PATH_EXPOSED",
-                "title": f"Sensitive Path Accessible: {path.get('path')}",
-                "severity": "HIGH",
-                "target": ctx.target,
-                "url": path.get("url"),
-                "path": path.get("path"),
-                "status_code": path.get("status_code"),
-                "cwe": "CWE-538",
-            })
+            for path in results.get("sensitive_paths", []):
+                findings.append(_finding(
+                    title=f"Sensitive Path Accessible: {path.get('path')}",
+                    description="A sensitive file or path is publicly accessible.",
+                    severity="HIGH",
+                    remediation="Restrict access to sensitive files. Add authentication or remove from public access.",
+                    evidence={"path": path.get("path"), "status_code": path.get("status_code")},
+                ))
+                
+        except FileNotFoundError:
+            pass  # Script not available
+        except Exception as e:
+            findings.append(_finding(
+                title="Secret Scanner Error",
+                description=f"Scanner error: {str(e)}",
+                severity="INFO",
+                remediation="Check scanner configuration.",
+                evidence={"error": str(e)},
+            ))
             
-        # Add summary
-        if results.get("summary", {}).get("total_secrets", 0) > 0:
-            findings.append({
-                "tool": "secret_scanner",
-                "type": "SCAN_SUMMARY",
-                "title": "Secret Scan Summary",
-                "severity": "INFO",
-                "target": ctx.target,
-                "details": results.get("summary"),
-            })
-            
-    except ImportError:
-        # Fallback to subprocess
-        script_path = os.path.join(AI30_PATH, "secret_scanner_pro.py")
-        if os.path.exists(script_path):
-            try:
-                result = subprocess.run(
-                    [sys.executable, script_path, "--target", ctx.target, "--json"],
-                    capture_output=True,
-                    text=True,
-                    timeout=300
-                )
-                if result.stdout:
-                    data = json.loads(result.stdout)
-                    for secret in data.get("secrets_found", []):
-                        findings.append({
-                            "tool": "secret_scanner",
-                            "type": "EXPOSED_SECRET",
-                            "title": f"Exposed {secret.get('type', 'Secret')}",
-                            "severity": "CRITICAL",
-                            "target": ctx.target,
-                            "secret_type": secret.get("type"),
-                            "cwe": "CWE-798",
-                        })
-            except Exception as e:
-                findings.append({
-                    "tool": "secret_scanner",
-                    "type": "ERROR",
-                    "title": "Secret Scanner Error",
-                    "severity": "INFO",
-                    "details": str(e),
-                })
-    except Exception as e:
-        findings.append({
-            "tool": "secret_scanner",
-            "type": "ERROR",
-            "title": "Secret Scanner Error",
-            "severity": "INFO",
-            "details": str(e),
-        })
-        
-    return findings
+        return findings

@@ -1,127 +1,116 @@
-"""
-Technology Fingerprinter wrapper for AI 30 Days integration
-"""
-import os
+"""Technology Fingerprinter wrapper for AI 30 Days integration"""
+from __future__ import annotations
+
 import sys
-import subprocess
-import json
-from typing import List, Dict, Any
+from pathlib import Path
+from typing import Any, Dict, List
 
-# Add AI 30 Days path
-AI30_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "AI 30 Days")
-sys.path.insert(0, AI30_PATH)
-
-from ..engine import register_tool, ToolContext
+from scanners.engine.registry import register_tool
 
 
-@register_tool("tech_fingerprinter", category="recon", scope=["WEB", "API", "FULL"])
-def run_tech_fingerprinter(ctx: ToolContext) -> List[Dict[str, Any]]:
-    """
-    Technology Fingerprinter for CVE matching
+def _repo_root() -> Path:
+    return Path(__file__).resolve().parents[2]
+
+
+def _safe_import_ai30_script(script_filename: str):
+    ai30_dir = _repo_root() / "AI 30 Days"
+    script_path = ai30_dir / script_filename
+    if not script_path.exists():
+        raise FileNotFoundError(f"AI30 script not found: {script_path}")
+
+    import importlib.util
+    module_name = f"ai30_{script_filename.replace('.', '_')}"
+    spec = importlib.util.spec_from_file_location(module_name, script_path)
+    if spec is None or spec.loader is None:
+        raise ImportError(f"Could not load spec for: {script_path}")
+
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[module_name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+def _normalize_severity(raw: str) -> str:
+    raw_upper = str(raw or "INFO").strip().upper()
+    if raw_upper in {"CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"}:
+        return raw_upper
+    return "INFO"
+
+
+def _finding(*, title: str, description: str, severity: str, remediation: str, evidence: Dict[str, Any]) -> Dict[str, Any]:
+    return {
+        "toolName": "Technology Fingerprinter Pro",
+        "title": title,
+        "description": description,
+        "severity": _normalize_severity(severity),
+        "remediation": remediation,
+        "evidence": evidence,
+        "complianceMapping": ["OWASP-A06-2021", "CWE-1035"],
+    }
+
+
+@register_tool("tech_fingerprinter")
+class TechFingerprinterTool:
+    """Technology Fingerprinter - detects tech stack and known vulnerable versions"""
     
-    Detects:
-    - Web server software (nginx, Apache, IIS, etc.)
-    - Programming languages (PHP, Python, Java, etc.)
-    - Frameworks (React, Angular, Django, Rails, etc.)
-    - CMS platforms (WordPress, Drupal, Joomla, etc.)
-    - JavaScript libraries with versions
-    - Known vulnerable versions
-    """
-    findings = []
+    name = "tech_fingerprinter"
+    supported_scopes = ["WEB", "API", "FULL"]
     
-    try:
-        from tech_fingerprinter_pro import TechFingerprinter
+    def run(self, ctx) -> List[Dict[str, Any]]:
+        target = str(ctx.target or "").strip()
+        if not target:
+            return []
+
+        if not target.startswith("http://") and not target.startswith("https://"):
+            target = "https://" + target
+
+        findings: List[Dict[str, Any]] = []
         
-        scanner = TechFingerprinter(ctx.target)
-        results = scanner.run()
-        
-        # Report detected technologies
-        for category, techs in results.get("technologies", {}).items():
-            for tech in techs:
-                version_str = f" v{tech['version']}" if tech.get('version') else ""
+        try:
+            module = _safe_import_ai30_script("tech_fingerprinter_pro.py")
+            scanner = module.TechFingerprinter(target)
+            results = scanner.run()
+            
+            # Report detected technologies (informational)
+            tech_summary = []
+            for category, techs in results.get("technologies", {}).items():
+                for tech in techs:
+                    version = f" v{tech['version']}" if tech.get('version') else ""
+                    tech_summary.append(f"{tech['name']}{version}")
+            
+            if tech_summary:
+                findings.append(_finding(
+                    title="Technology Stack Detected",
+                    description=f"Identified {len(tech_summary)} technologies in use.",
+                    severity="INFO",
+                    remediation="Keep all technologies updated to their latest secure versions.",
+                    evidence={"technologies": tech_summary[:20]},  # Limit to 20
+                ))
+            
+            # Report known vulnerabilities (these are important)
+            for vuln in results.get("vulnerabilities", []):
+                findings.append(_finding(
+                    title=f"Vulnerable Component: {vuln['technology']} {vuln.get('detected_version', '')}",
+                    description=f"{vuln.get('description', 'Known vulnerability in detected version')}",
+                    severity=vuln.get("severity", "MEDIUM"),
+                    remediation=f"Upgrade {vuln['technology']} to the latest secure version.",
+                    evidence={
+                        "technology": vuln["technology"],
+                        "detected_version": vuln.get("detected_version"),
+                        "cve": vuln.get("cve"),
+                        "vulnerable_spec": vuln.get("vulnerable_spec"),
+                    },
+                ))
                 
-                findings.append({
-                    "tool": "tech_fingerprinter",
-                    "type": f"TECHNOLOGY_{category.upper()}",
-                    "title": f"Detected: {tech['name']}{version_str}",
-                    "severity": "INFO",
-                    "target": ctx.target,
-                    "technology": tech["name"],
-                    "category": category,
-                    "version": tech.get("version"),
-                    "detection_sources": tech.get("sources", []),
-                })
-                
-        # Report known vulnerabilities
-        for vuln in results.get("vulnerabilities", []):
-            severity = vuln.get("severity", "MEDIUM")
+        except FileNotFoundError:
+            pass
+        except Exception as e:
+            findings.append(_finding(
+                title="Technology Fingerprinter Error",
+                description=f"Scanner error: {str(e)}",
+                severity="INFO",
+                remediation="Check scanner configuration.",
+                evidence={"error": str(e)},
+            ))
             
-            findings.append({
-                "tool": "tech_fingerprinter",
-                "type": "VULNERABLE_COMPONENT",
-                "title": f"Vulnerable {vuln['technology']} {vuln['detected_version']}",
-                "severity": severity,
-                "target": ctx.target,
-                "technology": vuln["technology"],
-                "detected_version": vuln["detected_version"],
-                "vulnerable_spec": vuln["vulnerable_spec"],
-                "cve": vuln.get("cve"),
-                "description": vuln.get("description"),
-                "remediation": f"Upgrade {vuln['technology']} to the latest secure version.",
-                "cwe": "CWE-1035",
-                "owasp": "A06:2021 Vulnerable and Outdated Components",
-            })
-            
-        # Add summary
-        summary = results.get("summary", {})
-        if summary.get("total_technologies", 0) > 0:
-            findings.append({
-                "tool": "tech_fingerprinter",
-                "type": "SCAN_SUMMARY",
-                "title": "Technology Fingerprint Summary",
-                "severity": "INFO",
-                "target": ctx.target,
-                "total_technologies": summary.get("total_technologies"),
-                "categories": summary.get("categories"),
-                "critical_vulns": summary.get("critical_vulns", 0),
-                "high_vulns": summary.get("high_vulns", 0),
-            })
-            
-    except ImportError:
-        # Fallback to subprocess
-        script_path = os.path.join(AI30_PATH, "tech_fingerprinter_pro.py")
-        if os.path.exists(script_path):
-            try:
-                result = subprocess.run(
-                    [sys.executable, script_path, "--target", ctx.target],
-                    capture_output=True,
-                    text=True,
-                    timeout=120
-                )
-                # Parse output if available
-                if result.returncode == 0:
-                    findings.append({
-                        "tool": "tech_fingerprinter",
-                        "type": "SCAN_COMPLETE",
-                        "title": "Technology Fingerprinting Complete",
-                        "severity": "INFO",
-                        "target": ctx.target,
-                    })
-            except Exception as e:
-                findings.append({
-                    "tool": "tech_fingerprinter",
-                    "type": "ERROR",
-                    "title": "Technology Fingerprinter Error",
-                    "severity": "INFO",
-                    "details": str(e),
-                })
-    except Exception as e:
-        findings.append({
-            "tool": "tech_fingerprinter",
-            "type": "ERROR",
-            "title": "Technology Fingerprinter Error",
-            "severity": "INFO",
-            "details": str(e),
-        })
-        
-    return findings
+        return findings

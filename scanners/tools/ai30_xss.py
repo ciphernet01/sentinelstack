@@ -1,126 +1,123 @@
-"""
-XSS Scanner wrapper for AI 30 Days integration
-"""
-import os
+"""XSS Scanner wrapper for AI 30 Days integration"""
+from __future__ import annotations
+
 import sys
-import subprocess
-import json
-from typing import List, Dict, Any
+from pathlib import Path
+from typing import Any, Dict, List
 
-# Add AI 30 Days path
-AI30_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "AI 30 Days")
-sys.path.insert(0, AI30_PATH)
-
-from ..engine import register_tool, ToolContext
+from scanners.engine.registry import register_tool
 
 
-@register_tool("xss_scanner", category="injection", scope=["WEB", "FULL"])
-def run_xss_scanner(ctx: ToolContext) -> List[Dict[str, Any]]:
-    """
-    Deep Cross-Site Scripting (XSS) Scanner
+def _repo_root() -> Path:
+    return Path(__file__).resolve().parents[2]
+
+
+def _safe_import_ai30_script(script_filename: str):
+    ai30_dir = _repo_root() / "AI 30 Days"
+    script_path = ai30_dir / script_filename
+    if not script_path.exists():
+        raise FileNotFoundError(f"AI30 script not found: {script_path}")
+
+    import importlib.util
+    module_name = f"ai30_{script_filename.replace('.', '_')}"
+    spec = importlib.util.spec_from_file_location(module_name, script_path)
+    if spec is None or spec.loader is None:
+        raise ImportError(f"Could not load spec for: {script_path}")
+
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[module_name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+def _normalize_severity(raw: str) -> str:
+    raw_upper = str(raw or "HIGH").strip().upper()
+    if raw_upper in {"CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"}:
+        return raw_upper
+    return "HIGH"
+
+
+def _finding(*, title: str, description: str, severity: str, remediation: str, evidence: Dict[str, Any]) -> Dict[str, Any]:
+    return {
+        "toolName": "XSS Scanner Pro",
+        "title": title,
+        "description": description,
+        "severity": _normalize_severity(severity),
+        "remediation": remediation,
+        "evidence": evidence,
+        "complianceMapping": ["OWASP-A03-2021", "CWE-79"],
+    }
+
+
+@register_tool("xss_scanner")
+class XSSScannerTool:
+    """Deep XSS Scanner - detects reflected, DOM-based, and stored XSS"""
     
-    Detects:
-    - Reflected XSS
-    - DOM-based XSS
-    - Stored XSS indicators
-    - Context-aware payloads (HTML, JS, attribute, URL)
-    - Polyglot payloads
-    - WAF bypass techniques
-    """
-    findings = []
+    name = "xss_scanner"
+    supported_scopes = ["WEB", "FULL"]
     
-    try:
-        from xss_scanner_pro import XSSScanner
-        
-        scanner = XSSScanner(ctx.target)
-        results = scanner.run()
-        
-        for vuln in results.get("vulnerabilities", []):
-            severity = "HIGH" if vuln.get("xss_type") == "reflected" else "MEDIUM"
-            if vuln.get("xss_type") == "dom_based":
-                severity = "HIGH"
-                
-            findings.append({
-                "tool": "xss_scanner",
-                "type": f"XSS_{vuln.get('xss_type', 'GENERIC').upper()}",
-                "title": f"XSS Vulnerability - {vuln.get('xss_type', 'Generic').replace('_', ' ').title()}",
-                "severity": severity,
-                "target": ctx.target,
-                "url": vuln.get("url", ctx.target),
-                "parameter": vuln.get("parameter"),
-                "payload": vuln.get("payload"),
-                "context": vuln.get("context"),
-                "evidence": vuln.get("evidence"),
-                "remediation": "Implement proper output encoding based on context. Use Content Security Policy (CSP). Sanitize and validate all user inputs.",
-                "cwe": "CWE-79",
-                "owasp": "A03:2021 Injection",
-            })
-            
-        # Check for DOM XSS sinks
-        for sink in results.get("dom_sinks", []):
-            findings.append({
-                "tool": "xss_scanner",
-                "type": "DOM_XSS_SINK",
-                "title": f"Potential DOM XSS Sink Found: {sink.get('sink')}",
-                "severity": "MEDIUM",
-                "target": ctx.target,
-                "sink": sink.get("sink"),
-                "source": sink.get("source"),
-                "code_snippet": sink.get("code"),
-                "cwe": "CWE-79",
-            })
-            
-        # Add summary if vulnerabilities found
-        if results.get("summary", {}).get("total_vulnerabilities", 0) > 0:
-            findings.append({
-                "tool": "xss_scanner",
-                "type": "SCAN_SUMMARY",
-                "title": "XSS Scan Summary",
-                "severity": "INFO",
-                "target": ctx.target,
-                "details": results.get("summary"),
-            })
-            
-    except ImportError:
-        # Fallback to subprocess
-        script_path = os.path.join(AI30_PATH, "xss_scanner_pro.py")
-        if os.path.exists(script_path):
-            try:
-                result = subprocess.run(
-                    [sys.executable, script_path, "--target", ctx.target, "--json"],
-                    capture_output=True,
-                    text=True,
-                    timeout=300
+    def run(self, ctx) -> List[Dict[str, Any]]:
+        authorization_confirmed = bool((ctx.metadata or {}).get("authorizationConfirmed"))
+        if not authorization_confirmed:
+            return [
+                _finding(
+                    title="XSS Scanner skipped (authorization not confirmed)",
+                    description="This tool performs active XSS testing. Disabled unless authorization is confirmed.",
+                    severity="INFO",
+                    remediation="Set authorizationConfirmed=true to enable active XSS testing.",
+                    evidence={"authorizationConfirmed": False},
                 )
-                if result.stdout:
-                    data = json.loads(result.stdout)
-                    for vuln in data.get("vulnerabilities", []):
-                        findings.append({
-                            "tool": "xss_scanner",
-                            "type": "XSS",
-                            "title": f"XSS - {vuln.get('xss_type', 'Generic')}",
-                            "severity": "HIGH",
-                            "target": ctx.target,
-                            "url": vuln.get("url"),
-                            "parameter": vuln.get("parameter"),
-                            "payload": vuln.get("payload"),
-                            "cwe": "CWE-79",
-                        })
-            except Exception as e:
-                findings.append({
-                    "tool": "xss_scanner",
-                    "type": "ERROR",
-                    "title": "XSS Scanner Error",
-                    "severity": "INFO",
-                    "details": str(e),
-                })
-    except Exception as e:
-        findings.append({
-            "tool": "xss_scanner",
-            "type": "ERROR",
-            "title": "XSS Scanner Error",
-            "severity": "INFO",
-            "details": str(e),
-        })
+            ]
+
+        target = str(ctx.target or "").strip()
+        if not target:
+            return []
+
+        if not target.startswith("http://") and not target.startswith("https://"):
+            target = "https://" + target
+
+        findings: List[Dict[str, Any]] = []
         
-    return findings
+        try:
+            module = _safe_import_ai30_script("xss_scanner_pro.py")
+            scanner = module.XSSScanner(target)
+            results = scanner.run()
+            
+            for vuln in results.get("vulnerabilities", []):
+                xss_type = vuln.get("xss_type", "generic").replace("_", " ").title()
+                severity = "HIGH" if vuln.get("xss_type") in ["reflected", "dom_based"] else "MEDIUM"
+                
+                findings.append(_finding(
+                    title=f"XSS Vulnerability - {xss_type}",
+                    description=f"Cross-site scripting vulnerability detected in {vuln.get('context', 'unknown')} context.",
+                    severity=severity,
+                    remediation="Implement proper output encoding. Use CSP. Sanitize all user inputs.",
+                    evidence={
+                        "url": vuln.get("url", target),
+                        "parameter": vuln.get("parameter"),
+                        "payload": vuln.get("payload"),
+                        "context": vuln.get("context"),
+                    },
+                ))
+            
+            for sink in results.get("dom_sinks", []):
+                findings.append(_finding(
+                    title=f"Potential DOM XSS Sink: {sink.get('sink')}",
+                    description="Dangerous DOM sink detected that could lead to XSS.",
+                    severity="MEDIUM",
+                    remediation="Avoid innerHTML, document.write. Use textContent instead.",
+                    evidence={"sink": sink.get("sink"), "source": sink.get("source")},
+                ))
+                
+        except FileNotFoundError:
+            pass  # Script not available
+        except Exception as e:
+            findings.append(_finding(
+                title="XSS Scanner Error",
+                description=f"Scanner error: {str(e)}",
+                severity="INFO",
+                remediation="Check scanner configuration.",
+                evidence={"error": str(e)},
+            ))
+            
+        return findings

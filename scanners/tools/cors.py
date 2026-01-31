@@ -1,38 +1,102 @@
+"""CORS Analyzer - Real CORS misconfiguration detection"""
 from __future__ import annotations
 
-import hashlib
 from typing import Any, Dict, List
+from urllib.parse import urlparse
+from urllib.request import Request, urlopen
+from urllib.error import HTTPError, URLError
 
 from scanners.engine.registry import register_tool
 
 
+def _normalize_severity(raw: str) -> str:
+    raw_upper = str(raw or "MEDIUM").strip().upper()
+    if raw_upper in {"CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"}:
+        return raw_upper
+    return "MEDIUM"
+
+
+def _finding(*, title: str, description: str, severity: str, remediation: str, evidence: Dict[str, Any]) -> Dict[str, Any]:
+    return {
+        "toolName": "CORS-Analyzer",
+        "title": title,
+        "description": description,
+        "severity": _normalize_severity(severity),
+        "remediation": remediation,
+        "evidence": evidence,
+        "complianceMapping": ["OWASP-A01-2021", "CWE-942"],
+    }
+
+
+TEST_ORIGINS = ["https://evil.com", "https://attacker.com", "null"]
+
+
 @register_tool("cors")
 class CorsAnalyzer:
+    """CORS Misconfiguration Analyzer - performs real CORS security checks"""
+    
     name = "cors"
     supported_scopes = ["WEB", "FULL"]
 
     def run(self, ctx) -> List[Dict[str, Any]]:
-        digest = hashlib.sha256((ctx.target + "|cors").encode("utf-8")).hexdigest()
-        hit = int(digest[:2], 16) % 2 == 0
-        if not hit:
+        target = str(ctx.target or "").strip()
+        if not target:
             return []
 
-        return [
-            {
-                "toolName": "CORS-Analyzer",
-                "title": "Insecure CORS Policy",
-                "description": (
-                    "The server's Cross-Origin Resource Sharing (CORS) policy appears overly permissive, potentially "
-                    "allowing malicious websites to make requests to this domain."
-                ),
-                "severity": "MEDIUM",
-                "remediation": (
-                    "Configure 'Access-Control-Allow-Origin' to a strict whitelist of trusted domains instead of using a wildcard ('*')."
-                ),
-                "evidence": {
-                    "header": "Access-Control-Allow-Origin: *",
-                    "vulnerable_endpoint": f"{ctx.target.rstrip('/')}/api/user-data",
-                },
-                "complianceMapping": ["OWASP-A01-2021", "CWE-942"],
-            }
-        ]
+        if not target.startswith("http://") and not target.startswith("https://"):
+            target = "https://" + target
+
+        findings: List[Dict[str, Any]] = []
+        endpoints = ["/", "/api", "/api/v1"]
+        
+        for endpoint in endpoints:
+            url = target.rstrip("/") + endpoint
+            
+            for origin in TEST_ORIGINS:
+                try:
+                    req = Request(url, method="GET", headers={"Origin": origin})
+                    with urlopen(req, timeout=10) as resp:
+                        headers = {k.lower(): v for k, v in resp.headers.items()}
+                        
+                        acao = headers.get("access-control-allow-origin", "").strip()
+                        acac = headers.get("access-control-allow-credentials", "").strip().lower()
+                        
+                        if not acao:
+                            continue
+                        
+                        if acao == "*" and acac == "true":
+                            findings.append(_finding(
+                                title="Wildcard CORS with Credentials",
+                                description="Server returns ACAO: * with credentials, allowing any origin authenticated access.",
+                                severity="CRITICAL",
+                                remediation="Never use wildcard with credentials. Whitelist trusted domains.",
+                                evidence={"url": url, "origin": origin, "acao": acao, "acac": acac},
+                            ))
+                        elif acao == origin and acac == "true":
+                            findings.append(_finding(
+                                title="CORS Origin Reflection with Credentials",
+                                description="Server reflects Origin with credentials, allowing any origin to access authenticated resources.",
+                                severity="HIGH",
+                                remediation="Validate Origin against a whitelist.",
+                                evidence={"url": url, "origin": origin, "acao": acao, "acac": acac},
+                            ))
+                        elif acao == "null" and acac == "true":
+                            findings.append(_finding(
+                                title="Null Origin Accepted with Credentials",
+                                description="Server accepts 'null' origin with credentials, exploitable via sandboxed iframes.",
+                                severity="HIGH",
+                                remediation="Never accept 'null' as valid origin.",
+                                evidence={"url": url, "origin": origin, "acao": acao, "acac": acac},
+                            ))
+                        elif acao == "*":
+                            findings.append(_finding(
+                                title="Permissive CORS Policy",
+                                description="Server uses ACAO: * allowing any website to read responses.",
+                                severity="MEDIUM",
+                                remediation="Restrict to specific trusted origins.",
+                                evidence={"url": url, "origin": origin, "acao": acao},
+                            ))
+                except Exception:
+                    continue
+        
+        return findings
