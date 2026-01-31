@@ -11,6 +11,7 @@ import {
   FileText,
   LineChart,
   Users,
+  Calendar,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -25,6 +26,7 @@ import { useQueryClient } from '@tanstack/react-query';
 const navItems = [
   { href: '/dashboard', icon: LayoutGrid, label: 'Dashboard' },
   { href: '/dashboard/assessments', icon: ShieldAlert, label: 'Assessments' },
+  { href: '/dashboard/schedules', icon: Calendar, label: 'Schedules' },
   { href: '/dashboard/reports', icon: File, label: 'Reports & Exports' },
   { href: '/dashboard/team', icon: Users, label: 'Team' },
   { href: '/dashboard/settings', icon: Settings, label: 'Settings' },

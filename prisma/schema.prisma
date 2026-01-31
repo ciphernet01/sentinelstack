@@ -50,6 +50,7 @@ model User {
   invitationsSent           OrganizationInvitation[] @relation("OrganizationInvitationInvitedBy")
   assessments               Assessment[]
   auditLogs                 AuditLog[]
+  scheduledScans            ScheduledScan[]
   createdAt                 DateTime     @default(now())
   updatedAt                 DateTime     @updatedAt
 
@@ -81,6 +82,7 @@ model Organization {
   members       OrganizationMember[]
   invitations   OrganizationInvitation[]
   assessments   Assessment[]
+  scheduledScans ScheduledScan[]
   createdAt     DateTime               @default(now())
   updatedAt     DateTime               @updatedAt
 }
@@ -220,4 +222,37 @@ model AuditLog {
   createdAt   DateTime @default(now())
   
   @@index([userId, createdAt])
+}
+
+// Scheduled Scans
+model ScheduledScan {
+  id              String              @id @default(cuid())
+  name            String
+  targetUrl       String
+  toolPreset      String              @default("default")
+  schedule        String              // Cron expression (e.g., "0 0 * * *" for daily)
+  scheduleType    ScheduleType        @default(WEEKLY)
+  timezone        String              @default("UTC")
+  enabled         Boolean             @default(true)
+  lastRunAt       DateTime?
+  nextRunAt       DateTime?
+  runCount        Int                 @default(0)
+  
+  organizationId  String
+  organization    Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdById     String
+  createdBy       User                @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  
+  @@index([organizationId, enabled])
+  @@index([nextRunAt, enabled])
+}
+
+enum ScheduleType {
+  DAILY
+  WEEKLY
+  BIWEEKLY
+  MONTHLY
 }

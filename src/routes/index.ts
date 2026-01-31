@@ -6,6 +6,7 @@ import reportRoutes from './report.routes';
 import internalRoutes from './internal.routes';
 import orgRoutes from './org.routes';
 import billingRoutes from './billing.routes';
+import scheduledScanRoutes from './scheduled-scan.routes';
 
 const router = Router();
 
@@ -16,5 +17,6 @@ router.use('/reports', reportRoutes);
 router.use('/internal', internalRoutes);
 router.use('/org', orgRoutes);
 router.use('/billing', billingRoutes);
+router.use('/scheduled-scans', scheduledScanRoutes);
 
 export default router;
