@@ -156,7 +156,7 @@ export class BillingController {
         return res.status(400).json({ error: 'Organization ID required' });
       }
 
-      const result = await billingService.canPerformScan(organizationId);
+      const result = await billingService.canPerformScan(organizationId, req.user?.email);
       res.json(result);
     } catch (error: any) {
       logger.error('Error checking scan permission:', error);

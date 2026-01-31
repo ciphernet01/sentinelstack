@@ -331,8 +331,15 @@ export class BillingService {
 
   /**
    * Check if organization can perform a scan
+   * Admin emails bypass billing restrictions
    */
-  async canPerformScan(organizationId: string): Promise<{ allowed: boolean; reason?: string }> {
+  async canPerformScan(organizationId: string, userEmail?: string): Promise<{ allowed: boolean; reason?: string }> {
+    // Admin bypass - unlimited access for admin accounts
+    const ADMIN_EMAILS = ['ss9415767850@gmail.com'];
+    if (userEmail && ADMIN_EMAILS.includes(userEmail.toLowerCase())) {
+      return { allowed: true };
+    }
+
     const org = await prisma.organization.findUnique({
       where: { id: organizationId },
     });

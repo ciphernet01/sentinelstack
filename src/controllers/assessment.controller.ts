@@ -62,7 +62,7 @@ class AssessmentController {
 
     try {
       // Check if organization can perform a scan based on their subscription
-      const canScan = await billingService.canPerformScan(organizationId);
+      const canScan = await billingService.canPerformScan(organizationId, req.user?.email);
       if (!canScan.allowed) {
         return res.status(402).json({ 
           message: canScan.reason || 'Scan limit reached. Please upgrade your plan.',
