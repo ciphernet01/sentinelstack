@@ -8,7 +8,7 @@ import { useToast } from '@/hooks/use-toast';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
-import { Copy, ExternalLink, Loader2, MailPlus, RefreshCw, Trash2, Users, Palette, CreditCard, Key } from 'lucide-react';
+import { Copy, ExternalLink, Loader2, MailPlus, RefreshCw, Trash2, Users, Palette, CreditCard, Key, Shield } from 'lucide-react';
 import { usePageTitle } from '@/hooks/use-page-title';
 
 import { Badge } from '@/components/ui/badge';
@@ -541,7 +541,7 @@ export default function SettingsPage() {
 
         <TabsContent value="workspace" className="space-y-6">
           {/* Quick Links */}
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-4">
             <Link href="/dashboard/settings/branding" className="block">
               <Card className="h-full hover:bg-accent/50 transition-colors cursor-pointer">
                 <CardHeader>
@@ -551,6 +551,19 @@ export default function SettingsPage() {
                   </CardTitle>
                   <CardDescription className="text-sm">
                     Customize logos, colors, and domain
+                  </CardDescription>
+                </CardHeader>
+              </Card>
+            </Link>
+            <Link href="/dashboard/settings/compliance" className="block">
+              <Card className="h-full hover:bg-accent/50 transition-colors cursor-pointer">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <Shield className="h-4 w-4" />
+                    Compliance Badges
+                  </CardTitle>
+                  <CardDescription className="text-sm">
+                    SOC2, ISO 27001, GDPR badges
                   </CardDescription>
                 </CardHeader>
               </Card>

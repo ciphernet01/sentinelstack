@@ -88,6 +88,7 @@ model Organization {
   webhooks      Webhook[]
   apiKeys       ApiKey[]
   branding      OrganizationBranding?
+  complianceBadges ComplianceBadge[]
   createdAt     DateTime               @default(now())
   updatedAt     DateTime               @updatedAt
 }
@@ -392,4 +393,53 @@ model OrganizationBranding {
   
   createdAt         DateTime      @default(now())
   updatedAt         DateTime      @updatedAt
+}
+
+// Compliance Badges & Trust Certifications
+model ComplianceBadge {
+  id                String            @id @default(cuid())
+  organizationId    String
+  organization      Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  
+  // Badge details
+  type              ComplianceType
+  name              String            // Display name (e.g., "SOC 2 Type II")
+  description       String?           // Description of the certification
+  
+  // Verification
+  isVerified        Boolean           @default(false)
+  verifiedAt        DateTime?
+  verificationUrl   String?           // Link to verification/audit report
+  certificateUrl    String?           // Link to certificate PDF
+  
+  // Validity
+  issuedAt          DateTime?
+  expiresAt         DateTime?
+  
+  // Display
+  badgeImageUrl     String?           // Custom badge image
+  displayOnPublicPage Boolean         @default(true)
+  displayOrder      Int               @default(0)
+  
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  
+  @@unique([organizationId, type])
+  @@index([organizationId, displayOnPublicPage])
+}
+
+enum ComplianceType {
+  SOC2_TYPE1
+  SOC2_TYPE2
+  ISO27001
+  ISO27017
+  ISO27018
+  GDPR
+  HIPAA
+  PCI_DSS
+  CCPA
+  FEDRAMP
+  NIST
+  CSA_STAR
+  CUSTOM
 }

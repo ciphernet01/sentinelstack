@@ -11,6 +11,7 @@ import webhookRoutes from './webhook.routes';
 import apiKeyRoutes from './api-key.routes';
 import publicApiRoutes from './public-api.routes';
 import brandingRoutes from './branding.routes';
+import complianceRoutes from './compliance.routes';
 
 const router = Router();
 
@@ -26,5 +27,6 @@ router.use('/webhooks', webhookRoutes);
 router.use('/api-keys', apiKeyRoutes);
 router.use('/v1', publicApiRoutes); // Public API endpoints
 router.use('/branding', brandingRoutes);
+router.use('/compliance', complianceRoutes);
 
 export default router;
