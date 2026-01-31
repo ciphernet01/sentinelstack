@@ -37,6 +37,14 @@ PRESETS: Dict[str, ToolPreset] = {
             "scanners.tools.admin_exposure",
             "scanners.tools.ai30_cors_analyzer",
             "scanners.tools.ai30_header_ssl_analyzer",
+            # Deep injection scanners
+            "scanners.tools.ai30_sqli",
+            "scanners.tools.ai30_xss",
+            "scanners.tools.ai30_secrets",
+            "scanners.tools.ai30_ssrf",
+            # Recon & evasion
+            "scanners.tools.ai30_tech",
+            "scanners.tools.ai30_waf",
         ],
     ),
     "access-control": ToolPreset(
@@ -80,6 +88,13 @@ PRESETS: Dict[str, ToolPreset] = {
             "scanners.tools.ai30_authshield",
             "scanners.tools.ai30_logicflaw_sentinel",
             "scanners.tools.pro_suite",
+            # Deep injection & recon tools
+            "scanners.tools.ai30_sqli",
+            "scanners.tools.ai30_xss",
+            "scanners.tools.ai30_secrets",
+            "scanners.tools.ai30_ssrf",
+            "scanners.tools.ai30_tech",
+            "scanners.tools.ai30_waf",
         ],
     ),
 }
