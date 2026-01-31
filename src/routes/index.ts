@@ -10,6 +10,7 @@ import scheduledScanRoutes from './scheduled-scan.routes';
 import webhookRoutes from './webhook.routes';
 import apiKeyRoutes from './api-key.routes';
 import publicApiRoutes from './public-api.routes';
+import brandingRoutes from './branding.routes';
 
 const router = Router();
 
@@ -24,5 +25,6 @@ router.use('/scheduled-scans', scheduledScanRoutes);
 router.use('/webhooks', webhookRoutes);
 router.use('/api-keys', apiKeyRoutes);
 router.use('/v1', publicApiRoutes); // Public API endpoints
+router.use('/branding', brandingRoutes);
 
 export default router;

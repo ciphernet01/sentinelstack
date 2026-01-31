@@ -1,13 +1,14 @@
 'use client';
 
 import React from 'react';
+import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import api from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
-import { Copy, ExternalLink, Loader2, MailPlus, RefreshCw, Trash2, Users } from 'lucide-react';
+import { Copy, ExternalLink, Loader2, MailPlus, RefreshCw, Trash2, Users, Palette, CreditCard, Key } from 'lucide-react';
 import { usePageTitle } from '@/hooks/use-page-title';
 
 import { Badge } from '@/components/ui/badge';
@@ -539,6 +540,49 @@ export default function SettingsPage() {
         </TabsContent>
 
         <TabsContent value="workspace" className="space-y-6">
+          {/* Quick Links */}
+          <div className="grid gap-4 md:grid-cols-3">
+            <Link href="/dashboard/settings/branding" className="block">
+              <Card className="h-full hover:bg-accent/50 transition-colors cursor-pointer">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <Palette className="h-4 w-4" />
+                    White-Label Branding
+                  </CardTitle>
+                  <CardDescription className="text-sm">
+                    Customize logos, colors, and domain
+                  </CardDescription>
+                </CardHeader>
+              </Card>
+            </Link>
+            <Link href="/dashboard/settings/billing" className="block">
+              <Card className="h-full hover:bg-accent/50 transition-colors cursor-pointer">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <CreditCard className="h-4 w-4" />
+                    Billing & Subscription
+                  </CardTitle>
+                  <CardDescription className="text-sm">
+                    Manage plans and payment methods
+                  </CardDescription>
+                </CardHeader>
+              </Card>
+            </Link>
+            <Link href="/dashboard/api-keys" className="block">
+              <Card className="h-full hover:bg-accent/50 transition-colors cursor-pointer">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <Key className="h-4 w-4" />
+                    API Keys
+                  </CardTitle>
+                  <CardDescription className="text-sm">
+                    Manage programmatic access
+                  </CardDescription>
+                </CardHeader>
+              </Card>
+            </Link>
+          </div>
+          
           <Card className="w-full">
             <CardHeader>
               <div className="flex items-start justify-between gap-4">

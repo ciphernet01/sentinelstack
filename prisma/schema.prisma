@@ -87,6 +87,7 @@ model Organization {
   scheduledScans ScheduledScan[]
   webhooks      Webhook[]
   apiKeys       ApiKey[]
+  branding      OrganizationBranding?
   createdAt     DateTime               @default(now())
   updatedAt     DateTime               @updatedAt
 }
@@ -354,4 +355,41 @@ enum ApiScope {
   WRITE_WEBHOOKS
   READ_WEBHOOKS
   ADMIN
+}
+
+// White-labeling / Custom Branding
+model OrganizationBranding {
+  id                String        @id @default(cuid())
+  organizationId    String        @unique
+  organization      Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  
+  // Basic branding
+  logoUrl           String?       // Custom logo URL
+  faviconUrl        String?       // Custom favicon URL
+  companyName       String?       // Display name override
+  
+  // Colors
+  primaryColor      String        @default("#6366f1") // Primary brand color
+  secondaryColor    String?       // Secondary brand color
+  accentColor       String?       // Accent color
+  
+  // Custom domain
+  customDomain      String?       @unique // e.g., "security.acme.com"
+  domainVerified    Boolean       @default(false)
+  domainVerifyToken String?       // DNS verification token
+  
+  // Email branding
+  emailFromName     String?       // e.g., "ACME Security Team"
+  emailReplyTo      String?       // Custom reply-to address
+  
+  // Report branding
+  reportLogoUrl     String?       // Logo for PDF reports
+  reportFooterText  String?       // Custom footer for reports
+  reportHeaderText  String?       // Custom header for reports
+  
+  // Feature flags
+  hidePoweredBy     Boolean       @default(false) // Hide "Powered by SentinelStack"
+  
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
 }
