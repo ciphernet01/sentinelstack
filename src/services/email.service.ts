@@ -76,20 +76,82 @@ class EmailService {
   }
 
   async sendVerificationEmail(email: string, token: string): Promise<boolean> {
+    const verifyUrl = `${process.env.CLIENT_URL || ''}/verify-email?token=${token}`;
     return this.sendEmail({
       to: email,
-      subject: 'Verify your email',
-      html: `<p>Click <a href="${process.env.CLIENT_URL || ''}/verify?token=${token}">here</a> to verify your email.</p>`,
-      text: `Go to ${(process.env.CLIENT_URL || '')}/verify?token=${token} to verify your email.`
+      subject: 'Verify your SentinelStack account',
+      html: `
+        <table style="width:100%;max-width:600px;margin:auto;font-family:sans-serif;border:1px solid #eaeaea;border-radius:8px;overflow:hidden;">
+          <tr>
+            <td style="background:#18181b;padding:24px 0;text-align:center;">
+              <span style="color:#fff;font-size:28px;font-weight:bold;letter-spacing:1px;">Sentinel Stack</span>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:32px 24px 24px 24px;">
+              <h2 style="margin:0 0 16px 0;color:#18181b;">Verify your email address</h2>
+              <p style="font-size:16px;color:#444;">
+                Thanks for signing up! Please verify your email address by clicking the button below:
+              </p>
+              <div style="text-align:center;margin:32px 0;">
+                <a href="${verifyUrl}" style="background:#6366f1;color:#fff;text-decoration:none;padding:14px 32px;border-radius:6px;font-size:16px;font-weight:bold;display:inline-block;">
+                  Verify Email
+                </a>
+              </div>
+              <p style="font-size:14px;color:#888;">
+                If the button above does not work, copy and paste the following link into your browser:<br>
+                <a href="${verifyUrl}" style="color:#6366f1;">${verifyUrl}</a>
+              </p>
+              <p style="font-size:14px;color:#888;margin-top:32px;">
+                This link expires in 24 hours. If you did not create an account, you can safely ignore this email.
+              </p>
+              <p style="font-size:16px;color:#444;margin-top:32px;">Best regards,<br><strong>The Sentinel Stack Team</strong></p>
+            </td>
+          </tr>
+        </table>
+      `,
+      text: `Thanks for signing up for SentinelStack!\n\nPlease verify your email by visiting: ${verifyUrl}\n\nThis link expires in 24 hours.\n\nIf you did not create an account, you can ignore this email.\n\nBest,\nThe Sentinel Stack Team`
     });
   }
 
   async sendPasswordResetEmail(email: string, token: string, userName?: string): Promise<boolean> {
+    const resetUrl = `${process.env.CLIENT_URL || ''}/reset-password?token=${token}`;
+    const greeting = userName ? `Hi ${userName},` : 'Hi,';
     return this.sendEmail({
       to: email,
-      subject: 'Password Reset',
-      html: `<p>Hi ${userName || ''}, reset your password <a href="${process.env.CLIENT_URL || ''}/reset?token=${token}">here</a>.</p>`,
-      text: `Hi ${userName || ''}, reset your password at ${(process.env.CLIENT_URL || '')}/reset?token=${token}`
+      subject: 'Reset your SentinelStack password',
+      html: `
+        <table style="width:100%;max-width:600px;margin:auto;font-family:sans-serif;border:1px solid #eaeaea;border-radius:8px;overflow:hidden;">
+          <tr>
+            <td style="background:#18181b;padding:24px 0;text-align:center;">
+              <span style="color:#fff;font-size:28px;font-weight:bold;letter-spacing:1px;">Sentinel Stack</span>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:32px 24px 24px 24px;">
+              <h2 style="margin:0 0 16px 0;color:#18181b;">Reset your password</h2>
+              <p style="font-size:16px;color:#444;">
+                ${greeting}<br><br>
+                We received a request to reset your password. Click the button below to choose a new password:
+              </p>
+              <div style="text-align:center;margin:32px 0;">
+                <a href="${resetUrl}" style="background:#6366f1;color:#fff;text-decoration:none;padding:14px 32px;border-radius:6px;font-size:16px;font-weight:bold;display:inline-block;">
+                  Reset Password
+                </a>
+              </div>
+              <p style="font-size:14px;color:#888;">
+                If the button above does not work, copy and paste the following link into your browser:<br>
+                <a href="${resetUrl}" style="color:#6366f1;">${resetUrl}</a>
+              </p>
+              <p style="font-size:14px;color:#888;margin-top:32px;">
+                This link expires in 1 hour. If you did not request a password reset, you can safely ignore this email.
+              </p>
+              <p style="font-size:16px;color:#444;margin-top:32px;">Best regards,<br><strong>The Sentinel Stack Team</strong></p>
+            </td>
+          </tr>
+        </table>
+      `,
+      text: `${greeting}\n\nWe received a request to reset your password.\n\nReset your password: ${resetUrl}\n\nThis link expires in 1 hour. If you did not request a password reset, you can ignore this email.\n\nBest,\nThe Sentinel Stack Team`
     });
   }
 
