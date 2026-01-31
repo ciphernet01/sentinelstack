@@ -31,12 +31,11 @@ export default async function PrintReportPage({ params }: PageProps) {
     notFound();
   }
 
-  const h = headers();
-  const proto = h.get('x-forwarded-proto') ?? 'http';
-  const host = h.get('host');
-  if (!host) notFound();
-
-  const baseUrl = `${proto}://${host}`;
+  // Use the backend API URL for internal calls
+  // In production, this should be the API service URL
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || process.env.API_URL || 'http://localhost:3001';
+  const baseUrl = apiUrl.replace(/\/$/, '');
+  
   const res = await fetch(`${baseUrl}/api/internal/assessments/${params.id}/report`, {
     headers: {
       'x-internal-secret': secret,
