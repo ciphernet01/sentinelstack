@@ -8,6 +8,8 @@ import orgRoutes from './org.routes';
 import billingRoutes from './billing.routes';
 import scheduledScanRoutes from './scheduled-scan.routes';
 import webhookRoutes from './webhook.routes';
+import apiKeyRoutes from './api-key.routes';
+import publicApiRoutes from './public-api.routes';
 
 const router = Router();
 
@@ -20,5 +22,7 @@ router.use('/org', orgRoutes);
 router.use('/billing', billingRoutes);
 router.use('/scheduled-scans', scheduledScanRoutes);
 router.use('/webhooks', webhookRoutes);
+router.use('/api-keys', apiKeyRoutes);
+router.use('/v1', publicApiRoutes); // Public API endpoints
 
 export default router;

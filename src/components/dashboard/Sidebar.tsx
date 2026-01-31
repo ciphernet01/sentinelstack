@@ -13,6 +13,7 @@ import {
   Users,
   Calendar,
   Webhook,
+  Key,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -29,6 +30,7 @@ const navItems = [
   { href: '/dashboard/assessments', icon: ShieldAlert, label: 'Assessments' },
   { href: '/dashboard/schedules', icon: Calendar, label: 'Schedules' },
   { href: '/dashboard/webhooks', icon: Webhook, label: 'Webhooks' },
+  { href: '/dashboard/api-keys', icon: Key, label: 'API Keys' },
   { href: '/dashboard/reports', icon: File, label: 'Reports & Exports' },
   { href: '/dashboard/team', icon: Users, label: 'Team' },
   { href: '/dashboard/settings', icon: Settings, label: 'Settings' },
