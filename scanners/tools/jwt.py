@@ -67,7 +67,7 @@ class JwtAudit:
         jwts_found = []
         
         # Try to find JWTs in common endpoints
-        endpoints = ["/", "/api", "/api/v1", "/auth", "/login", "/token"]
+        endpoints = ["/", "/api"]
         
         for endpoint in endpoints:
             url = target.rstrip("/") + endpoint
@@ -76,7 +76,7 @@ class JwtAudit:
                     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/122.0",
                     "Accept": "application/json, text/html, */*",
                 })
-                with urlopen(req, timeout=10) as resp:
+                with urlopen(req, timeout=5) as resp:
                     content = resp.read().decode("utf-8", errors="ignore")
                     headers_str = str(resp.headers)
                     

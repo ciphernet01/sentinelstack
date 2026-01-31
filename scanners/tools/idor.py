@@ -69,12 +69,7 @@ class IdorProbe:
         test_endpoints = [
             "/api/users/1",
             "/api/v1/users/1",
-            "/api/accounts/1",
-            "/api/orders/1",
-            "/api/profile/1",
             "/users/1",
-            "/user/1",
-            "/account/1",
         ]
         
         for endpoint in test_endpoints:
@@ -87,7 +82,7 @@ class IdorProbe:
                     "Accept": "application/json",
                 })
                 
-                with urlopen(req1, timeout=10) as resp1:
+                with urlopen(req1, timeout=5) as resp1:
                     status1 = resp1.status
                     content1 = resp1.read().decode("utf-8", errors="ignore")
                     len1 = len(content1)

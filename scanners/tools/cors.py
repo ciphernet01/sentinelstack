@@ -28,7 +28,7 @@ def _finding(*, title: str, description: str, severity: str, remediation: str, e
     }
 
 
-TEST_ORIGINS = ["https://evil.com", "https://attacker.com", "null"]
+TEST_ORIGINS = ["https://evil.com", "null"]
 
 
 @register_tool("cors")
@@ -47,7 +47,8 @@ class CorsAnalyzer:
             target = "https://" + target
 
         findings: List[Dict[str, Any]] = []
-        endpoints = ["/", "/api", "/api/v1"]
+        endpoints = ["/", "/api"]
+        seen = set()  # Dedupe findings
         
         for endpoint in endpoints:
             url = target.rstrip("/") + endpoint
@@ -55,7 +56,7 @@ class CorsAnalyzer:
             for origin in TEST_ORIGINS:
                 try:
                     req = Request(url, method="GET", headers={"Origin": origin})
-                    with urlopen(req, timeout=10) as resp:
+                    with urlopen(req, timeout=5) as resp:
                         headers = {k.lower(): v for k, v in resp.headers.items()}
                         
                         acao = headers.get("access-control-allow-origin", "").strip()
@@ -65,37 +66,49 @@ class CorsAnalyzer:
                             continue
                         
                         if acao == "*" and acac == "true":
-                            findings.append(_finding(
-                                title="Wildcard CORS with Credentials",
-                                description="Server returns ACAO: * with credentials, allowing any origin authenticated access.",
-                                severity="CRITICAL",
-                                remediation="Never use wildcard with credentials. Whitelist trusted domains.",
-                                evidence={"url": url, "origin": origin, "acao": acao, "acac": acac},
-                            ))
+                            key = "wildcard_creds"
+                            if key not in seen:
+                                seen.add(key)
+                                findings.append(_finding(
+                                    title="Wildcard CORS with Credentials",
+                                    description="Server returns ACAO: * with credentials, allowing any origin authenticated access.",
+                                    severity="CRITICAL",
+                                    remediation="Never use wildcard with credentials. Whitelist trusted domains.",
+                                    evidence={"url": url, "origin": origin, "acao": acao, "acac": acac},
+                                ))
                         elif acao == origin and acac == "true":
-                            findings.append(_finding(
-                                title="CORS Origin Reflection with Credentials",
-                                description="Server reflects Origin with credentials, allowing any origin to access authenticated resources.",
-                                severity="HIGH",
-                                remediation="Validate Origin against a whitelist.",
-                                evidence={"url": url, "origin": origin, "acao": acao, "acac": acac},
-                            ))
+                            key = "reflect_creds"
+                            if key not in seen:
+                                seen.add(key)
+                                findings.append(_finding(
+                                    title="CORS Origin Reflection with Credentials",
+                                    description="Server reflects Origin with credentials, allowing any origin to access authenticated resources.",
+                                    severity="HIGH",
+                                    remediation="Validate Origin against a whitelist.",
+                                    evidence={"url": url, "origin": origin, "acao": acao, "acac": acac},
+                                ))
                         elif acao == "null" and acac == "true":
-                            findings.append(_finding(
-                                title="Null Origin Accepted with Credentials",
-                                description="Server accepts 'null' origin with credentials, exploitable via sandboxed iframes.",
-                                severity="HIGH",
-                                remediation="Never accept 'null' as valid origin.",
-                                evidence={"url": url, "origin": origin, "acao": acao, "acac": acac},
-                            ))
+                            key = "null_creds"
+                            if key not in seen:
+                                seen.add(key)
+                                findings.append(_finding(
+                                    title="Null Origin Accepted with Credentials",
+                                    description="Server accepts 'null' origin with credentials, exploitable via sandboxed iframes.",
+                                    severity="HIGH",
+                                    remediation="Never accept 'null' as valid origin.",
+                                    evidence={"url": url, "origin": origin, "acao": acao, "acac": acac},
+                                ))
                         elif acao == "*":
-                            findings.append(_finding(
-                                title="Permissive CORS Policy",
-                                description="Server uses ACAO: * allowing any website to read responses.",
-                                severity="MEDIUM",
-                                remediation="Restrict to specific trusted origins.",
-                                evidence={"url": url, "origin": origin, "acao": acao},
-                            ))
+                            key = "wildcard"
+                            if key not in seen:
+                                seen.add(key)
+                                findings.append(_finding(
+                                    title="Permissive CORS Policy",
+                                    description="Server uses ACAO: * allowing any website to read responses.",
+                                    severity="MEDIUM",
+                                    remediation="Restrict to specific trusted origins.",
+                                    evidence={"url": url, "origin": origin, "acao": acao},
+                                ))
                 except Exception:
                     continue
         
