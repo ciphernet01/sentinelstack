@@ -5,6 +5,7 @@ import logger from '../utils/logger';
 import { spawn } from 'child_process';
 import type { Prisma } from '@prisma/client';
 import { getEffectiveScannerConfig, isScannerTimeoutFinding } from './scannerConfig.service';
+import { webhookService } from './webhook.service';
 
 // A simple in-memory queue to prevent multiple workers on the same assessment.
 const activeWorkers = new Set<string>();
@@ -344,7 +345,7 @@ export const startAssessmentWorker = async (
         const riskScore = calculateRiskScore(allFindings);
 
         // 5. Mark assessment as COMPLETED and save the score
-        await prisma.assessment.update({
+        const completedAssessment = await prisma.assessment.update({
             where: { id: assessmentId },
             data: { 
                 status: 'COMPLETED',
@@ -352,17 +353,67 @@ export const startAssessmentWorker = async (
                 endedEarly: Boolean(endedEarlyReason),
                 endedEarlyReason,
             },
+            include: {
+                organization: { select: { id: true } },
+            },
         });
         
         logger.info(`Assessment ${assessmentId} COMPLETED with risk score: ${riskScore}.`);
+        
+        // 6. Trigger webhooks for scan completion
+        if (completedAssessment.organizationId) {
+            const criticalFindings = allFindings.filter(f => f.severity === 'CRITICAL').length;
+            const highFindings = allFindings.filter(f => f.severity === 'HIGH').length;
+            const mediumFindings = allFindings.filter(f => f.severity === 'MEDIUM').length;
+            const lowFindings = allFindings.filter(f => f.severity === 'LOW').length;
+            
+            // Trigger SCAN_COMPLETED webhook
+            webhookService.trigger(completedAssessment.organizationId, 'SCAN_COMPLETED', {
+                assessmentId,
+                name: completedAssessment.name,
+                targetUrl: completedAssessment.targetUrl,
+                riskScore,
+                findings: {
+                    critical: criticalFindings,
+                    high: highFindings,
+                    medium: mediumFindings,
+                    low: lowFindings,
+                    total: allFindings.length,
+                },
+                completedAt: new Date().toISOString(),
+            });
+            
+            // Trigger CRITICAL_FINDING webhook if any critical findings
+            if (criticalFindings > 0) {
+                webhookService.trigger(completedAssessment.organizationId, 'CRITICAL_FINDING', {
+                    assessmentId,
+                    name: completedAssessment.name,
+                    targetUrl: completedAssessment.targetUrl,
+                    criticalCount: criticalFindings,
+                    message: `${criticalFindings} critical vulnerability(ies) found in ${completedAssessment.name}`,
+                });
+            }
+        }
 
     } catch (error) {
         logger.error(`Error in worker for assessment ${assessmentId}:`, error);
         try {
-            await prisma.assessment.update({
+            const failedAssessment = await prisma.assessment.update({
                 where: { id: assessmentId },
                 data: { status: 'REJECTED' },
+                include: { organization: { select: { id: true } } },
             });
+            
+            // Trigger SCAN_FAILED webhook
+            if (failedAssessment.organizationId) {
+                webhookService.trigger(failedAssessment.organizationId, 'SCAN_FAILED', {
+                    assessmentId,
+                    name: failedAssessment.name,
+                    targetUrl: failedAssessment.targetUrl,
+                    error: error instanceof Error ? error.message : 'Unknown error',
+                    failedAt: new Date().toISOString(),
+                });
+            }
         } catch (updateError) {
             logger.error(`Failed to mark assessment ${assessmentId} as REJECTED:`, updateError);
         }

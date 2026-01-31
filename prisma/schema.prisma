@@ -51,6 +51,7 @@ model User {
   assessments               Assessment[]
   auditLogs                 AuditLog[]
   scheduledScans            ScheduledScan[]
+  webhooks                  Webhook[]
   createdAt                 DateTime     @default(now())
   updatedAt                 DateTime     @updatedAt
 
@@ -83,6 +84,7 @@ model Organization {
   invitations   OrganizationInvitation[]
   assessments   Assessment[]
   scheduledScans ScheduledScan[]
+  webhooks      Webhook[]
   createdAt     DateTime               @default(now())
   updatedAt     DateTime               @updatedAt
 }
@@ -255,4 +257,60 @@ enum ScheduleType {
   WEEKLY
   BIWEEKLY
   MONTHLY
+}
+
+// Webhooks for notifications
+model Webhook {
+  id              String              @id @default(cuid())
+  name            String
+  url             String
+  secret          String?             // For HMAC signature verification
+  enabled         Boolean             @default(true)
+  
+  // Event filters
+  events          WebhookEvent[]      @default([SCAN_COMPLETED])
+  
+  // Delivery tracking
+  lastTriggeredAt DateTime?
+  lastStatus      Int?                // HTTP status code
+  failureCount    Int                 @default(0)
+  
+  organizationId  String
+  organization    Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdById     String
+  createdBy       User                @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  
+  deliveries      WebhookDelivery[]
+  
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  
+  @@index([organizationId, enabled])
+}
+
+model WebhookDelivery {
+  id              String              @id @default(cuid())
+  webhookId       String
+  webhook         Webhook             @relation(fields: [webhookId], references: [id], onDelete: Cascade)
+  
+  event           WebhookEvent
+  payload         Json
+  
+  // Response tracking
+  statusCode      Int?
+  responseBody    String?
+  responseTime    Int?                // ms
+  success         Boolean             @default(false)
+  error           String?
+  
+  createdAt       DateTime            @default(now())
+  
+  @@index([webhookId, createdAt])
+}
+
+enum WebhookEvent {
+  SCAN_COMPLETED
+  SCAN_FAILED
+  CRITICAL_FINDING
+  SCHEDULED_SCAN_RUN
 }

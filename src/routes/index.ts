@@ -7,6 +7,7 @@ import internalRoutes from './internal.routes';
 import orgRoutes from './org.routes';
 import billingRoutes from './billing.routes';
 import scheduledScanRoutes from './scheduled-scan.routes';
+import webhookRoutes from './webhook.routes';
 
 const router = Router();
 
@@ -18,5 +19,6 @@ router.use('/internal', internalRoutes);
 router.use('/org', orgRoutes);
 router.use('/billing', billingRoutes);
 router.use('/scheduled-scans', scheduledScanRoutes);
+router.use('/webhooks', webhookRoutes);
 
 export default router;
