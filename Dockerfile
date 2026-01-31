@@ -68,9 +68,9 @@ RUN npm config set fetch-retries 5 \
     && npm config set fetch-retry-maxtimeout 600000
 
 # Install dependencies (includes dev deps so we can compile TypeScript during image build)
-# Use BuildKit cache to avoid re-downloading packages every build.
-RUN --mount=type=cache,target=/root/.npm \
-    npm ci --no-audit --no-fund --ignore-scripts
+# Use npm install instead of npm ci to auto-resolve lock file mismatches
+RUN npm cache clean --force && \
+    npm install --no-audit --no-fund --ignore-scripts
 
 # Copy Prisma schema and generate Prisma client
 COPY prisma ./prisma/
