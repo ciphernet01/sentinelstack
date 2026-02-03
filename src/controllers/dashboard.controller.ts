@@ -247,6 +247,10 @@ class DashboardController {
     const userId = req.user?.id;
     const userRole = req.user?.role;
     const organizationId = req.user?.organizationId;
+    
+    // Date range filter (default 30 days for deltas, configurable)
+    const daysParam = parseInt(req.query.days as string, 10);
+    const filterDays = !isNaN(daysParam) && daysParam > 0 ? daysParam : 30;
 
     if (!userId) {
       return res.status(401).json({ message: 'User not found.' });
@@ -279,8 +283,8 @@ class DashboardController {
       })();
 
       const now = new Date();
-      const last30Days = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-      const last60Days = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
+      const currentPeriodStart = new Date(now.getTime() - filterDays * 24 * 60 * 60 * 1000);
+      const previousPeriodStart = new Date(now.getTime() - (filterDays * 2) * 24 * 60 * 60 * 1000);
       const oneYearAgo = new Date();
       oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
 
@@ -294,9 +298,9 @@ class DashboardController {
         },
       });
 
-      const currentPeriodAssessments = allAssessments.filter(a => new Date(a.createdAt) > last30Days);
+      const currentPeriodAssessments = allAssessments.filter(a => new Date(a.createdAt) > currentPeriodStart);
       const previousPeriodAssessments = allAssessments.filter(
-        a => new Date(a.createdAt) <= last30Days && new Date(a.createdAt) > last60Days
+        a => new Date(a.createdAt) <= currentPeriodStart && new Date(a.createdAt) > previousPeriodStart
       );
 
       const currentStats = getStatsForPeriod(currentPeriodAssessments);

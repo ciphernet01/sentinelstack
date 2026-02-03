@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Loader2 } from 'lucide-react';
 
@@ -11,13 +11,14 @@ import { usePageTitle } from '@/hooks/use-page-title';
 
 export default function RiskAnalyticsPage() {
   const { toast } = useToast();
+  const [dateRange, setDateRange] = useState<string>('30');
 
   usePageTitle('Risk Analytics');
 
-  const { data, isLoading, error } = useQuery({
-    queryKey: ['riskAnalytics'],
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: ['riskAnalytics', dateRange],
     queryFn: async () => {
-      const res = await api.get('/dashboard/analytics');
+      const res = await api.get(`/dashboard/analytics?days=${dateRange}`);
       return res.data;
     },
     retry: false,
@@ -46,7 +47,15 @@ export default function RiskAnalyticsPage() {
         </div>
       )}
 
-      {data && !isLoading && <RiskAnalyticsView data={data} />}
+      {data && !isLoading && (
+        <RiskAnalyticsView 
+          data={data} 
+          dateRange={dateRange} 
+          onDateRangeChange={(range) => {
+            setDateRange(range);
+          }} 
+        />
+      )}
 
       {error && !isLoading && (
         <div className="flex flex-col items-center justify-center text-center p-16 border-2 border-dashed rounded-lg bg-card mt-4">
