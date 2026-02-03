@@ -331,11 +331,12 @@ export class BillingService {
 
   /**
    * Check if organization can perform a scan
-   * Admin emails bypass billing restrictions
+   * Admin emails bypass billing restrictions (configured via ADMIN_EMAILS env var)
    */
   async canPerformScan(organizationId: string, userEmail?: string): Promise<{ allowed: boolean; reason?: string }> {
-    // Admin bypass - unlimited access for admin accounts
-    const ADMIN_EMAILS = ['ss9415767850@gmail.com'];
+    // Admin bypass - unlimited access for admin accounts (comma-separated in env)
+    const adminEmailsEnv = process.env.ADMIN_EMAILS || '';
+    const ADMIN_EMAILS = adminEmailsEnv.split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
     if (userEmail && ADMIN_EMAILS.includes(userEmail.toLowerCase())) {
       return { allowed: true };
     }

@@ -37,6 +37,20 @@ next-build.log
 .idx/
 /reports/
 
+# SECURITY: Credential files - NEVER commit these
+client_secret*.json
+**/client_secret*.json
+gen-lang-client*.json
+**/gen-lang-client*.json
+*.p12
+*.key
+service-account*.json
+**/service-account*.json
+credentials*.json
+**/credentials*.json
+*-key.json
+**/*-key.json
+
 # stray bundled starter project (not part of this repo)
 /public-google-integration-starter/
 
