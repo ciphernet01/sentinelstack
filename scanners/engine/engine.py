@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Dict, List
+from typing import Any, Callable, Dict, List, Optional
 
 import sys
 import time
@@ -40,6 +40,7 @@ class ScanEngine:
 
 	registry: ToolRegistry
 	executor: ToolExecutor
+	on_tool_complete: Optional[Callable[[List[Dict[str, Any]], str], None]] = None
 
 	def run(self, ctx: ScanContext) -> ScanContext:
 		for tool in self.registry.resolve_all():
@@ -60,6 +61,13 @@ class ScanEngine:
 				flush=True,
 			)
 			ctx.findings.extend(result.findings)
+			
+			# Callback to save findings incrementally (for timeout recovery)
+			if self.on_tool_complete:
+				try:
+					self.on_tool_complete(ctx.findings, ctx.assessment_id)
+				except Exception:
+					pass  # Best effort
 
 		ctx.findings = _sort_findings(ctx.findings)
 		return ctx

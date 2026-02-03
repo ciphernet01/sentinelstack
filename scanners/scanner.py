@@ -1,5 +1,8 @@
 import argparse
+import json
+import os
 import sys
+import tempfile
 from pathlib import Path
 
 # When executed as a script (e.g., `python ./scanners/scanner.py`), Python sets
@@ -11,6 +14,23 @@ if str(REPO_ROOT) not in sys.path:
 
 from scanners.engine import ScanContext, ScanEngine, ToolExecutor, ToolRegistry, dumps_findings
 from scanners.presets import PRESETS, resolve_preset_modules
+
+
+def get_findings_backup_path(assessment_id: str) -> Path:
+    """Get path for incremental findings backup file."""
+    tmp_dir = Path(tempfile.gettempdir()) / "sentinel_scanner"
+    tmp_dir.mkdir(parents=True, exist_ok=True)
+    return tmp_dir / f"findings_{assessment_id}.json"
+
+
+def save_findings_incrementally(findings: list, assessment_id: str) -> None:
+    """Save current findings to backup file for recovery on timeout."""
+    try:
+        backup_path = get_findings_backup_path(assessment_id)
+        with open(backup_path, "w", encoding="utf-8") as f:
+            json.dump(findings, f)
+    except Exception:
+        pass  # Best effort - don't fail the scan if backup fails
 
 def main():
     """CLI entrypoint used by the Node worker.
@@ -80,7 +100,12 @@ def main():
             }
         )
 
-    engine = ScanEngine(registry=registry, executor=ToolExecutor())
+    # Create engine with incremental backup callback for timeout recovery
+    engine = ScanEngine(
+        registry=registry,
+        executor=ToolExecutor(),
+        on_tool_complete=lambda findings, aid: save_findings_incrementally(findings, aid),
+    )
 
     # Debug logs go to stderr only.
     print(

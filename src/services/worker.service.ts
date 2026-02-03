@@ -159,7 +159,7 @@ const runPythonScanner = (
             }
         };
 
-        const timeoutTimer = setTimeout(() => {
+        const timeoutTimer = setTimeout(async () => {
             logger.warn(
                 `Scanner timeout after ${timeoutMs}ms (runtime=${runtime}, preset=${normalizedPreset}, assessmentId=${assessmentId}). Killing process pid=${pythonProcess.pid}.`,
             );
@@ -170,26 +170,49 @@ const runPythonScanner = (
                 // ignore
             }
 
-            safeResolve([
-                {
-                    assessmentId,
-                    toolName: 'scanner',
-                    title: 'Scan reached time limit (results may be incomplete)',
-                    description:
-                        `This run stopped after ${Math.round(timeoutMs / 1000)}s due to the configured time limit (${timeoutSource}). Some tools may not have finished, so results may be incomplete.`,
-                    severity: 'INFO',
-                    remediation:
-                        `If you want deeper coverage, rerun with a longer timeout (set SCANNER_TIMEOUT_MS) and/or choose a deeper preset.`,
-                    evidence: {
-                        timeoutMs,
-                        timeoutSource,
-                        runtime,
-                        preset: normalizedPreset,
-                        scope,
-                    } as any,
-                    complianceMapping: [],
-                },
-            ]);
+            // Try to recover accumulated findings from backup file
+            let recoveredFindings: Prisma.FindingCreateManyInput[] = [];
+            try {
+                const os = await import('os');
+                const fs = await import('fs');
+                const path = await import('path');
+                const backupPath = path.join(os.tmpdir(), 'sentinel_scanner', `findings_${assessmentId}.json`);
+                
+                if (fs.existsSync(backupPath)) {
+                    const backupData = fs.readFileSync(backupPath, 'utf-8');
+                    const parsed = JSON.parse(backupData);
+                    if (Array.isArray(parsed) && parsed.length > 0) {
+                        recoveredFindings = parsed;
+                        logger.info(`Recovered ${recoveredFindings.length} findings from backup file after timeout.`);
+                    }
+                    // Clean up backup file
+                    fs.unlinkSync(backupPath);
+                }
+            } catch (e) {
+                logger.debug(`Could not recover findings from backup: ${e}`);
+            }
+
+            const timeoutNotice: Prisma.FindingCreateManyInput = {
+                assessmentId,
+                toolName: 'scanner',
+                title: 'Scan reached time limit (results may be incomplete)',
+                description:
+                    `This run stopped after ${Math.round(timeoutMs / 1000)}s due to the configured time limit (${timeoutSource}). Some tools may not have finished, so results may be incomplete.`,
+                severity: 'INFO',
+                remediation:
+                    `If you want deeper coverage, rerun with a longer timeout (set SCANNER_TIMEOUT_MS) and/or choose a deeper preset.`,
+                evidence: {
+                    timeoutMs,
+                    timeoutSource,
+                    runtime,
+                    preset: normalizedPreset,
+                    scope,
+                    recoveredFindingsCount: recoveredFindings.length,
+                } as any,
+                complianceMapping: [],
+            };
+
+            safeResolve([...recoveredFindings, timeoutNotice]);
         }, timeoutMs);
         timeoutTimer.unref?.();
 
@@ -249,6 +272,20 @@ const runPythonScanner = (
             try {
                 // The Python script should print a JSON array of findings to stdout.
                 const findings = JSON.parse(findingsOutput);
+                
+                // Clean up backup file on successful completion
+                try {
+                    const os = await import('os');
+                    const fs = await import('fs');
+                    const path = await import('path');
+                    const backupPath = path.join(os.tmpdir(), 'sentinel_scanner', `findings_${assessmentId}.json`);
+                    if (fs.existsSync(backupPath)) {
+                        fs.unlinkSync(backupPath);
+                    }
+                } catch {
+                    // ignore cleanup errors
+                }
+                
                 safeResolve(findings);
             } catch (e) {
                 logger.error('Failed to parse JSON output from Python script.');
