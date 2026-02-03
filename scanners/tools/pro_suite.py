@@ -1,3 +1,18 @@
+"""
+PRO SUITE - PLACEHOLDER SCANNERS
+=================================
+⚠️ WARNING: These tools are STUBS and return EMPTY results.
+
+These are placeholder classes for future scanner implementations.
+They are registered to show available scanner categories in the UI,
+but they do NOT perform actual security scanning.
+
+DO NOT rely on these for real security assessments.
+
+For actual working scanners, use the implemented tools in:
+- ai30_*.py files (wrap AI 30 Days scripts)
+- admin_exposure.py, cors_guard.py, jwt.py, idor.py, ssl_analyzer.py
+"""
 from __future__ import annotations
 
 from typing import Any, Dict, List
@@ -8,13 +23,16 @@ from scanners.engine.registry import register_tool
 class _StubTool:
     """A placeholder tool that returns no findings.
 
+    ⚠️ THIS IS A STUB - It always returns empty results.
     Replace `run()` bodies with your real implementations as you port them in.
     Keep the output schema consistent with Prisma FindingCreateManyInput.
     """
 
     supported_scopes = ["FULL"]
+    _is_stub = True  # Mark as stub for filtering in UI if needed
 
     def run(self, ctx) -> List[Dict[str, Any]]:
+        # STUB: Always returns empty - no actual scanning performed
         return []
 
 

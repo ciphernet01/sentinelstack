@@ -11,10 +11,10 @@ from scanners.engine.registry import register_tool
 
 
 def _normalize_severity(raw: str) -> str:
-    raw_upper = str(raw or "HIGH").strip().upper()
+    raw_upper = str(raw or "INFO").strip().upper()
     if raw_upper in {"CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"}:
         return raw_upper
-    return "HIGH"
+    return "INFO"
 
 
 def _finding(*, title: str, description: str, severity: str, remediation: str, evidence: Dict[str, Any]) -> Dict[str, Any]:

@@ -31,10 +31,10 @@ def _safe_import_ai30_script(script_filename: str):
 
 
 def _normalize_severity(raw: str) -> str:
-    raw_upper = str(raw or "MEDIUM").strip().upper()
+    raw_upper = str(raw or "INFO").strip().upper()
     if raw_upper in {"CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"}:
         return raw_upper
-    return "MEDIUM"
+    return "INFO"
 
 
 def _finding(*, title: str, description: str, severity: str, remediation: str, evidence: Dict[str, Any]) -> Dict[str, Any]:

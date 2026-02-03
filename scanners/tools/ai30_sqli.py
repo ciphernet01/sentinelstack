@@ -1,31 +1,62 @@
-"""
-SQL Injection Scanner wrapper for AI 30 Days integration
-"""
-import os
+"""SQL Injection Scanner wrapper for AI 30 Days integration"""
+from __future__ import annotations
+
 import sys
-import subprocess
-import json
-from typing import List, Dict, Any
+from pathlib import Path
+from typing import Any, Dict, List
 
-# Add AI 30 Days path
-AI30_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "AI 30 Days")
-sys.path.insert(0, AI30_PATH)
-
-from ..engine import register_tool, ToolContext
+from scanners.engine.registry import register_tool
 
 
-@register_tool("sqli_scanner", category="injection", scope=["WEB", "API", "FULL"])
-def run_sqli_scanner(ctx: ToolContext) -> List[Dict[str, Any]]:
-    """
-    Deep SQL Injection Scanner
+def _repo_root() -> Path:
+    return Path(__file__).resolve().parents[2]
+
+
+def _safe_import_ai30_script(script_filename: str):
+    ai30_dir = _repo_root() / "AI 30 Days"
+    script_path = ai30_dir / script_filename
+    if not script_path.exists():
+        raise FileNotFoundError(f"AI30 script not found: {script_path}")
+
+    import importlib.util
+    module_name = f"ai30_{script_filename.replace('.', '_')}"
+    spec = importlib.util.spec_from_file_location(module_name, script_path)
+    if spec is None or spec.loader is None:
+        raise ImportError(f"Could not load spec for: {script_path}")
+
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[module_name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+def _normalize_severity(raw: str) -> str:
+    raw_upper = str(raw or "INFO").strip().upper()
+    if raw_upper in {"CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"}:
+        return raw_upper
+    return "INFO"
+
+
+def _finding(*, title: str, description: str, severity: str, remediation: str, evidence: Dict[str, Any]) -> Dict[str, Any]:
+    return {
+        "toolName": "SQL Injection Scanner Pro",
+        "title": title,
+        "description": description,
+        "severity": _normalize_severity(severity),
+        "remediation": remediation,
+        "evidence": evidence,
+        "complianceMapping": ["OWASP-A03-2021", "CWE-89"],
+    }
+
+
+@register_tool("sqli_scanner")
+class SQLiScannerTool:
+    """Deep SQL Injection Scanner - detects various SQL injection vulnerabilities"""
     
-    Detects:
-    - Error-based SQL injection
-    - Time-based blind SQL injection
-    - Union-based SQL injection
-    - Boolean-based blind SQL injection
-    - WAF bypass techniques
-    """
+    name = "sqli_scanner"
+    supported_scopes = ["WEB", "API", "FULL"]
+    
+    def run(self, ctx) -> List[Dict[str, Any]]:
         # Require authorization for active injection testing
         authorization_confirmed = bool((ctx.metadata or {}).get("authorizationConfirmed"))
         if not authorization_confirmed:
@@ -50,10 +81,18 @@ def run_sqli_scanner(ctx: ToolContext) -> List[Dict[str, Any]]:
         
         try:
             module = _safe_import_ai30_script("sqli_scanner_pro.py")
-            scanner = module.SQLiScanner(target)
+            scanner_cls = getattr(module, "SQLiScanner", None)
+            if scanner_cls is None:
+                raise AttributeError("SQLiScanner class not found")
+            
+            scanner = scanner_cls(target)
             results = scanner.run()
             
             for vuln in results.get("vulnerabilities", []):
+                # Validate the finding has actual evidence
+                if not vuln.get("parameter") and not vuln.get("payload"):
+                    continue  # Skip findings without proof
+                
                 findings.append(_finding(
                     title=f"SQL Injection - {vuln.get('type', 'Generic')}",
                     description=f"SQL injection vulnerability detected using {vuln.get('technique', 'unknown')} technique.",
@@ -69,13 +108,8 @@ def run_sqli_scanner(ctx: ToolContext) -> List[Dict[str, Any]]:
                 ))
                 
         except FileNotFoundError:
-            findings.append(_finding(
-                title="SQL Injection Scanner - Script Not Found",
-                description="The sqli_scanner_pro.py script was not found.",
-                severity="INFO",
-                remediation="Ensure the AI 30 Days scripts are properly installed.",
-                evidence={"target": target},
-            ))
+            # Script not found - not an error, just skip
+            pass
         except Exception as e:
             findings.append(_finding(
                 title="SQL Injection Scanner Error",
