@@ -138,8 +138,9 @@ class AI30BrokenAccessControl:
                 score = int(scored.get("score") or 0)
                 severity = _normalize_severity(scored.get("severity") or "INFO")
 
-                # Keep medium+ to reduce spam in the product.
-                if score < 50:
+                # Only keep HIGH+ findings (score >= 70) to reduce noise
+                # This is enterprise-grade software - we want accuracy over volume
+                if score < 70:
                     continue
 
                 finding_type = scored.get("type") or "access_control"

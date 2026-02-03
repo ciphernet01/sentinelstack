@@ -1007,16 +1007,17 @@ class EnhancedScorer:
         
         score += type_scores.get(finding.get("type", ""), 20)
         
-        # Status code scoring
+        # Status code scoring - ONLY truly interesting statuses add significant score
+        # Redirects indicate PROTECTION, not vulnerability
         status = finding.get("status", 0)
         if status == 200:
-            score += 20
-        elif status in [301, 302]:
-            score += 15
+            score += 10  # Reduced - 200 alone is not evidence
+        elif status in [301, 302, 303, 307, 308]:
+            score -= 20  # PENALTY for redirects - indicates proper protection
         elif status in [401, 403]:
-            score += 25
+            score += 5   # Reduced - blocked access is not a vulnerability
         elif status == 500:
-            score += 5
+            score -= 10  # PENALTY for errors - not reliable evidence
         
         # Analysis confidence
         analysis = finding.get("analysis", {})
