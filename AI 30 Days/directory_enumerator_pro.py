@@ -69,15 +69,27 @@ def worker(base, q, results):
         url = f"{base}/{item}"
         status, size = fetch(url)
 
-        if status and status in [200, 301, 302, 403, 500]:
+        # IMPORTANT: Only flag actual exposures (200) or blocked-but-exists (403)
+        # Skip redirects (301/302) - they indicate protection, not exposure
+        # Skip errors (500) - server issues are not vulnerabilities
+        if status and status in [200, 403]:
+            # For 403, reduce risk score since it's blocked
+            adjusted_risk = risk_score(item)
+            if status == 403:
+                adjusted_risk = min(adjusted_risk, 20)  # Cap at LOW for blocked paths
+            
             results.append({
                 "path": item,
                 "url": url,
                 "status": status,
                 "size": size,
-                "risk": risk_score(item)
+                "risk": adjusted_risk,
+                "blocked": status == 403
             })
-            print(f"[FOUND] {status} | {item} | risk={risk_score(item)}")
+            if status == 200:
+                print(f"[FOUND] {status} | {item} | risk={adjusted_risk}")
+            else:
+                print(f"[BLOCKED] {status} | {item} | exists but protected")
 
         q.task_done()
 

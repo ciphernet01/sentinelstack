@@ -326,14 +326,20 @@ class SSRFScanner:
                 test_url = f"{self.base}?{param}={urllib.parse.quote(payload)}"
                 resp = self.session.get(test_url, headers=random_headers(), timeout=REQUEST_TIMEOUT, verify=False, allow_redirects=False)
                 
-                if resp.status_code in [200, 301, 302]:
-                    results.append({
-                        "type": "DNS_REBINDING_POTENTIAL",
-                        "parameter": param,
-                        "payload": payload,
-                        "status_code": resp.status_code,
-                        "severity": "MEDIUM",
-                    })
+                # IMPORTANT: Only flag 200 with actual SSRF indicators
+                # 301/302 redirects are normal behavior, NOT SSRF
+                if resp.status_code == 200:
+                    # Check for actual internal access indicators
+                    indicators = self._check_ssrf_indicators(resp, "127.0.0.1")
+                    if indicators:
+                        results.append({
+                            "type": "DNS_REBINDING_POTENTIAL",
+                            "parameter": param,
+                            "payload": payload,
+                            "status_code": resp.status_code,
+                            "severity": "MEDIUM",
+                            "indicators": indicators,
+                        })
                     
             except Exception:
                 continue

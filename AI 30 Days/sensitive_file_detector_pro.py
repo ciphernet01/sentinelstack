@@ -260,9 +260,32 @@ class SensitiveScanner:
             res = probe_url(self.session, full, allow_get_snippet=True)
             if res:
                 status = res.get("status")
-                if status and status in (200, 301, 302, 403):  # interesting statuses
+                content_type = res.get("content_type", "")
+                
+                # IMPORTANT: Skip redirects - they indicate protection, not exposure
+                # A real sensitive file exposure would return 200 with actual content
+                if status in (301, 302, 303, 307, 308):
+                    self.queue.task_done()
+                    continue
+                
+                # Only flag 200 (actual exposure) or 403 (exists but blocked)
+                if status and status in (200, 403):
                     tags = infer_tags_from_path(path)
                     score = compute_score_for_tags(tags)
+                    
+                    # For 403, reduce score - it's blocked, not exposed
+                    if status == 403:
+                        score = min(score, 40)
+                    
+                    # For 200, validate content-type for sensitive files
+                    # Skip HTML responses for config files (usually error pages)
+                    if status == 200 and "text/html" in content_type.lower():
+                        sensitive_paths = [".env", ".git", "config.json", "credentials", "secrets"]
+                        if any(sp in path.lower() for sp in sensitive_paths):
+                            # HTML response for .env is likely a redirect or error page
+                            self.queue.task_done()
+                            continue
+                    
                     # sanitize snippet small text
                     snippet = None
                     if res.get("snippet"):
@@ -280,7 +303,8 @@ class SensitiveScanner:
                         "tags": tags,
                         "score": score,
                         "snippet": snippet,
-                        "scanned_at": now_ts()
+                        "scanned_at": now_ts(),
+                        "blocked": status == 403
                     }
                     with self.lock:
                         self.results.append(finding)

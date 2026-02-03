@@ -606,9 +606,11 @@ class EnhancedAccessControlScanner:
             analysis["interesting"] = True
         
         elif status in [301, 302, 303, 307, 308]:
-            analysis["reasons"].append(f"Redirect_{status}")
-            analysis["confidence"] += 15
-            analysis["interesting"] = True
+            # IMPORTANT: Redirects indicate PROTECTION, not vulnerability
+            # Reduce confidence instead of increasing it
+            analysis["reasons"].append(f"Redirect_{status}_Protected")
+            analysis["confidence"] -= 10  # Reduce confidence for redirects
+            analysis["interesting"] = False  # Not interesting unless other indicators
         
         elif status in [401, 403]:
             analysis["reasons"].append(f"Auth_{status}")
