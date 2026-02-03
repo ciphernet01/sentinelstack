@@ -174,30 +174,76 @@ class AI30SensitiveFiles:
                         continue
 
                     status = res.get("status")
-                    if status not in (200, 301, 302, 403):
+                    final_url = res.get("url", url)
+                    content_type = res.get("content_type", "")
+
+                    # Skip redirects - they indicate the path is handled/protected, not exposed
+                    # A real .env exposure would return 200 with text/plain content
+                    if status in (301, 302, 303, 307, 308):
+                        continue
+
+                    # Skip if redirected to a completely different path (false positive)
+                    # e.g., /.env redirecting to /environmental-engineering/
+                    if final_url and final_url != url:
+                        final_path = urlparse(final_url).path.lower()
+                        original_path = path.lower()
+                        # If the final path doesn't contain the sensitive filename, it's a redirect away
+                        if original_path.split("/")[-1] not in final_path:
+                            continue
+
+                    # Only flag as interesting if status is 200 (actual content) or 403 (blocked but exists)
+                    if status not in (200, 403):
+                        continue
+
+                    # For 200 responses, validate content looks like sensitive data
+                    is_likely_sensitive = False
+                    if status == 200:
+                        # Check content type - sensitive files are usually text/plain, application/json, etc.
+                        sensitive_content_types = ["text/plain", "application/json", "application/x-sql", "text/x-log"]
+                        if any(ct in (content_type or "").lower() for ct in sensitive_content_types):
+                            is_likely_sensitive = True
+                        # HTML responses are usually error pages or redirects, not actual .env files
+                        elif "text/html" in (content_type or "").lower():
+                            # Skip HTML responses for .env files - likely a custom error page or redirect
+                            if path in ["/.env", "/.env.example", "/.git/HEAD", "/.git/config"]:
+                                continue
+                    elif status == 403:
+                        # 403 means it exists but is blocked - lower severity but still noteworthy
+                        is_likely_sensitive = True
+
+                    if not is_likely_sensitive and status == 200:
                         continue
 
                     tags = list(infer_tags_from_path(path))
                     score = int(compute_score_for_tags(tags) or 0)
+                    
+                    # Reduce severity for 403 (blocked) responses
+                    if status == 403:
+                        score = min(score, 40)  # Cap at MEDIUM for blocked files
+                    
                     severity = _severity_for_score(score)
 
                     findings.append(
                         _finding(
-                            title="Potential sensitive file exposure",
+                            title="Potential sensitive file exposure" if status == 200 else "Sensitive path exists (blocked)",
                             description=(
                                 "An automated probe detected a potentially sensitive path responding with an interesting status code. "
                                 "Validate whether the resource is publicly accessible and contains sensitive content."
+                            ) if status == 200 else (
+                                "A sensitive path exists but returned 403 Forbidden. While currently blocked, "
+                                "verify this protection is intentional and consistently applied."
                             ),
                             severity=severity,
                             remediation=_remediation_for_tags(tags),
                             evidence={
-                                "url": res.get("url"),
+                                "url": final_url or url,
                                 "path": path,
                                 "status": status,
-                                "contentType": res.get("content_type"),
+                                "contentType": content_type,
                                 "contentLength": res.get("content_length"),
                                 "tags": tags,
                                 "score": score,
+                                "redirected": final_url != url if final_url else False,
                             },
                         )
                     )
