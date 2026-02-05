@@ -57,29 +57,29 @@ function VerifyEmailContent() {
       return;
     }
 
-    verifyEmail(token);
-  }, [token]);
+    const run = async () => {
+      try {
+        const response = await api.post('/auth/verify-email', { token });
+        setStatus('success');
+        setMessage(response.data.message || 'Email verified successfully!');
 
-  const verifyEmail = async (token: string) => {
-    try {
-      const response = await api.post('/auth/verify-email', { token });
-      setStatus('success');
-      setMessage(response.data.message || 'Email verified successfully!');
+        setTimeout(() => {
+          router.push('/login');
+        }, 3000);
+      } catch (error: any) {
+        const errorMessage = error.response?.data?.message || 'Verification failed.';
+        setMessage(errorMessage);
 
-      setTimeout(() => {
-        router.push('/login');
-      }, 3000);
-    } catch (error: any) {
-      const errorMessage = error.response?.data?.message || 'Verification failed.';
-      setMessage(errorMessage);
-
-      if (errorMessage.includes('expired')) {
-        setStatus('expired');
-      } else {
-        setStatus('error');
+        if (errorMessage.includes('expired')) {
+          setStatus('expired');
+        } else {
+          setStatus('error');
+        }
       }
-    }
-  };
+    };
+
+    run();
+  }, [token, router]);
 
   const handleResendVerification = async () => {
     const email = resendForm.getValues('email');

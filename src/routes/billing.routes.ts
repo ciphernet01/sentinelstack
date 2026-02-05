@@ -1,11 +1,12 @@
 import { Router, raw } from 'express';
 import { billingController } from '../controllers/billing.controller';
 import { firebaseAuth } from '../middleware/auth';
+import { billingActionLimiter, webhookLimiter } from '../middleware/rateLimit';
 
 const router = Router();
 
 // Webhook route - no auth, raw body for signature verification
-router.post('/webhook', raw({ type: 'application/json' }), (req, res) => 
+router.post('/webhook', webhookLimiter, raw({ type: 'application/json' }), (req, res) => 
   billingController.handleWebhook(req, res)
 );
 
@@ -16,11 +17,11 @@ router.get('/subscription', (req, res) =>
   billingController.getSubscription(req, res)
 );
 
-router.post('/checkout', (req, res) => 
+router.post('/checkout', billingActionLimiter, (req, res) => 
   billingController.createCheckout(req, res)
 );
 
-router.post('/portal', (req, res) => 
+router.post('/portal', billingActionLimiter, (req, res) => 
   billingController.createPortal(req, res)
 );
 

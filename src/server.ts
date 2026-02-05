@@ -10,6 +10,7 @@ import { errorHandler } from './middleware/errorHandler';
 import { stream } from './utils/logger';
 import logger from './utils/logger';
 import { recoverOrphanedInProgressAssessments } from './services/assessmentRecovery.service';
+import { requestIdMiddleware } from './middleware/requestId';
 
 // Initialize Firebase
 initializeFirebaseAdmin();
@@ -23,8 +24,12 @@ const app = express();
 const port = process.env.PORT || 3001;
 const clientUrl = process.env.CLIENT_URL;
 
+// Required for correct req.ip when behind Render/NGINX proxies
+app.set('trust proxy', 1);
+
 // Middleware
 app.use(helmet());
+app.use(requestIdMiddleware);
 app.use(
   cors({
     origin: clientUrl,
@@ -33,7 +38,13 @@ app.use(
 );
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(morgan('combined', { stream }));
+
+morgan.token('id', (req) => {
+  const anyReq = req as any;
+  const headerId = anyReq?.headers?.['x-request-id'];
+  return anyReq?.requestId || headerId || '-';
+});
+app.use(morgan(':id :method :url :status :res[content-length] - :response-time ms', { stream }));
 
 // API Routes
 app.use('/api', apiRoutes);

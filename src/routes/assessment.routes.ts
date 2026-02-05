@@ -3,6 +3,7 @@ import { Router } from 'express';
 import { assessmentController } from '../controllers/assessment.controller';
 import { firebaseAuth, adminOnly } from '../middleware/auth';
 import { validateAssessmentCreation } from '../middleware/validators';
+import { scanCreateLimiter } from '../middleware/rateLimit';
 
 const router = Router();
 
@@ -11,7 +12,7 @@ const router = Router();
 // @route   POST /api/assessments
 // @desc    Create a new assessment
 // @access  Private (Client or Admin)
-router.post('/', firebaseAuth, validateAssessmentCreation, assessmentController.createAssessment);
+router.post('/', firebaseAuth, scanCreateLimiter, validateAssessmentCreation, assessmentController.createAssessment);
 
 // @route   POST /api/assessments/reset
 // @desc    DEV ONLY: Delete all assessments for the current org

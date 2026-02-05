@@ -69,6 +69,7 @@
     "dotenv": "^16.4.5",
     "embla-carousel-react": "^8.1.5",
     "express": "^4.19.2",
+    "express-rate-limit": "^8.2.1",
     "express-validator": "^7.1.0",
     "file-saver": "^2.0.5",
     "firebase": "^10.12.2",

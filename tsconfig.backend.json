@@ -5,6 +5,6 @@
     "rootDir": "./src",
     "outDir": "./dist"
   },
-  "include": ["src/server.ts", "src/**/*.ts"],
+  "include": ["src/server.ts", "src/**/*.ts", "src/**/*.d.ts"],
   "exclude": ["node_modules", ".next", "src/app/**", "src/components/**"]
 }

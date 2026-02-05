@@ -2,7 +2,9 @@ import { Request, Response, NextFunction } from 'express';
 import logger from '../utils/logger';
 
 export const errorHandler = (err: Error, req: Request, res: Response, next: NextFunction) => {
-  logger.error(err.stack);
+  const requestId = (req as any).requestId;
+  const prefix = requestId ? `[${requestId}] ` : '';
+  logger.error(`${prefix}${err.stack || String(err)}`);
 
   // Default to a 500 server error
   let statusCode = 500;
@@ -17,6 +19,7 @@ export const errorHandler = (err: Error, req: Request, res: Response, next: Next
   res.status(statusCode).json({
     success: false,
     message: message,
+    requestId,
     // Avoid leaking stack trace in production
     ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
   });

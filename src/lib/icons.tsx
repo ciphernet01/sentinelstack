@@ -1,4 +1,5 @@
 import React from 'react';
+import Image from 'next/image';
 
 export const SentinelStackLogo: React.FC<{
   width?: number;
@@ -6,10 +7,17 @@ export const SentinelStackLogo: React.FC<{
 }> = ({ width = 820, className = '' }) => {
   // The aspect ratio of the image is 1600/600 = 8/3
   // We can calculate height from the width to maintain aspect ratio.
-  const height = (width * 6) / 16;
+  const height = Math.max(1, Math.round((width * 6) / 16));
   return (
     <div style={{ width: `${width}px`, height: `${height}px` }} className={className}>
-       <img src="/branding/sentinelstack-logo.png" alt="SentinelStack Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+      <Image
+        src="/branding/sentinelstack-logo.png"
+        alt="SentinelStack Logo"
+        width={width}
+        height={height}
+        style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+        priority
+      />
     </div>
   );
 };
