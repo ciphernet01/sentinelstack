@@ -43,7 +43,7 @@ export default function TrustPage() {
         <div className="text-center">
           <Shield className="h-12 w-12 mx-auto text-slate-400 mb-4" />
           <h1 className="text-xl font-semibold text-slate-900 dark:text-white">Trust Page Not Found</h1>
-          <p className="text-slate-500 mt-2">This organization's trust page is not available.</p>
+          <p className="text-slate-500 mt-2">This organization&apos;s trust page is not available.</p>
         </div>
       </div>
     );
@@ -97,7 +97,7 @@ export default function TrustPage() {
             Our Commitment to Security
           </h2>
           <p className="text-lg text-slate-600 dark:text-slate-400 max-w-2xl mx-auto">
-            We take security seriously. Below you'll find our current certifications, 
+            We take security seriously. Below you&apos;ll find our current certifications, 
             compliance standards, and security practices.
           </p>
         </div>

@@ -113,7 +113,7 @@ export function UsageIndicator({ className, showUpgradeLink = true, compact = fa
 
           {isLow && (
             <p className="text-xs text-red-400 mt-2">
-              You're running low on scans. Upgrade for more.
+              You&apos;re running low on scans. Upgrade for more.
             </p>
           )}
         </>

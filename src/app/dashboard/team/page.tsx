@@ -508,7 +508,7 @@ export default function TeamPage() {
                   <MailPlus className="h-5 w-5" />
                   Pending Invitations
                 </CardTitle>
-                <CardDescription>People who have been invited but haven't joined yet</CardDescription>
+                <CardDescription>People who have been invited but haven&apos;t joined yet</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="rounded-md border overflow-x-auto">

@@ -48,7 +48,7 @@ export default function PrivacyPolicyPage() {
                 <Card className="p-6">
                   <h2 className="text-lg font-semibold mb-2">1. Introduction</h2>
                   <p className="text-muted-foreground">
-                    SentinelStack ("we," "our," or "us") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our security assessment platform and related services (collectively, the "Service").
+                    SentinelStack (&quot;we,&quot; &quot;our,&quot; or &quot;us&quot;) is committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our security assessment platform and related services (collectively, the &quot;Service&quot;).
                   </p>
                 </Card>
 
@@ -146,7 +146,7 @@ export default function PrivacyPolicyPage() {
                 <Card className="p-6">
                   <h2 className="text-lg font-semibold mb-2">9. Changes to This Policy</h2>
                   <p className="text-muted-foreground">
-                    We may update this Privacy Policy from time to time. We will notify you of any changes by posting the new Privacy Policy on this page and updating the "Last updated" date. Continued use of the Service after changes constitutes acceptance of the updated policy.
+                    We may update this Privacy Policy from time to time. We will notify you of any changes by posting the new Privacy Policy on this page and updating the &quot;Last updated&quot; date. Continued use of the Service after changes constitutes acceptance of the updated policy.
                   </p>
                 </Card>
 

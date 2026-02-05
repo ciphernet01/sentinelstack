@@ -484,10 +484,10 @@ export default function CompliancePage() {
               </div>
               
               <div className="border-t pt-4">
-                <h4 className="font-medium mb-2">What's displayed on your trust page:</h4>
+                <h4 className="font-medium mb-2">What&apos;s displayed on your trust page:</h4>
                 <ul className="text-sm text-muted-foreground space-y-1">
                   <li>✓ Your company name and logo (from branding settings)</li>
-                  <li>✓ All badges marked as "Display on Trust Page"</li>
+                  <li>✓ All badges marked as &quot;Display on Trust Page&quot;</li>
                   <li>✓ Verification status and links</li>
                   <li>✓ Certification dates and expiration</li>
                 </ul>

@@ -48,7 +48,7 @@ export default function TermsOfServicePage() {
                 <Card className="p-6">
                   <h2 className="text-lg font-semibold mb-2">1. Acceptance of Terms</h2>
                   <p className="text-muted-foreground">
-                    By accessing or using SentinelStack ("the Service"), you agree to be bound by these Terms of Service. If you do not agree to these terms, please do not use our Service. These terms apply to all users, including visitors, registered users, and paying customers.
+                    By accessing or using SentinelStack (&quot;the Service&quot;), you agree to be bound by these Terms of Service. If you do not agree to these terms, please do not use our Service. These terms apply to all users, including visitors, registered users, and paying customers.
                   </p>
                 </Card>
 
@@ -127,7 +127,7 @@ export default function TermsOfServicePage() {
                 <Card className="p-6">
                   <h2 className="text-lg font-semibold mb-2">8. Disclaimer of Warranties</h2>
                   <p className="text-muted-foreground">
-                    THE SERVICE IS PROVIDED "AS IS" AND "AS AVAILABLE" WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED. WE DO NOT GUARANTEE THAT THE SERVICE WILL IDENTIFY ALL SECURITY VULNERABILITIES OR THAT YOUR SYSTEMS WILL BE SECURE AFTER USING OUR SERVICE. Security is an ongoing process, and our scans provide point-in-time assessments only.
+                    THE SERVICE IS PROVIDED &quot;AS IS&quot; AND &quot;AS AVAILABLE&quot; WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED. WE DO NOT GUARANTEE THAT THE SERVICE WILL IDENTIFY ALL SECURITY VULNERABILITIES OR THAT YOUR SYSTEMS WILL BE SECURE AFTER USING OUR SERVICE. Security is an ongoing process, and our scans provide point-in-time assessments only.
                   </p>
                 </Card>
 
