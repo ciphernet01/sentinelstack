@@ -81,6 +81,9 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
+# npm audit artifacts
+audit.json
+
 # vercel
 .vercel
 
