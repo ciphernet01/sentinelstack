@@ -29,7 +29,8 @@
     "security:secrets": "node scripts/security/check-secrets.js",
     "security:precommit": "node scripts/security/check-staged-env.js && node scripts/security/check-secrets.js",
     "prepare": "node scripts/husky-install.js",
-    "hooks:install": "node scripts/husky-install.js"
+    "hooks:install": "node scripts/husky-install.js",
+    "admin:grant-scans": "node scripts/admin/grant-scans.js"
   },
   "keywords": [],
   "author": "",

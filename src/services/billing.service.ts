@@ -7,6 +7,15 @@ type SubscriptionStatus = 'FREE' | 'ACTIVE' | 'PAST_DUE' | 'CANCELED' | 'TRIALIN
 type SubscriptionTier = 'FREE' | 'PRO' | 'ENTERPRISE';
 
 export class BillingService {
+  private isAdminBypassEmail(userEmail?: string): boolean {
+    const adminEmailsEnv = process.env.ADMIN_EMAILS || '';
+    const adminEmails = adminEmailsEnv
+      .split(',')
+      .map((e) => e.trim().toLowerCase())
+      .filter(Boolean);
+
+    return Boolean(userEmail && adminEmails.includes(userEmail.toLowerCase()));
+  }
   /**
    * Create a Stripe customer for an organization
    */
@@ -329,7 +338,7 @@ export class BillingService {
   /**
    * Get subscription details for an organization
    */
-  async getSubscription(organizationId: string) {
+  async getSubscription(organizationId: string, userEmail?: string) {
     const org = await prisma.organization.findUnique({
       where: { id: organizationId },
       select: {
@@ -346,9 +355,13 @@ export class BillingService {
     }
 
     const tierConfig = PRICING_TIERS[org.subscriptionTier];
-    const scansRemaining = tierConfig.limits.scansPerMonth === -1
+    const isBypass = this.isAdminBypassEmail(userEmail);
+    const effectiveScansLimit =
+      isBypass || tierConfig.limits.scansPerMonth === -1 ? -1 : tierConfig.limits.scansPerMonth;
+
+    const scansRemaining = effectiveScansLimit === -1
       ? 'unlimited'
-      : Math.max(0, tierConfig.limits.scansPerMonth - org.scansUsedThisMonth);
+      : Math.max(0, effectiveScansLimit - org.scansUsedThisMonth);
 
     return {
       status: org.subscriptionStatus,
@@ -357,7 +370,7 @@ export class BillingService {
       periodEnd: org.subscriptionPeriodEnd,
       usage: {
         scansUsed: org.scansUsedThisMonth,
-        scansLimit: tierConfig.limits.scansPerMonth,
+        scansLimit: effectiveScansLimit,
         scansRemaining,
         resetAt: org.scansResetAt,
       },
@@ -410,9 +423,7 @@ export class BillingService {
    */
   async canPerformScan(organizationId: string, userEmail?: string): Promise<{ allowed: boolean; reason?: string }> {
     // Admin bypass - unlimited access for admin accounts (comma-separated in env)
-    const adminEmailsEnv = process.env.ADMIN_EMAILS || '';
-    const ADMIN_EMAILS = adminEmailsEnv.split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
-    if (userEmail && ADMIN_EMAILS.includes(userEmail.toLowerCase())) {
+    if (this.isAdminBypassEmail(userEmail)) {
       return { allowed: true };
     }
 

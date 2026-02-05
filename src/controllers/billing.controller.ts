@@ -18,7 +18,7 @@ export class BillingController {
         return res.status(400).json({ error: 'Organization ID required' });
       }
 
-      const subscription = await billingService.getSubscription(organizationId);
+      const subscription = await billingService.getSubscription(organizationId, req.user?.email);
       res.json(subscription);
     } catch (error: any) {
       logger.error('Error getting subscription:', error);
@@ -132,7 +132,7 @@ export class BillingController {
         return res.status(400).json({ error: 'Organization ID required' });
       }
 
-      const subscription = await billingService.getSubscription(organizationId);
+      const subscription = await billingService.getSubscription(organizationId, req.user?.email);
       
       res.json({
         usage: subscription.usage,
