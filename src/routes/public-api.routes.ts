@@ -275,7 +275,7 @@ router.get('/', (req: ApiKeyRequest, res: Response) => {
   res.json({
     name: 'SentinelStack Public API',
     version: '1.0.0',
-    documentation: 'https://docs.sentinelstack.io/api',
+    documentation: 'https://docs.sentinel-stack.tech/api',
     endpoints: {
       assessments: {
         list: 'GET /api/v1/assessments',

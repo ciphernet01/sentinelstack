@@ -312,12 +312,12 @@ export default function ApiKeysPage() {
             Quick Start
           </CardTitle>
           <CardDescription>
-            Use your API key to authenticate requests to the SentinelStack API.
+            Use your API key to authenticate requests to the Sentinel Stack API.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="bg-slate-900 text-slate-100 p-4 rounded-md font-mono text-sm overflow-x-auto">
-            <pre>{`curl -X GET "https://api.sentinelstack.io/api/v1/assessments" \\
+            <pre>{`curl -X GET "https://api.sentinel-stack.tech/api/v1/assessments" \\
   -H "Authorization: Bearer sk_live_your_api_key_here" \\
   -H "Content-Type: application/json"`}</pre>
           </div>

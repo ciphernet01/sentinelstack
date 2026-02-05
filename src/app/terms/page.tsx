@@ -158,7 +158,7 @@ export default function TermsOfServicePage() {
                 For questions about these Terms of Service, please contact us at:
               </p>
               <p className="text-cyan-400 mt-2">
-                <a href="mailto:legal@sentinelstack.io" className="hover:underline">legal@sentinelstack.io</a>
+                <a href="mailto:legal@sentinel-stack.tech" className="hover:underline">legal@sentinel-stack.tech</a>
               </p>
             </section>
           </div>

@@ -68,7 +68,7 @@ const tiers = [
       'SOC2 compliance reports',
     ],
     cta: 'Contact Sales',
-    ctaLink: 'mailto:sales@sentinelstack.io?subject=Enterprise%20Inquiry',
+    ctaLink: 'mailto:sales@sentinel-stack.tech?subject=Enterprise%20Inquiry',
   },
 ];
 
@@ -116,7 +116,7 @@ export default function PricingPage() {
     }
 
     if (tierId === 'ENTERPRISE') {
-      window.location.href = 'mailto:sales@sentinelstack.io?subject=Enterprise%20Inquiry';
+      window.location.href = 'mailto:sales@sentinel-stack.tech?subject=Enterprise%20Inquiry';
       return;
     }
 
@@ -453,7 +453,7 @@ export default function PricingPage() {
             <div className="flex flex-wrap items-center justify-center gap-6 text-sm text-slate-400">
               <Link href="/privacy" className="hover:text-white transition-colors">Privacy Policy</Link>
               <Link href="/terms" className="hover:text-white transition-colors">Terms of Service</Link>
-              <Link href="mailto:support@sentinelstack.io" className="hover:text-white transition-colors">Contact</Link>
+              <Link href="mailto:support@sentinel-stack.tech" className="hover:text-white transition-colors">Contact</Link>
             </div>
             <p className="text-sm text-slate-500">
               © {new Date().getFullYear()} SentinelStack. All rights reserved.

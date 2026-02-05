@@ -403,7 +403,7 @@ function PricingCard({
         <Button asChild className={isPrimary ? '' : 'bg-primary/90 hover:bg-primary'} variant={isPrimary ? 'default' : 'secondary'}>
           <Link href={
             price === '$0' ? '/signup' : 
-            price === '$299' ? 'mailto:sales@sentinelstack.io?subject=Enterprise%20Inquiry' : 
+            price === '$299' ? 'mailto:sales@sentinel-stack.tech?subject=Enterprise%20Inquiry' : 
             '/pricing'
           }>
             {price === '$0' ? 'Start Free' : price === '$299' ? 'Contact Sales' : 'Start Pro Trial'}

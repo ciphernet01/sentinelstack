@@ -136,7 +136,7 @@ export default function PrivacyPolicyPage() {
                 If you have any questions about this Privacy Policy, please contact us at:
               </p>
               <p className="text-cyan-400 mt-2">
-                <a href="mailto:privacy@sentinelstack.io" className="hover:underline">privacy@sentinelstack.io</a>
+                <a href="mailto:privacy@sentinel-stack.tech" className="hover:underline">privacy@sentinel-stack.tech</a>
               </p>
             </section>
           </div>
