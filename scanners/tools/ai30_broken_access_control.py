@@ -113,6 +113,10 @@ class AI30BrokenAccessControl:
             max_paths = 40
             pace = (0.05, 0.15)
 
+            # Extract optional scan options from metadata
+            cookies_str = (ctx.metadata or {}).get("cookies")
+            wordlist_path = (ctx.metadata or {}).get("wordlist")
+
             with redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
                 scanner = scanner_cls(
                     base_url=target,
@@ -124,8 +128,8 @@ class AI30BrokenAccessControl:
                 raw_findings = scanner.run(
                     forced_list=None,
                     idor_templates=None,
-                    cookies=None,
-                    extra_wordlist=None,
+                    cookies=cookies_str,
+                    extra_wordlist=wordlist_path,
                     max_paths=max_paths,
                 )
 

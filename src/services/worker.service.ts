@@ -11,10 +11,21 @@ import { webhookService } from './webhook.service';
 const activeWorkers = new Set<string>();
 
 /**
+ * Optional scan configuration options that can be passed to tools
+ */
+export interface ScanOptions {
+    cookies?: string;      // Cookie string like 'session=abc; token=xyz'
+    headers?: Record<string, string>;  // Custom headers like { "Authorization": "Bearer token" }
+    wordlist?: string;     // Path to custom wordlist file
+    [key: string]: unknown; // Allow additional options
+}
+
+/**
  * Executes the Python scanner script and returns the findings.
  * @param targetUrl The URL to scan.
  * @param scope The assessment scope (e.g., WEB, API).
  * @param assessmentId The assessment ID (passed through to the scanner context).
+ * @param scanOptions Optional configuration like cookies, headers, wordlist
  * @returns A promise that resolves to an array of findings.
  */
 const runPythonScanner = (
@@ -23,6 +34,7 @@ const runPythonScanner = (
     assessmentId: string,
     preset: string = 'default',
     authorizationConfirmed: boolean = false,
+    scanOptions: ScanOptions = {},
 ): Promise<Prisma.FindingCreateManyInput[]> => {
     return new Promise((resolve, reject) => {
         const config = getEffectiveScannerConfig(preset, scope);
@@ -50,6 +62,25 @@ const runPythonScanner = (
             '--authorization_confirmed',
             authorizationConfirmed ? 'true' : 'false',
         ];
+        
+        // Add optional scan options if provided
+        if (scanOptions.cookies) {
+            scannerArgs.push('--cookies', scanOptions.cookies);
+        }
+        if (scanOptions.headers && Object.keys(scanOptions.headers).length > 0) {
+            scannerArgs.push('--headers', JSON.stringify(scanOptions.headers));
+        }
+        if (scanOptions.wordlist) {
+            scannerArgs.push('--wordlist', scanOptions.wordlist);
+        }
+        // Pass any additional scan options as JSON
+        const extraOptions = { ...scanOptions };
+        delete extraOptions.cookies;
+        delete extraOptions.headers;
+        delete extraOptions.wordlist;
+        if (Object.keys(extraOptions).length > 0) {
+            scannerArgs.push('--scan_options', JSON.stringify(extraOptions));
+        }
 
         const pythonProcess = runtime === 'docker'
             ? (() => {
@@ -275,9 +306,9 @@ const runPythonScanner = (
                 
                 // Clean up backup file on successful completion
                 try {
-                    const os = await import('os');
-                    const fs = await import('fs');
-                    const path = await import('path');
+                    const os = require('os');
+                    const fs = require('fs');
+                    const path = require('path');
                     const backupPath = path.join(os.tmpdir(), 'sentinel_scanner', `findings_${assessmentId}.json`);
                     if (fs.existsSync(backupPath)) {
                         fs.unlinkSync(backupPath);
@@ -310,6 +341,7 @@ const runPythonScanner = (
  * @param assessmentId The ID of the assessment to process.
  * @param targetUrl The URL to scan.
  * @param scope The scope of the scan.
+ * @param scanOptions Optional configuration like cookies, headers, wordlist
  */
 export const startAssessmentWorker = async (
     assessmentId: string,
@@ -317,6 +349,7 @@ export const startAssessmentWorker = async (
     scope: string,
     preset: string = 'default',
     _authorizationConfirmed: boolean = false,
+    scanOptions: ScanOptions = {},
 ): Promise<void> => {
     if (activeWorkers.has(assessmentId)) {
         logger.warn(`Worker already active for assessment ID: ${assessmentId}. Skipping.`);
@@ -336,6 +369,7 @@ export const startAssessmentWorker = async (
                 status: 'IN_PROGRESS',
                 scannerConfig: {
                     ...effectiveConfig,
+                    scanOptions: scanOptions, // Store scan options for reference
                     capturedAt: new Date().toISOString(),
                 } as any,
                 endedEarly: false,
@@ -357,6 +391,7 @@ export const startAssessmentWorker = async (
             assessmentId,
             preset,
             Boolean(assessment?.authorizationConfirmed),
+            scanOptions,
         );
 
         const endedEarlyReason = findings.some(isScannerTimeoutFinding) ? 'TIMEOUT' : null;

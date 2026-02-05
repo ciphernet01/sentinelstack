@@ -48,7 +48,7 @@ class AssessmentController {
   async createAssessment(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     // The 'scope' field drives the real assessment engine.
     // The 'toolPreset' field is required by the database schema.
-    const { name, targetUrl, scope, toolPreset, authorizationConfirmed, notes } = req.body;
+    const { name, targetUrl, scope, toolPreset, authorizationConfirmed, notes, scanOptions } = req.body;
     const userId = req.user?.id;
     const organizationId = req.user?.organizationId;
 
@@ -72,6 +72,23 @@ class AssessmentController {
       }
 
       const normalizedPreset = normalizeToolPreset(toolPreset);
+      
+      // Validate and sanitize scan options
+      const validatedScanOptions: Record<string, unknown> = {};
+      if (scanOptions && typeof scanOptions === 'object') {
+        // Cookies: string like 'session=abc; token=xyz'
+        if (typeof scanOptions.cookies === 'string' && scanOptions.cookies.trim()) {
+          validatedScanOptions.cookies = scanOptions.cookies.trim();
+        }
+        // Headers: object like { "Authorization": "Bearer token" }
+        if (scanOptions.headers && typeof scanOptions.headers === 'object') {
+          validatedScanOptions.headers = scanOptions.headers;
+        }
+        // Wordlist: path to custom wordlist
+        if (typeof scanOptions.wordlist === 'string' && scanOptions.wordlist.trim()) {
+          validatedScanOptions.wordlist = scanOptions.wordlist.trim();
+        }
+      }
 
       const assessment = await prisma.assessment.create({
         data: {
@@ -90,7 +107,14 @@ class AssessmentController {
       await billingService.incrementScanUsage(organizationId);
 
       // Do not await this. Let it run in the background.
-      startAssessmentWorker(assessment.id, assessment.targetUrl, scope, assessment.toolPreset, Boolean(assessment.authorizationConfirmed));
+      startAssessmentWorker(
+        assessment.id, 
+        assessment.targetUrl, 
+        scope, 
+        assessment.toolPreset, 
+        Boolean(assessment.authorizationConfirmed),
+        validatedScanOptions
+      );
 
       res.status(201).json(assessment);
     } catch (error) {

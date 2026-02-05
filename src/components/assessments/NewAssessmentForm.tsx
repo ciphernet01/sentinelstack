@@ -17,8 +17,9 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, ArrowRight, Loader2, Sparkles } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Loader2, Sparkles, ChevronDown, ChevronUp, Settings2 } from 'lucide-react';
 import { Textarea } from '../ui/textarea';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
 const formSchema = z.object({
   name: z.string().min(2, 'Assessment name must be at least 2 characters.'),
@@ -27,6 +28,9 @@ const formSchema = z.object({
   toolPreset: z.enum(['default', 'access-control', 'deep', 'enterprise']),
   authorizationConfirmed: z.boolean().refine(val => val === true, { message: 'You must confirm you have permission to scan this target.' }),
   notes: z.string().optional(),
+  // Advanced scan options for authenticated scanning
+  cookies: z.string().optional(),
+  customHeaders: z.string().optional(), // JSON string of headers object
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -46,7 +50,9 @@ export function NewAssessmentForm() {
       scope: 'WEB',
       toolPreset: 'default',
       authorizationConfirmed: false,
-      notes: ''
+      notes: '',
+      cookies: '',
+      customHeaders: '',
     },
   });
 
@@ -99,7 +105,28 @@ export function NewAssessmentForm() {
 
   const mutation = useMutation({
     mutationFn: (newAssessment: FormData) => {
-      return api.post('/assessments', newAssessment);
+      // Transform form data to API format with scanOptions
+      const { cookies, customHeaders, ...baseData } = newAssessment;
+      
+      // Build scanOptions object only if values are provided
+      const scanOptions: Record<string, unknown> = {};
+      if (cookies?.trim()) {
+        scanOptions.cookies = cookies.trim();
+      }
+      if (customHeaders?.trim()) {
+        try {
+          scanOptions.headers = JSON.parse(customHeaders);
+        } catch {
+          // Invalid JSON, ignore headers
+        }
+      }
+      
+      const payload = {
+        ...baseData,
+        ...(Object.keys(scanOptions).length > 0 && { scanOptions }),
+      };
+      
+      return api.post('/assessments', payload);
     },
     onSuccess: (data) => {
       toast({
@@ -338,9 +365,79 @@ function Step2() {
                     </FormItem>
                     )}
                 />
+
+                {/* Advanced Options for Authenticated Scanning */}
+                <AdvancedScanOptions control={control} />
             </CardContent>
         </>
     );
+}
+
+function AdvancedScanOptions({ control }: { control: any }) {
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <Collapsible open={isOpen} onOpenChange={setIsOpen} className="mt-6">
+      <CollapsibleTrigger asChild>
+        <Button variant="outline" type="button" className="w-full justify-between">
+          <span className="flex items-center gap-2">
+            <Settings2 className="h-4 w-4" />
+            Advanced Options (Authenticated Scanning)
+          </span>
+          {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+        </Button>
+      </CollapsibleTrigger>
+      <CollapsibleContent className="mt-4 space-y-4 rounded-md border bg-muted/30 p-4">
+        <p className="text-sm text-muted-foreground">
+          Configure authentication to scan protected areas of your application. These credentials are used only during the scan and are not stored.
+        </p>
+        
+        <FormField
+          control={control}
+          name="cookies"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Session Cookies</FormLabel>
+              <FormControl>
+                <Textarea 
+                  placeholder="session=abc123; csrftoken=xyz789; auth_token=..." 
+                  className="font-mono text-sm"
+                  rows={2}
+                  {...field} 
+                />
+              </FormControl>
+              <FormDescription>
+                Enter cookies to authenticate requests. Format: <code className="text-xs bg-muted px-1 rounded">key=value; key2=value2</code>
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={control}
+          name="customHeaders"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Custom Headers (JSON)</FormLabel>
+              <FormControl>
+                <Textarea 
+                  placeholder={'{\n  "Authorization": "Bearer eyJhbGc...",\n  "X-API-Key": "your-api-key"\n}'}
+                  className="font-mono text-sm"
+                  rows={4}
+                  {...field} 
+                />
+              </FormControl>
+              <FormDescription>
+                Add custom HTTP headers as a JSON object. Useful for API keys, bearer tokens, or custom auth headers.
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      </CollapsibleContent>
+    </Collapsible>
+  );
 }
 
 function Step3() {
@@ -389,6 +486,20 @@ function Step3() {
                          <div className="flex flex-col text-sm">
                             <span className="text-muted-foreground">Notes</span>
                             <p className="mt-1 font-sans text-foreground whitespace-pre-wrap">{values.notes}</p>
+                        </div>
+                    )}
+                    {(values.cookies || values.customHeaders) && (
+                        <div className="flex flex-col text-sm border-t pt-3 mt-3">
+                            <span className="text-muted-foreground flex items-center gap-2">
+                              <Settings2 className="h-3 w-3" />
+                              Advanced Options
+                            </span>
+                            {values.cookies && (
+                              <p className="mt-1 text-xs text-green-600 dark:text-green-400">✓ Session cookies configured</p>
+                            )}
+                            {values.customHeaders && (
+                              <p className="mt-1 text-xs text-green-600 dark:text-green-400">✓ Custom headers configured</p>
+                            )}
                         </div>
                     )}
                 </div>

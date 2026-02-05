@@ -55,7 +55,6 @@ def main():
         default="unknown",
         help="Assessment identifier (passed from the backend worker).",
     )
-
     parser.add_argument(
         "--authorization_confirmed",
         required=False,
@@ -63,10 +62,59 @@ def main():
         help="Whether scan authorization was confirmed (true/false).",
     )
     
+    # Optional scan configuration arguments
+    parser.add_argument(
+        "--cookies",
+        required=False,
+        default="",
+        help="Cookies to include in requests (format: 'key=value; key2=value2').",
+    )
+    parser.add_argument(
+        "--headers",
+        required=False,
+        default="",
+        help="Custom headers as JSON object (e.g., '{\"Authorization\": \"Bearer token\"}').",
+    )
+    parser.add_argument(
+        "--wordlist",
+        required=False,
+        default="",
+        help="Path to custom wordlist file for directory enumeration.",
+    )
+    parser.add_argument(
+        "--scan_options",
+        required=False,
+        default="{}",
+        help="Additional scan options as JSON object.",
+    )
+    
     args = parser.parse_args()
 
     ctx = ScanContext(target=args.target, scope=args.scope, assessment_id=args.assessment_id)
     ctx.metadata["authorizationConfirmed"] = str(args.authorization_confirmed).strip().lower() in {"1", "true", "yes"}
+    
+    # Parse and store scan options in metadata for tools to use
+    ctx.metadata["cookies"] = args.cookies.strip() if args.cookies else None
+    ctx.metadata["wordlist"] = args.wordlist.strip() if args.wordlist else None
+    
+    # Parse custom headers
+    if args.headers and args.headers.strip():
+        try:
+            ctx.metadata["headers"] = json.loads(args.headers)
+        except json.JSONDecodeError:
+            ctx.metadata["headers"] = None
+    else:
+        ctx.metadata["headers"] = None
+    
+    # Parse additional scan options
+    if args.scan_options and args.scan_options.strip():
+        try:
+            extra_opts = json.loads(args.scan_options)
+            if isinstance(extra_opts, dict):
+                for k, v in extra_opts.items():
+                    ctx.metadata[k] = v
+        except json.JSONDecodeError:
+            pass
 
     preset_key = str(args.preset).strip().lower()
     module_paths = resolve_preset_modules(preset_key)
