@@ -193,6 +193,162 @@ class EmailService {
       text: `${inviterName} has invited you to join ${displayOrgName} on Sentinel Stack.\n\nAccept your invitation: ${(process.env.CLIENT_URL || '')}/invite?token=${token}\n\nIf you did not expect this invitation, you can ignore this email.\n\nBest,\nThe Sentinel Stack Team`
     });
   }
+
+  /**
+   * Send payment failed email notification
+   */
+  async sendPaymentFailedEmail(email: string, orgName: string, amount: number, retryUrl?: string): Promise<boolean> {
+    const formattedAmount = `$${amount.toFixed(2)}`;
+    return this.sendEmail({
+      to: email,
+      subject: `Action Required: Payment Failed for ${orgName}`,
+      html: `
+        <table style="width:100%;max-width:600px;margin:auto;font-family:sans-serif;border:1px solid #eaeaea;border-radius:8px;overflow:hidden;">
+          <tr>
+            <td style="background:#dc2626;padding:24px 0;text-align:center;">
+              <span style="color:#fff;font-size:28px;font-weight:bold;letter-spacing:1px;">Sentinel Stack</span>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:32px 24px 24px 24px;">
+              <h2 style="margin:0 0 16px 0;color:#18181b;">Payment Failed</h2>
+              <p style="font-size:16px;color:#444;">Hi,</p>
+              <p style="font-size:16px;color:#444;">
+                We were unable to process your payment of <strong>${formattedAmount}</strong> for your Sentinel Stack subscription.
+              </p>
+              <p style="font-size:16px;color:#444;">
+                To avoid any interruption to your service, please update your payment method or retry the payment.
+              </p>
+              ${retryUrl ? `
+              <div style="text-align:center;margin:32px 0;">
+                <a href="${retryUrl}" style="background:#dc2626;color:#fff;text-decoration:none;padding:14px 32px;border-radius:6px;font-size:16px;font-weight:bold;display:inline-block;">
+                  Update Payment Method
+                </a>
+              </div>
+              ` : `
+              <div style="text-align:center;margin:32px 0;">
+                <a href="${process.env.CLIENT_URL || ''}/dashboard/settings/billing" style="background:#6366f1;color:#fff;text-decoration:none;padding:14px 32px;border-radius:6px;font-size:16px;font-weight:bold;display:inline-block;">
+                  Manage Billing
+                </a>
+              </div>
+              `}
+              <p style="font-size:14px;color:#888;margin-top:32px;">
+                If you believe this is an error or need assistance, please contact our support team.
+              </p>
+              <p style="font-size:16px;color:#444;margin-top:32px;">Best regards,<br><strong>The Sentinel Stack Team</strong></p>
+            </td>
+          </tr>
+        </table>
+      `,
+      text: `Payment Failed\n\nWe were unable to process your payment of ${formattedAmount} for your Sentinel Stack subscription.\n\nTo avoid any interruption to your service, please update your payment method at: ${process.env.CLIENT_URL || ''}/dashboard/settings/billing\n\nBest,\nThe Sentinel Stack Team`
+    });
+  }
+
+  /**
+   * Send subscription confirmation email
+   */
+  async sendSubscriptionConfirmationEmail(email: string, orgName: string, tier: string, trialDays?: number): Promise<boolean> {
+    const tierName = tier.charAt(0) + tier.slice(1).toLowerCase();
+    const trialMessage = trialDays ? `Your ${trialDays}-day free trial has started!` : '';
+    
+    return this.sendEmail({
+      to: email,
+      subject: `Welcome to Sentinel Stack ${tierName}!`,
+      html: `
+        <table style="width:100%;max-width:600px;margin:auto;font-family:sans-serif;border:1px solid #eaeaea;border-radius:8px;overflow:hidden;">
+          <tr>
+            <td style="background:#22c55e;padding:24px 0;text-align:center;">
+              <span style="color:#fff;font-size:28px;font-weight:bold;letter-spacing:1px;">Sentinel Stack</span>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:32px 24px 24px 24px;">
+              <h2 style="margin:0 0 16px 0;color:#18181b;">Welcome to ${tierName}! 🎉</h2>
+              <p style="font-size:16px;color:#444;">Hi,</p>
+              <p style="font-size:16px;color:#444;">
+                Thank you for upgrading <strong>${orgName}</strong> to Sentinel Stack ${tierName}.
+                ${trialMessage ? `<br><br><strong>${trialMessage}</strong>` : ''}
+              </p>
+              <p style="font-size:16px;color:#444;">
+                You now have access to all ${tierName} features including:
+              </p>
+              <ul style="font-size:16px;color:#444;">
+                ${tier === 'PRO' ? `
+                <li>50 security scans per month</li>
+                <li>AI-powered risk summaries</li>
+                <li>Up to 5 team members</li>
+                <li>Priority support</li>
+                ` : `
+                <li>Unlimited security scans</li>
+                <li>API access & webhooks</li>
+                <li>SOC2 compliance reports</li>
+                <li>Dedicated account manager</li>
+                `}
+              </ul>
+              <div style="text-align:center;margin:32px 0;">
+                <a href="${process.env.CLIENT_URL || ''}/dashboard" style="background:#6366f1;color:#fff;text-decoration:none;padding:14px 32px;border-radius:6px;font-size:16px;font-weight:bold;display:inline-block;">
+                  Go to Dashboard
+                </a>
+              </div>
+              <p style="font-size:16px;color:#444;margin-top:32px;">Best regards,<br><strong>The Sentinel Stack Team</strong></p>
+            </td>
+          </tr>
+        </table>
+      `,
+      text: `Welcome to Sentinel Stack ${tierName}!\n\nThank you for upgrading ${orgName}. ${trialMessage}\n\nGo to your dashboard: ${process.env.CLIENT_URL || ''}/dashboard\n\nBest,\nThe Sentinel Stack Team`
+    });
+  }
+
+  /**
+   * Send subscription canceled email
+   */
+  async sendSubscriptionCanceledEmail(email: string, orgName: string, endDate: Date): Promise<boolean> {
+    const formattedDate = endDate.toLocaleDateString('en-US', { 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    });
+    
+    return this.sendEmail({
+      to: email,
+      subject: `Your Sentinel Stack subscription has been canceled`,
+      html: `
+        <table style="width:100%;max-width:600px;margin:auto;font-family:sans-serif;border:1px solid #eaeaea;border-radius:8px;overflow:hidden;">
+          <tr>
+            <td style="background:#18181b;padding:24px 0;text-align:center;">
+              <span style="color:#fff;font-size:28px;font-weight:bold;letter-spacing:1px;">Sentinel Stack</span>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:32px 24px 24px 24px;">
+              <h2 style="margin:0 0 16px 0;color:#18181b;">Subscription Canceled</h2>
+              <p style="font-size:16px;color:#444;">Hi,</p>
+              <p style="font-size:16px;color:#444;">
+                Your Sentinel Stack subscription for <strong>${orgName}</strong> has been canceled.
+              </p>
+              <p style="font-size:16px;color:#444;">
+                You'll continue to have access to your current plan features until <strong>${formattedDate}</strong>.
+                After that, your account will revert to the Free plan.
+              </p>
+              <p style="font-size:16px;color:#444;">
+                We'd love to have you back! If you change your mind, you can resubscribe anytime.
+              </p>
+              <div style="text-align:center;margin:32px 0;">
+                <a href="${process.env.CLIENT_URL || ''}/pricing" style="background:#6366f1;color:#fff;text-decoration:none;padding:14px 32px;border-radius:6px;font-size:16px;font-weight:bold;display:inline-block;">
+                  View Plans
+                </a>
+              </div>
+              <p style="font-size:14px;color:#888;margin-top:32px;">
+                We'd appreciate any feedback on why you canceled. Reply to this email to let us know.
+              </p>
+              <p style="font-size:16px;color:#444;margin-top:32px;">Best regards,<br><strong>The Sentinel Stack Team</strong></p>
+            </td>
+          </tr>
+        </table>
+      `,
+      text: `Subscription Canceled\n\nYour Sentinel Stack subscription for ${orgName} has been canceled.\n\nYou'll continue to have access until ${formattedDate}. After that, your account will revert to the Free plan.\n\nResubscribe anytime: ${process.env.CLIENT_URL || ''}/pricing\n\nBest,\nThe Sentinel Stack Team`
+    });
+  }
 }
 
 export const emailService = new EmailService();

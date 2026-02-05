@@ -102,12 +102,25 @@ export class BillingService {
         billingPeriod,
       },
       subscription_data: {
+        // 14-day free trial for Pro tier only
+        ...(tier === 'PRO' && { trial_period_days: 14 }),
         metadata: {
           organizationId,
           tier,
         },
       },
+      // Enable automatic tax calculation if configured
+      automatic_tax: { enabled: Boolean(process.env.STRIPE_TAX_ENABLED) },
+      // Collect billing address for invoices
+      billing_address_collection: 'required',
       allow_promotion_codes: true,
+      // Send invoice emails via Stripe
+      invoice_creation: {
+        enabled: true,
+        invoice_data: {
+          footer: 'Thank you for choosing SentinelStack!',
+        },
+      },
     });
 
     return session;
@@ -178,6 +191,29 @@ export class BillingService {
     }
 
     logger.info(`Checkout completed for org ${organizationId}, tier: ${tier}`);
+    
+    // Send subscription confirmation email
+    try {
+      const org = await prisma.organization.findUnique({
+        where: { id: organizationId },
+        include: {
+          members: {
+            where: { role: 'OWNER' },
+            include: { user: true },
+          },
+        },
+      });
+      
+      const ownerEmail = org?.members[0]?.user?.email;
+      if (ownerEmail && org) {
+        const { emailService } = await import('./email.service');
+        // Pro tier gets 14-day trial
+        const trialDays = tier === 'PRO' ? 14 : undefined;
+        await emailService.sendSubscriptionConfirmationEmail(ownerEmail, org.name, tier, trialDays);
+      }
+    } catch (emailError) {
+      logger.error('Failed to send subscription confirmation email:', emailError);
+    }
   }
 
   private async handleSubscriptionUpdate(subscription: any) {
@@ -211,7 +247,7 @@ export class BillingService {
   }
 
   private async handleSubscriptionCanceled(subscription: any) {
-    await prisma.organization.update({
+    const org = await prisma.organization.update({
       where: { stripeCustomerId: subscription.customer },
       data: {
         subscriptionStatus: 'CANCELED',
@@ -219,21 +255,60 @@ export class BillingService {
         subscriptionId: null,
         subscriptionPeriodEnd: null,
       },
+      include: {
+        members: {
+          where: { role: 'OWNER' },
+          include: { user: true },
+        },
+      },
     });
 
     logger.info(`Subscription canceled for customer ${subscription.customer}`);
+    
+    // Send cancellation email
+    try {
+      const ownerEmail = org.members[0]?.user?.email;
+      if (ownerEmail) {
+        const { emailService } = await import('./email.service');
+        const endDate = new Date(subscription.current_period_end * 1000);
+        await emailService.sendSubscriptionCanceledEmail(ownerEmail, org.name, endDate);
+      }
+    } catch (emailError) {
+      logger.error('Failed to send subscription canceled email:', emailError);
+    }
   }
 
   private async handlePaymentFailed(invoice: any) {
-    await prisma.organization.update({
+    const org = await prisma.organization.update({
       where: { stripeCustomerId: invoice.customer },
       data: {
         subscriptionStatus: 'PAST_DUE',
       },
+      include: {
+        members: {
+          where: { role: 'OWNER' },
+          include: { user: true },
+        },
+      },
     });
 
     logger.warn(`Payment failed for customer ${invoice.customer}`);
-    // TODO: Send email notification
+    
+    // Send email notification to org owner
+    try {
+      const ownerEmail = org.members[0]?.user?.email;
+      if (ownerEmail) {
+        const { emailService } = await import('./email.service');
+        await emailService.sendPaymentFailedEmail(
+          ownerEmail,
+          org.name,
+          invoice.amount_due / 100, // Convert cents to dollars
+          invoice.hosted_invoice_url // Link to retry payment
+        );
+      }
+    } catch (emailError) {
+      logger.error('Failed to send payment failed email:', emailError);
+    }
   }
 
   private mapStripeStatus(stripeStatus: string): SubscriptionStatus {
