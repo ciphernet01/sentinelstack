@@ -303,24 +303,25 @@ export default function Home() {
                 tier="Free"
                 price="$0"
                 period="/mo"
-                description="Get started with basic security scanning."
+                description="Perfect for trying out SentinelStack"
                 features={[
-                  "3 Scans/month",
-                  "Basic vulnerability detection",
-                  "Standard PDF Reports",
-                  "Community Support",
+                  "3 scans per month",
+                  "Basic vulnerability reports",
+                  "Email support",
+                  "7-day scan history",
                 ]}
               />
               <PricingCard
                 tier="Pro"
                 price="$99"
                 period="/mo"
-                description="For teams that need comprehensive security coverage."
+                description="For growing security teams"
                 features={[
-                  "50 Scans/month",
-                  "All 30+ Security Tools",
-                  "Custom Branded Reports",
-                  "Priority Email Support",
+                  "50 scans per month",
+                  "AI-powered risk summaries",
+                  "Up to 5 team members",
+                  "90-day scan history",
+                  "Slack notifications",
                 ]}
                 isPrimary
               />
@@ -328,12 +329,12 @@ export default function Home() {
                 tier="Enterprise"
                 price="$299"
                 period="/mo"
-                description="For organizations requiring unlimited power."
+                description="For large organizations"
                 features={[
-                  "Unlimited Scans",
-                  "API Access & Webhooks",
-                  "Advanced Compliance Mapping",
-                  "Dedicated Account Manager",
+                  "Unlimited scans",
+                  "API access & webhooks",
+                  "SOC2 compliance reports",
+                  "Dedicated account manager",
                 ]}
               />
             </div>
@@ -400,7 +401,13 @@ function PricingCard({
           ))}
         </ul>
         <Button asChild className={isPrimary ? '' : 'bg-primary/90 hover:bg-primary'} variant={isPrimary ? 'default' : 'secondary'}>
-          <Link href="/signup">{price === '$0' ? 'Start Free' : price === '$299' ? 'Contact Sales' : 'Choose Plan'}</Link>
+          <Link href={
+            price === '$0' ? '/signup' : 
+            price === '$299' ? 'mailto:sales@sentinelstack.io?subject=Enterprise%20Inquiry' : 
+            '/pricing'
+          }>
+            {price === '$0' ? 'Start Free' : price === '$299' ? 'Contact Sales' : 'Start Pro Trial'}
+          </Link>
         </Button>
       </CardContent>
     </Card>
