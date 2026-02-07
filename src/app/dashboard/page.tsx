@@ -17,6 +17,7 @@ import { ThemeToggle } from '@/components/layout/ThemeToggle';
 import Link from 'next/link';
 import { usePageTitle } from '@/hooks/use-page-title';
 import { UsageIndicator } from '@/components/billing/UsageIndicator';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 
 const userAvatar = PlaceHolderImages.find(img => img.id === 'user-avatar-1');
@@ -43,6 +44,13 @@ interface DashboardData {
   findingsOverTime: { name: string; total: number }[];
 }
 
+type ScanQueueStats = {
+    now: string;
+    counts: Record<string, number>;
+    runnableQueued: number;
+    oldestQueuedAgeSeconds: number;
+};
+
 function DashboardPage() {
     usePageTitle('Dashboard');
 
@@ -57,6 +65,20 @@ function DashboardPage() {
       },
        retry: false,
     });
+
+        const isPlatformAdmin = user?.role === 'ADMIN';
+        const {
+            data: scanQueueStats,
+            isLoading: isScanQueueLoading,
+        } = useQuery<ScanQueueStats, Error>({
+            queryKey: ['scanQueueStats'],
+            enabled: Boolean(isPlatformAdmin),
+            queryFn: async () => {
+                const response = await api.get('/admin/scan-queue');
+                return response.data;
+            },
+            retry: false,
+        });
     
     useEffect(() => {
         if (error) {
@@ -83,6 +105,47 @@ function DashboardPage() {
                         Export PDF Report
                     </Button>
                 </div>
+
+                                {isPlatformAdmin && (
+                                    <Card>
+                                        <CardHeader className="pb-2">
+                                            <CardTitle className="text-sm font-medium">Scan Queue Health</CardTitle>
+                                        </CardHeader>
+                                        <CardContent>
+                                            {isScanQueueLoading && (
+                                                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                                    Loading queue stats…
+                                                </div>
+                                            )}
+
+                                            {!isScanQueueLoading && scanQueueStats && (
+                                                <div className="grid gap-3 grid-cols-2 sm:grid-cols-5">
+                                                    <div>
+                                                        <div className="text-xs text-muted-foreground">Queued</div>
+                                                        <div className="text-lg font-semibold">{scanQueueStats.counts.QUEUED || 0}</div>
+                                                    </div>
+                                                    <div>
+                                                        <div className="text-xs text-muted-foreground">Running</div>
+                                                        <div className="text-lg font-semibold">{scanQueueStats.counts.RUNNING || 0}</div>
+                                                    </div>
+                                                    <div>
+                                                        <div className="text-xs text-muted-foreground">Failed</div>
+                                                        <div className="text-lg font-semibold">{scanQueueStats.counts.FAILED || 0}</div>
+                                                    </div>
+                                                    <div>
+                                                        <div className="text-xs text-muted-foreground">Runnable</div>
+                                                        <div className="text-lg font-semibold">{scanQueueStats.runnableQueued}</div>
+                                                    </div>
+                                                    <div>
+                                                        <div className="text-xs text-muted-foreground">Oldest (sec)</div>
+                                                        <div className="text-lg font-semibold">{scanQueueStats.oldestQueuedAgeSeconds}</div>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </CardContent>
+                                    </Card>
+                                )}
 
                  {isLoading && (
                      <div className="flex h-full w-full items-center justify-center p-8 sm:p-16">
