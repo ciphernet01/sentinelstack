@@ -15,6 +15,7 @@ import {
 import { useAuth } from '@/context/AuthContext';
 
 interface Subscription {
+  provider?: string;
   status: string;
   tier: string;
   tierName: string;
@@ -97,13 +98,58 @@ export default function BillingPage() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
-          body: JSON.stringify({ tier, billingPeriod: 'monthly' }),
+          body: JSON.stringify({
+            tier,
+            billingPeriod: 'monthly',
+            currency: (() => {
+              try {
+                return Intl.DateTimeFormat().resolvedOptions().timeZone === 'Asia/Kolkata' ? 'INR' : 'USD';
+              } catch {
+                return undefined;
+              }
+            })(),
+          }),
         }
       );
 
       const data = await response.json();
       if (data.url) {
         window.location.href = data.url;
+        return;
+      }
+
+      if (data.provider === 'razorpay' && data.keyId && data.subscriptionId) {
+        const loadRazorpay = () =>
+          new Promise<void>((resolve, reject) => {
+            if ((window as any).Razorpay) return resolve();
+            const script = document.createElement('script');
+            script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+            script.onload = () => resolve();
+            script.onerror = () => reject(new Error('Failed to load Razorpay Checkout'));
+            document.body.appendChild(script);
+          });
+
+        await loadRazorpay();
+
+        const options = {
+          key: data.keyId,
+          subscription_id: data.subscriptionId,
+          name: 'SentinelStack',
+          description: `${tier} subscription`,
+          handler: () => {
+            window.location.href = '/dashboard/settings/billing?success=true';
+          },
+          modal: {
+            ondismiss: () => {
+              setMessage({ type: 'error', text: 'Checkout was canceled.' });
+            },
+          },
+        };
+
+        const RazorpayCtor = (window as any).Razorpay;
+        const rzp = new RazorpayCtor(options);
+        rzp.open();
+        return;
       }
     } catch (error) {
       console.error('Error creating checkout:', error);
@@ -201,7 +247,7 @@ export default function BillingPage() {
             </div>
           </div>
 
-          {subscription?.tier !== 'FREE' && (
+          {subscription?.tier !== 'FREE' && subscription?.provider !== 'razorpay' && (
             <button
               onClick={handleManageBilling}
               disabled={actionLoading === 'portal'}

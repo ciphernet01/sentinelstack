@@ -24,6 +24,10 @@ Required:
 Backend-to-backend auth (required if you use internal routes):
 - `INTERNAL_API_TOKEN` = long random string
 
+Billing provider (choose one):
+- Stripe (default): set `BILLING_PROVIDER=stripe` and the Stripe env vars below.
+- Razorpay: set `BILLING_PROVIDER=razorpay` and the Razorpay env vars below.
+
 Firebase Admin (required for auth/user management):
 - `FIREBASE_PROJECT_ID`
 - `FIREBASE_CLIENT_EMAIL`
@@ -39,6 +43,28 @@ Queue/worker role:
 - `SCAN_QUEUE_WORKER_ENABLED=true` (default: run scan jobs in the API on free tier)
 - `PROCESS_TYPE=api`
 - `RUN_MIGRATIONS_ON_START=true`
+
+### Razorpay env vars (if `BILLING_PROVIDER=razorpay`)
+
+Required:
+- `RAZORPAY_KEY_ID`
+- `RAZORPAY_KEY_SECRET`
+- `RAZORPAY_WEBHOOK_SECRET`
+
+Plan IDs (create Razorpay plans per tier/period/currency and set the matching env vars):
+- `RAZORPAY_PRO_INR_MONTHLY_PLAN_ID`
+- `RAZORPAY_PRO_INR_YEARLY_PLAN_ID`
+- `RAZORPAY_ENTERPRISE_INR_MONTHLY_PLAN_ID`
+- `RAZORPAY_ENTERPRISE_INR_YEARLY_PLAN_ID`
+
+Optional (if you also create USD plans in Razorpay):
+- `RAZORPAY_PRO_USD_MONTHLY_PLAN_ID`
+- `RAZORPAY_PRO_USD_YEARLY_PLAN_ID`
+- `RAZORPAY_ENTERPRISE_USD_MONTHLY_PLAN_ID`
+- `RAZORPAY_ENTERPRISE_USD_YEARLY_PLAN_ID`
+
+Optional default currency:
+- `BILLING_DEFAULT_CURRENCY=INR` (default) or `USD`
 
 ### Web service: `sentinelstack-web`
 

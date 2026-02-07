@@ -76,6 +76,13 @@ model Organization {
   subscriptionTier      SubscriptionTier   @default(FREE)
   subscriptionPeriodEnd DateTime?
 
+  // Billing provider (stripe|razorpay)
+  billingProvider String? @default("stripe")
+
+  // Razorpay identifiers (optional)
+  razorpayCustomerId     String? @unique
+  razorpaySubscriptionId String? @unique
+
   // Usage tracking
   scansUsedThisMonth Int      @default(0)
   scansResetAt       DateTime @default(now())

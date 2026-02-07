@@ -1,10 +1,16 @@
 import { stripe, PRICING_TIERS, TierName } from '../config/stripe';
+import { getBillingProvider } from '../config/billingProvider';
+import { DEFAULT_CURRENCY, getRazorpayCheckoutKeyId, getRazorpayPlanId, razorpay, type SupportedCurrency } from '../config/razorpay';
 import { prisma } from '../config/db';
 import logger from '../utils/logger';
 
 // Define types locally since the migration hasn't been run
 type SubscriptionStatus = 'FREE' | 'ACTIVE' | 'PAST_DUE' | 'CANCELED' | 'TRIALING';
 type SubscriptionTier = 'FREE' | 'PRO' | 'ENTERPRISE';
+
+type CheckoutResult =
+  | { provider: 'stripe'; url: string; sessionId: string }
+  | { provider: 'razorpay'; keyId: string; subscriptionId: string; currency: SupportedCurrency };
 
 export class BillingService {
   private isAdminBypassEmail(userEmail?: string): boolean {
@@ -57,11 +63,11 @@ export class BillingService {
     tier: 'PRO' | 'ENTERPRISE',
     billingPeriod: 'monthly' | 'yearly',
     successUrl: string,
-    cancelUrl: string
+    cancelUrl: string,
+    currency?: SupportedCurrency
   ) {
-    if (!stripe) {
-      throw new Error('Stripe is not configured');
-    }
+    const provider = getBillingProvider();
+    const resolvedCurrency: SupportedCurrency = currency || DEFAULT_CURRENCY;
 
     const org = await prisma.organization.findUnique({
       where: { id: organizationId },
@@ -75,6 +81,49 @@ export class BillingService {
 
     if (!org) {
       throw new Error('Organization not found');
+    }
+
+    if (provider === 'razorpay') {
+      if (!razorpay) {
+        throw new Error('Razorpay is not configured');
+      }
+
+      const planId = getRazorpayPlanId({ tier, billingPeriod, currency: resolvedCurrency });
+
+      // Razorpay subscriptions need a finite total_count; use a large number to approximate "until canceled".
+      const totalCount = billingPeriod === 'monthly' ? 120 : 10;
+
+      const subscription = await razorpay.subscriptions.create({
+        plan_id: planId,
+        customer_notify: 1,
+        quantity: 1,
+        total_count: totalCount,
+        notes: {
+          organizationId,
+          tier,
+          billingPeriod,
+          currency: resolvedCurrency,
+        },
+      } as any);
+
+      await prisma.organization.update({
+        where: { id: organizationId },
+        data: {
+          billingProvider: 'razorpay',
+          razorpaySubscriptionId: subscription.id,
+        },
+      });
+
+      return {
+        provider: 'razorpay',
+        keyId: getRazorpayCheckoutKeyId(),
+        subscriptionId: subscription.id,
+        currency: resolvedCurrency,
+      } satisfies CheckoutResult;
+    }
+
+    if (!stripe) {
+      throw new Error('Stripe is not configured');
     }
 
     // Get or create customer
@@ -132,13 +181,21 @@ export class BillingService {
       },
     });
 
-    return session;
+    return {
+      provider: 'stripe',
+      url: session.url || '',
+      sessionId: session.id,
+    } satisfies CheckoutResult;
   }
 
   /**
    * Create a billing portal session for managing subscription
    */
   async createPortalSession(organizationId: string, returnUrl: string) {
+    const provider = getBillingProvider();
+    if (provider === 'razorpay') {
+      throw new Error('Billing portal is not available for Razorpay');
+    }
     if (!stripe) {
       throw new Error('Stripe is not configured');
     }
@@ -163,6 +220,12 @@ export class BillingService {
    * Handle Stripe webhook events
    */
   async handleWebhookEvent(event: any) {
+    const provider = getBillingProvider();
+    if (provider === 'razorpay') {
+      await this.handleRazorpayWebhookEvent(event);
+      return;
+    }
+
     switch (event.type) {
       case 'checkout.session.completed': {
         const session = event.data.object;
@@ -335,6 +398,85 @@ export class BillingService {
     }
   }
 
+  private mapRazorpayStatus(status: string): SubscriptionStatus {
+    const normalized = String(status || '').toLowerCase();
+    switch (normalized) {
+      case 'active':
+        return 'ACTIVE';
+      case 'authenticated':
+      case 'created':
+      case 'pending':
+        return 'TRIALING';
+      case 'halted':
+        return 'PAST_DUE';
+      case 'cancelled':
+      case 'canceled':
+      case 'completed':
+      case 'expired':
+        return 'CANCELED';
+      default:
+        return 'FREE';
+    }
+  }
+
+  /**
+   * Handle Razorpay webhook events (expects the parsed JSON payload).
+   */
+  private async handleRazorpayWebhookEvent(payload: any) {
+    const event = payload?.event;
+    const subscription = payload?.payload?.subscription?.entity;
+
+    if (!event) {
+      logger.info('Unhandled Razorpay webhook payload without event');
+      return;
+    }
+
+    // We attach organizationId/tier in subscription notes during creation.
+    const notes = subscription?.notes || {};
+    const organizationId: string | undefined = notes.organizationId;
+    const tier: SubscriptionTier | undefined = notes.tier;
+
+    if (!organizationId) {
+      logger.warn(`Razorpay event ${event} missing organizationId in notes`);
+      return;
+    }
+
+    if (subscription && (event.startsWith('subscription.') || event === 'subscription.activated')) {
+      const mappedStatus = this.mapRazorpayStatus(subscription.status);
+      const periodEnd = subscription.current_end ? new Date(subscription.current_end * 1000) : null;
+
+      await prisma.organization.update({
+        where: { id: organizationId },
+        data: {
+          billingProvider: 'razorpay',
+          razorpayCustomerId: subscription.customer_id || undefined,
+          razorpaySubscriptionId: subscription.id,
+          subscriptionStatus: mappedStatus,
+          subscriptionTier: tier || 'PRO',
+          subscriptionId: null,
+          stripeCustomerId: null,
+          subscriptionPeriodEnd: periodEnd,
+        },
+      });
+
+      logger.info(`Razorpay subscription update for org ${organizationId}: ${tier || 'PRO'} - ${mappedStatus}`);
+      return;
+    }
+
+    if (event === 'payment.failed') {
+      await prisma.organization.update({
+        where: { id: organizationId },
+        data: {
+          subscriptionStatus: 'PAST_DUE',
+        },
+      });
+      logger.warn(`Razorpay payment failed for org ${organizationId}`);
+      return;
+    }
+
+    logger.info(`Unhandled Razorpay event type: ${event}`);
+  }
+
   /**
    * Get subscription details for an organization
    */
@@ -342,6 +484,7 @@ export class BillingService {
     const org = await prisma.organization.findUnique({
       where: { id: organizationId },
       select: {
+        billingProvider: true,
         subscriptionStatus: true,
         subscriptionTier: true,
         subscriptionPeriodEnd: true,
@@ -364,6 +507,7 @@ export class BillingService {
       : Math.max(0, effectiveScansLimit - org.scansUsedThisMonth);
 
     return {
+      provider: org.billingProvider || 'stripe',
       status: org.subscriptionStatus,
       tier: org.subscriptionTier,
       tierName: tierConfig.name,

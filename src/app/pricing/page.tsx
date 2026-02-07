@@ -94,7 +94,7 @@ const faqs = [
   },
   {
     q: 'What payment methods do you accept?',
-    a: 'We accept all major credit cards (Visa, Mastercard, American Express) through our secure payment processor, Stripe.',
+    a: 'We accept all major credit cards (Visa, Mastercard, American Express) through our secure payment processor.',
   },
   {
     q: 'Is there a free trial?',
@@ -147,6 +147,13 @@ export default function PricingPage() {
         body: JSON.stringify({
           tier: tierId,
           billingPeriod,
+          currency: (() => {
+            try {
+              return Intl.DateTimeFormat().resolvedOptions().timeZone === 'Asia/Kolkata' ? 'INR' : 'USD';
+            } catch {
+              return undefined;
+            }
+          })(),
         }),
       });
 
@@ -154,9 +161,39 @@ export default function PricingPage() {
 
       if (data.url) {
         window.location.href = data.url;
-      } else {
-        window.location.href = '/signup?plan=' + tierId.toLowerCase();
+        return;
       }
+
+      if (data.provider === 'razorpay' && data.keyId && data.subscriptionId) {
+        const loadRazorpay = () =>
+          new Promise<void>((resolve, reject) => {
+            if ((window as any).Razorpay) return resolve();
+            const script = document.createElement('script');
+            script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+            script.onload = () => resolve();
+            script.onerror = () => reject(new Error('Failed to load Razorpay Checkout'));
+            document.body.appendChild(script);
+          });
+
+        await loadRazorpay();
+
+        const options = {
+          key: data.keyId,
+          subscription_id: data.subscriptionId,
+          name: 'SentinelStack',
+          description: `${tierId} subscription`,
+          handler: () => {
+            window.location.href = '/dashboard/settings/billing?success=true';
+          },
+        };
+
+        const RazorpayCtor = (window as any).Razorpay;
+        const rzp = new RazorpayCtor(options);
+        rzp.open();
+        return;
+      }
+
+      window.location.href = '/signup?plan=' + tierId.toLowerCase();
     } catch (error) {
       console.error('Error creating checkout:', error);
       window.location.href = '/signup?plan=' + tierId.toLowerCase();

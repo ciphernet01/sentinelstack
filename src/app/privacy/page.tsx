@@ -107,7 +107,7 @@ export default function PrivacyPolicyPage() {
                   </p>
                   <ul className="text-muted-foreground list-disc pl-5 space-y-2">
                     <li>
-                      <span className="font-medium text-foreground">Stripe</span> — payment processing
+                      <span className="font-medium text-foreground">Payment provider</span> — payment processing
                     </li>
                     <li>
                       <span className="font-medium text-foreground">Resend</span> — transactional emails
