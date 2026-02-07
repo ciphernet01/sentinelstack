@@ -103,13 +103,13 @@ See [docs/RENDER_DEPLOY.md](docs/RENDER_DEPLOY.md).
 Scans are processed by a DB-backed queue. In production, run scans in a dedicated worker service so API restarts/traffic don’t interrupt scan execution.
 
 Render services:
-- `sentinelstack-api` (Docker): HTTP API only
-- `sentinelstack-worker` (Docker worker): scan execution only
+- `sentinelstack-api` (Docker): HTTP API + scan worker loop (free-tier default)
+- `sentinelstack-worker` (optional): scan execution only (paid tier)
 - `sentinelstack-web` (Node): Next.js frontend
 
 Key env vars:
-- API: `PROCESS_TYPE=api`, `SCAN_QUEUE_WORKER_ENABLED=false`, `RUN_MIGRATIONS_ON_START=true`
-- Worker: `PROCESS_TYPE=worker`, `SCAN_QUEUE_WORKER_ENABLED=true`, `RUN_MIGRATIONS_ON_START=false`
+- Free tier (API runs scans): `PROCESS_TYPE=api`, `SCAN_QUEUE_WORKER_ENABLED=true`, `RUN_MIGRATIONS_ON_START=true`
+- Paid tier split: API `SCAN_QUEUE_WORKER_ENABLED=false`, worker `PROCESS_TYPE=worker`, `SCAN_QUEUE_WORKER_ENABLED=true`, `RUN_MIGRATIONS_ON_START=false`
 
 Optional worker tuning:
 - `SCAN_QUEUE_CONCURRENCY` (default 1)

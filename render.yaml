@@ -21,7 +21,7 @@ services:
       - key: RUN_MIGRATIONS_ON_START
         value: true
       - key: SCAN_QUEUE_WORKER_ENABLED
-        value: false
+        value: true
       - key: PORT
         value: 3001
       - key: DATABASE_URL
@@ -43,53 +43,6 @@ services:
       - key: FIREBASE_SERVICE_ACCOUNT_PATH
         sync: false
       # Email (optional)
-      - key: SMTP_HOST
-        sync: false
-      - key: SMTP_PORT
-        sync: false
-      - key: SMTP_USER
-        sync: false
-      - key: SMTP_PASS
-        sync: false
-      - key: EMAIL_FROM
-        sync: false
-      - key: EMAIL_SERVICE
-        sync: false
-      - key: RESEND_API_KEY
-        sync: false
-      - key: EMAIL_FROM_NAME
-        sync: false
-
-  - type: worker
-    name: sentinelstack-worker
-    env: docker
-    plan: free
-    autoDeploy: true
-    envVars:
-      - key: NODE_ENV
-        value: production
-      - key: PROCESS_TYPE
-        value: worker
-      - key: RUN_MIGRATIONS_ON_START
-        value: false
-      - key: SCAN_QUEUE_WORKER_ENABLED
-        value: true
-      - key: DATABASE_URL
-        sync: false
-      - key: DIRECT_URL
-        sync: false
-      - key: CLIENT_URL
-        sync: false
-      - key: INTERNAL_API_TOKEN
-        sync: false
-      - key: FIREBASE_PROJECT_ID
-        sync: false
-      - key: FIREBASE_CLIENT_EMAIL
-        sync: false
-      - key: FIREBASE_PRIVATE_KEY
-        sync: false
-      - key: FIREBASE_SERVICE_ACCOUNT_PATH
-        sync: false
       - key: SMTP_HOST
         sync: false
       - key: SMTP_PORT
