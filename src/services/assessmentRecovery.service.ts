@@ -23,6 +23,28 @@ export const recoverOrphanedInProgressAssessments = async (): Promise<void> => {
   const cutoff = new Date(Date.now() - staleMs);
 
   try {
+    // Also unlock scan jobs that were RUNNING when the process died.
+    // We keep this simple: any RUNNING job older than staleMs gets re-queued.
+    try {
+      const unlocked = await prisma.scanJob.updateMany({
+        where: {
+          status: 'RUNNING',
+          lockedAt: { lt: cutoff },
+        },
+        data: {
+          status: 'QUEUED',
+          lockedAt: null,
+          lockedBy: null,
+          runAt: new Date(),
+        },
+      });
+      if (unlocked.count > 0) {
+        logger.warn(`Re-queued ${unlocked.count} stale RUNNING scan job(s) after restart.`);
+      }
+    } catch (e) {
+      logger.warn(`Scan job recovery skipped due to error: ${String(e)}`);
+    }
+
     const where = onlyStale
       ? { status: 'IN_PROGRESS' as const, updatedAt: { lt: cutoff } }
       : { status: 'IN_PROGRESS' as const };
@@ -42,13 +64,21 @@ export const recoverOrphanedInProgressAssessments = async (): Promise<void> => {
     );
 
     for (const a of candidates) {
+      const job = await prisma.scanJob.findUnique({
+        where: { assessmentId: a.id },
+        select: { status: true },
+      });
+
       const priorNotes = a.notes ? `${a.notes}\n` : '';
-      const recoveryNote = `[system] Assessment was running when backend restarted; marking as REJECTED. (lastUpdated=${a.updatedAt.toISOString()})`;
+      const hasRunnableJob = job && (job.status === 'QUEUED' || job.status === 'RUNNING');
+      const recoveryNote = hasRunnableJob
+        ? `[system] Assessment was running when backend restarted; scan re-queued. (lastUpdated=${a.updatedAt.toISOString()})`
+        : `[system] Assessment was running when backend restarted; marking as REJECTED. (lastUpdated=${a.updatedAt.toISOString()})`;
 
       await prisma.assessment.update({
         where: { id: a.id },
         data: {
-          status: 'REJECTED',
+          status: hasRunnableJob ? 'PENDING' : 'REJECTED',
           notes: `${priorNotes}${recoveryNote}`,
         },
       });

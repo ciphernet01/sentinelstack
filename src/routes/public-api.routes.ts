@@ -1,6 +1,7 @@
 import { Router, Response, NextFunction } from 'express';
 import { apiKeyAuth, requireScope, ApiKeyRequest } from '../middleware/api-key';
 import { prisma } from '../config/db';
+import { scanQueueService } from '../services/scanQueue.service';
 
 const router = Router();
 
@@ -110,6 +111,11 @@ router.post('/assessments', requireScope('WRITE_ASSESSMENTS'), async (req: ApiKe
         status: 'PENDING',
         organizationId,
         userId,
+        scannerConfig: {
+          scope: 'WEB',
+          scanOptions: {},
+          capturedAt: new Date().toISOString(),
+        } as any,
       },
       select: {
         id: true,
@@ -120,6 +126,8 @@ router.post('/assessments', requireScope('WRITE_ASSESSMENTS'), async (req: ApiKe
         createdAt: true,
       },
     });
+
+    await scanQueueService.enqueueForAssessment(assessment.id);
     
     res.status(201).json({ 
       data: assessment,

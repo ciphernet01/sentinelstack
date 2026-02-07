@@ -6,55 +6,55 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
 }
 
 model User {
-  id                        String       @id @default(cuid())
-  firebaseId                String       @unique
-  email                     String       @unique
-  name                      String?
-  organization              String?      @default("Acme Corporation")
-  role                      Role         @default(CLIENT)
-  persona                   Persona?
+  id           String   @id @default(cuid())
+  firebaseId   String   @unique
+  email        String   @unique
+  name         String?
+  organization String?  @default("Acme Corporation")
+  role         Role     @default(CLIENT)
+  persona      Persona?
 
   // Multi-tenancy (active organization context)
-  activeOrganizationId      String?
-  activeOrganization        Organization? @relation("ActiveOrganization", fields: [activeOrganizationId], references: [id], onDelete: SetNull)
-  
+  activeOrganizationId String?
+  activeOrganization   Organization? @relation("ActiveOrganization", fields: [activeOrganizationId], references: [id], onDelete: SetNull)
+
   // Email verification
-  emailVerified             Boolean      @default(false)
-  emailVerificationToken    String?      @unique
-  emailVerificationExpiry   DateTime?
-  
+  emailVerified           Boolean   @default(false)
+  emailVerificationToken  String?   @unique
+  emailVerificationExpiry DateTime?
+
   // Password reset
-  passwordResetToken        String?      @unique
-  passwordResetExpiry       DateTime?
-  
+  passwordResetToken  String?   @unique
+  passwordResetExpiry DateTime?
+
   // Account security
-  failedLoginAttempts       Int          @default(0)
-  lockedUntil               DateTime?
-  lastPasswordChange        DateTime?
-  passwordHistory           String[]     @default([])
-  
+  failedLoginAttempts Int       @default(0)
+  lockedUntil         DateTime?
+  lastPasswordChange  DateTime?
+  passwordHistory     String[]  @default([])
+
   // Session management
-  lastLoginAt               DateTime?
-  lastLoginIp               String?
-  
+  lastLoginAt DateTime?
+  lastLoginIp String?
+
   // Onboarding
-  onboardingComplete        Boolean      @default(false)
-  
-  memberships               OrganizationMember[]
-  invitationsSent           OrganizationInvitation[] @relation("OrganizationInvitationInvitedBy")
-  assessments               Assessment[]
-  auditLogs                 AuditLog[]
-  scheduledScans            ScheduledScan[]
-  webhooks                  Webhook[]
-  apiKeys                   ApiKey[]
-  createdAt                 DateTime     @default(now())
-  updatedAt                 DateTime     @updatedAt
+  onboardingComplete Boolean @default(false)
+
+  memberships     OrganizationMember[]
+  invitationsSent OrganizationInvitation[] @relation("OrganizationInvitationInvitedBy")
+  assessments     Assessment[]
+  auditLogs       AuditLog[]
+  scheduledScans  ScheduledScan[]
+  webhooks        Webhook[]
+  apiKeys         ApiKey[]
+  createdAt       DateTime                 @default(now())
+  updatedAt       DateTime                 @updatedAt
 
   @@index([activeOrganizationId])
 }
@@ -66,31 +66,31 @@ enum OrganizationRole {
 }
 
 model Organization {
-  id            String                 @id @default(cuid())
-  name          String
-  
+  id   String @id @default(cuid())
+  name String
+
   // Stripe Subscription
-  stripeCustomerId     String?        @unique
-  subscriptionId       String?        @unique
-  subscriptionStatus   SubscriptionStatus @default(FREE)
-  subscriptionTier     SubscriptionTier   @default(FREE)
+  stripeCustomerId      String?            @unique
+  subscriptionId        String?            @unique
+  subscriptionStatus    SubscriptionStatus @default(FREE)
+  subscriptionTier      SubscriptionTier   @default(FREE)
   subscriptionPeriodEnd DateTime?
-  
+
   // Usage tracking
-  scansUsedThisMonth   Int            @default(0)
-  scansResetAt         DateTime       @default(now())
-  
-  activeUsers   User[]                 @relation("ActiveOrganization")
-  members       OrganizationMember[]
-  invitations   OrganizationInvitation[]
-  assessments   Assessment[]
-  scheduledScans ScheduledScan[]
-  webhooks      Webhook[]
-  apiKeys       ApiKey[]
-  branding      OrganizationBranding?
+  scansUsedThisMonth Int      @default(0)
+  scansResetAt       DateTime @default(now())
+
+  activeUsers      User[]                   @relation("ActiveOrganization")
+  members          OrganizationMember[]
+  invitations      OrganizationInvitation[]
+  assessments      Assessment[]
+  scheduledScans   ScheduledScan[]
+  webhooks         Webhook[]
+  apiKeys          ApiKey[]
+  branding         OrganizationBranding?
   complianceBadges ComplianceBadge[]
-  createdAt     DateTime               @default(now())
-  updatedAt     DateTime               @updatedAt
+  createdAt        DateTime                 @default(now())
+  updatedAt        DateTime                 @updatedAt
 }
 
 enum SubscriptionStatus {
@@ -108,13 +108,13 @@ enum SubscriptionTier {
 }
 
 model OrganizationMember {
-  id              String            @id @default(cuid())
-  organizationId  String
-  organization    Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  userId          String
-  user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-  role            OrganizationRole  @default(MEMBER)
-  createdAt       DateTime          @default(now())
+  id             String           @id @default(cuid())
+  organizationId String
+  organization   Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role           OrganizationRole @default(MEMBER)
+  createdAt      DateTime         @default(now())
 
   @@unique([organizationId, userId])
   @@index([userId])
@@ -122,21 +122,21 @@ model OrganizationMember {
 }
 
 model OrganizationInvitation {
-  id              String            @id @default(cuid())
+  id              String           @id @default(cuid())
   organizationId  String
-  organization    Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organization    Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   email           String
-  role            OrganizationRole  @default(MEMBER)
-  token           String            @unique
+  role            OrganizationRole @default(MEMBER)
+  token           String           @unique
   expiresAt       DateTime
   invitedByUserId String
-  invitedByUser   User              @relation("OrganizationInvitationInvitedBy", fields: [invitedByUserId], references: [id], onDelete: Cascade)
+  invitedByUser   User             @relation("OrganizationInvitationInvitedBy", fields: [invitedByUserId], references: [id], onDelete: Cascade)
   acceptedAt      DateTime?
-  createdAt       DateTime          @default(now())
+  createdAt       DateTime         @default(now())
 
+  @@unique([organizationId, email])
   @@index([organizationId, createdAt])
   @@index([email])
-  @@unique([organizationId, email])
 }
 
 enum Role {
@@ -152,25 +152,26 @@ enum Persona {
 }
 
 model Assessment {
-  id                       String             @id @default(cuid())
-  name                     String
-  targetUrl                String
-  toolPreset               String
-  status                   AssessmentStatus   @default(PENDING)
+  id                     String           @id @default(cuid())
+  name                   String
+  targetUrl              String
+  toolPreset             String
+  status                 AssessmentStatus @default(PENDING)
   authorizationConfirmed Boolean
-  notes                    String?
-  riskScore                Int?
-  scannerConfig            Json?
-  endedEarly               Boolean            @default(false)
-  endedEarlyReason         String?
-  organizationId           String
-  organization             Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  userId                   String
-  user                     User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  findings                 Finding[]
-  report                   Report?
-  createdAt                DateTime           @default(now())
-  updatedAt                DateTime           @updatedAt
+  notes                  String?
+  riskScore              Int?
+  scannerConfig          Json?
+  endedEarly             Boolean          @default(false)
+  endedEarlyReason       String?
+  scanJob                ScanJob?
+  organizationId         String
+  organization           Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  userId                 String
+  user                   User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  findings               Finding[]
+  report                 Report?
+  createdAt              DateTime         @default(now())
+  updatedAt              DateTime         @updatedAt
 
   @@index([organizationId, createdAt])
 }
@@ -182,8 +183,39 @@ enum AssessmentStatus {
   REJECTED
 }
 
+enum ScanJobStatus {
+  QUEUED
+  RUNNING
+  COMPLETED
+  FAILED
+  CANCELED
+}
+
+model ScanJob {
+  id           String     @id @default(cuid())
+  assessmentId String     @unique
+  assessment   Assessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+
+  status       ScanJobStatus @default(QUEUED)
+  priority     Int           @default(0)
+  attemptCount Int           @default(0)
+  maxAttempts  Int           @default(3)
+
+  runAt     DateTime  @default(now())
+  lockedAt  DateTime?
+  lockedBy  String?
+  lastError String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status, runAt])
+  @@index([lockedAt])
+  @@index([priority, runAt])
+}
+
 model Finding {
-  id                String   @id @default(cuid())
+  id                String     @id @default(cuid())
   assessmentId      String
   assessment        Assessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
   toolName          String
@@ -193,8 +225,8 @@ model Finding {
   remediation       String
   evidence          Json
   complianceMapping String[]
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
 
   @@unique([assessmentId, title])
 }
@@ -218,40 +250,40 @@ model Report {
 }
 
 model AuditLog {
-  id          String   @id @default(cuid())
-  userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  action      String   // LOGIN, LOGOUT, PASSWORD_CHANGE, etc.
-  ipAddress   String?
-  userAgent   String?
-  metadata    Json?
-  createdAt   DateTime @default(now())
-  
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  action    String // LOGIN, LOGOUT, PASSWORD_CHANGE, etc.
+  ipAddress String?
+  userAgent String?
+  metadata  Json?
+  createdAt DateTime @default(now())
+
   @@index([userId, createdAt])
 }
 
 // Scheduled Scans
 model ScheduledScan {
-  id              String              @id @default(cuid())
-  name            String
-  targetUrl       String
-  toolPreset      String              @default("default")
-  schedule        String              // Cron expression (e.g., "0 0 * * *" for daily)
-  scheduleType    ScheduleType        @default(WEEKLY)
-  timezone        String              @default("UTC")
-  enabled         Boolean             @default(true)
-  lastRunAt       DateTime?
-  nextRunAt       DateTime?
-  runCount        Int                 @default(0)
-  
-  organizationId  String
-  organization    Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  createdById     String
-  createdBy       User                @relation(fields: [createdById], references: [id], onDelete: Cascade)
-  
-  createdAt       DateTime            @default(now())
-  updatedAt       DateTime            @updatedAt
-  
+  id           String       @id @default(cuid())
+  name         String
+  targetUrl    String
+  toolPreset   String       @default("default")
+  schedule     String // Cron expression (e.g., "0 0 * * *" for daily)
+  scheduleType ScheduleType @default(WEEKLY)
+  timezone     String       @default("UTC")
+  enabled      Boolean      @default(true)
+  lastRunAt    DateTime?
+  nextRunAt    DateTime?
+  runCount     Int          @default(0)
+
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdById    String
+  createdBy      User         @relation(fields: [createdById], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@index([organizationId, enabled])
   @@index([nextRunAt, enabled])
 }
@@ -265,50 +297,50 @@ enum ScheduleType {
 
 // Webhooks for notifications
 model Webhook {
-  id              String              @id @default(cuid())
-  name            String
-  url             String
-  secret          String?             // For HMAC signature verification
-  enabled         Boolean             @default(true)
-  
+  id      String  @id @default(cuid())
+  name    String
+  url     String
+  secret  String? // For HMAC signature verification
+  enabled Boolean @default(true)
+
   // Event filters
-  events          WebhookEvent[]      @default([SCAN_COMPLETED])
-  
+  events WebhookEvent[] @default([SCAN_COMPLETED])
+
   // Delivery tracking
   lastTriggeredAt DateTime?
-  lastStatus      Int?                // HTTP status code
-  failureCount    Int                 @default(0)
-  
-  organizationId  String
-  organization    Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  createdById     String
-  createdBy       User                @relation(fields: [createdById], references: [id], onDelete: Cascade)
-  
-  deliveries      WebhookDelivery[]
-  
-  createdAt       DateTime            @default(now())
-  updatedAt       DateTime            @updatedAt
-  
+  lastStatus      Int? // HTTP status code
+  failureCount    Int       @default(0)
+
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdById    String
+  createdBy      User         @relation(fields: [createdById], references: [id], onDelete: Cascade)
+
+  deliveries WebhookDelivery[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@index([organizationId, enabled])
 }
 
 model WebhookDelivery {
-  id              String              @id @default(cuid())
-  webhookId       String
-  webhook         Webhook             @relation(fields: [webhookId], references: [id], onDelete: Cascade)
-  
-  event           WebhookEvent
-  payload         Json
-  
+  id        String  @id @default(cuid())
+  webhookId String
+  webhook   Webhook @relation(fields: [webhookId], references: [id], onDelete: Cascade)
+
+  event   WebhookEvent
+  payload Json
+
   // Response tracking
-  statusCode      Int?
-  responseBody    String?
-  responseTime    Int?                // ms
-  success         Boolean             @default(false)
-  error           String?
-  
-  createdAt       DateTime            @default(now())
-  
+  statusCode   Int?
+  responseBody String?
+  responseTime Int? // ms
+  success      Boolean @default(false)
+  error        String?
+
+  createdAt DateTime @default(now())
+
   @@index([webhookId, createdAt])
 }
 
@@ -321,30 +353,30 @@ enum WebhookEvent {
 
 // API Keys for programmatic access
 model ApiKey {
-  id              String              @id @default(cuid())
-  name            String
-  keyHash         String              @unique    // SHA-256 hash of the key
-  keyPrefix       String              // First 8 chars for display (e.g., "sk_live_")
-  
+  id        String @id @default(cuid())
+  name      String
+  keyHash   String @unique // SHA-256 hash of the key
+  keyPrefix String // First 8 chars for display (e.g., "sk_live_")
+
   // Permissions
-  scopes          ApiScope[]          @default([READ_ASSESSMENTS])
-  
+  scopes ApiScope[] @default([READ_ASSESSMENTS])
+
   // Usage tracking
-  lastUsedAt      DateTime?
-  usageCount      Int                 @default(0)
-  
+  lastUsedAt DateTime?
+  usageCount Int       @default(0)
+
   // Expiration
-  expiresAt       DateTime?
-  enabled         Boolean             @default(true)
-  
-  organizationId  String
-  organization    Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  createdById     String
-  createdBy       User                @relation(fields: [createdById], references: [id], onDelete: Cascade)
-  
-  createdAt       DateTime            @default(now())
-  updatedAt       DateTime            @updatedAt
-  
+  expiresAt DateTime?
+  enabled   Boolean   @default(true)
+
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdById    String
+  createdBy      User         @relation(fields: [createdById], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@index([keyHash])
   @@index([organizationId, enabled])
 }
@@ -360,70 +392,70 @@ enum ApiScope {
 
 // White-labeling / Custom Branding
 model OrganizationBranding {
-  id                String        @id @default(cuid())
-  organizationId    String        @unique
-  organization      Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  
+  id             String       @id @default(cuid())
+  organizationId String       @unique
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
   // Basic branding
-  logoUrl           String?       // Custom logo URL
-  faviconUrl        String?       // Custom favicon URL
-  companyName       String?       // Display name override
-  
+  logoUrl     String? // Custom logo URL
+  faviconUrl  String? // Custom favicon URL
+  companyName String? // Display name override
+
   // Colors
-  primaryColor      String        @default("#6366f1") // Primary brand color
-  secondaryColor    String?       // Secondary brand color
-  accentColor       String?       // Accent color
-  
+  primaryColor   String  @default("#6366f1") // Primary brand color
+  secondaryColor String? // Secondary brand color
+  accentColor    String? // Accent color
+
   // Custom domain
-  customDomain      String?       @unique // e.g., "security.acme.com"
-  domainVerified    Boolean       @default(false)
-  domainVerifyToken String?       // DNS verification token
-  
+  customDomain      String? @unique // e.g., "security.acme.com"
+  domainVerified    Boolean @default(false)
+  domainVerifyToken String? // DNS verification token
+
   // Email branding
-  emailFromName     String?       // e.g., "ACME Security Team"
-  emailReplyTo      String?       // Custom reply-to address
-  
+  emailFromName String? // e.g., "ACME Security Team"
+  emailReplyTo  String? // Custom reply-to address
+
   // Report branding
-  reportLogoUrl     String?       // Logo for PDF reports
-  reportFooterText  String?       // Custom footer for reports
-  reportHeaderText  String?       // Custom header for reports
-  
+  reportLogoUrl    String? // Logo for PDF reports
+  reportFooterText String? // Custom footer for reports
+  reportHeaderText String? // Custom header for reports
+
   // Feature flags
-  hidePoweredBy     Boolean       @default(false) // Hide "Powered by SentinelStack"
-  
-  createdAt         DateTime      @default(now())
-  updatedAt         DateTime      @updatedAt
+  hidePoweredBy Boolean @default(false) // Hide "Powered by SentinelStack"
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 // Compliance Badges & Trust Certifications
 model ComplianceBadge {
-  id                String            @id @default(cuid())
-  organizationId    String
-  organization      Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
   // Badge details
-  type              ComplianceType
-  name              String            // Display name (e.g., "SOC 2 Type II")
-  description       String?           // Description of the certification
-  
+  type        ComplianceType
+  name        String // Display name (e.g., "SOC 2 Type II")
+  description String? // Description of the certification
+
   // Verification
-  isVerified        Boolean           @default(false)
-  verifiedAt        DateTime?
-  verificationUrl   String?           // Link to verification/audit report
-  certificateUrl    String?           // Link to certificate PDF
-  
+  isVerified      Boolean   @default(false)
+  verifiedAt      DateTime?
+  verificationUrl String? // Link to verification/audit report
+  certificateUrl  String? // Link to certificate PDF
+
   // Validity
-  issuedAt          DateTime?
-  expiresAt         DateTime?
-  
+  issuedAt  DateTime?
+  expiresAt DateTime?
+
   // Display
-  badgeImageUrl     String?           // Custom badge image
-  displayOnPublicPage Boolean         @default(true)
-  displayOrder      Int               @default(0)
-  
-  createdAt         DateTime          @default(now())
-  updatedAt         DateTime          @updatedAt
-  
+  badgeImageUrl       String? // Custom badge image
+  displayOnPublicPage Boolean @default(true)
+  displayOrder        Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@unique([organizationId, type])
   @@index([organizationId, displayOnPublicPage])
 }

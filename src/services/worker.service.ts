@@ -369,6 +369,7 @@ export const startAssessmentWorker = async (
                 status: 'IN_PROGRESS',
                 scannerConfig: {
                     ...effectiveConfig,
+                    scope,
                     scanOptions: scanOptions, // Store scan options for reference
                     capturedAt: new Date().toISOString(),
                 } as any,

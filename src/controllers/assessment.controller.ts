@@ -3,8 +3,8 @@ import { Response, NextFunction } from 'express';
 import { AuthenticatedRequest } from '../middleware/auth';
 import { prisma } from '../config/db';
 import { Prisma } from '@prisma/client';
-import { startAssessmentWorker } from '../services/worker.service';
 import { billingService } from '../services/billing.service';
+import { scanQueueService } from '../services/scanQueue.service';
 import fs from 'fs';
 import path from 'path';
 
@@ -106,15 +106,20 @@ class AssessmentController {
       // Increment scan usage for this organization
       await billingService.incrementScanUsage(organizationId);
 
-      // Do not await this. Let it run in the background.
-      startAssessmentWorker(
-        assessment.id, 
-        assessment.targetUrl, 
-        scope, 
-        assessment.toolPreset, 
-        Boolean(assessment.authorizationConfirmed),
-        validatedScanOptions
-      );
+      // Persist scan options so the job worker can pick them up.
+      await prisma.assessment.update({
+        where: { id: assessment.id },
+        data: {
+          scannerConfig: {
+            scope,
+            scanOptions: validatedScanOptions,
+            capturedAt: new Date().toISOString(),
+          } as any,
+        },
+      });
+
+      // Enqueue scan job (DB-backed) and return immediately.
+      await scanQueueService.enqueueForAssessment(assessment.id);
 
       res.status(201).json(assessment);
     } catch (error) {

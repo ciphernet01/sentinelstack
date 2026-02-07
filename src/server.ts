@@ -11,6 +11,7 @@ import { stream } from './utils/logger';
 import logger from './utils/logger';
 import { recoverOrphanedInProgressAssessments } from './services/assessmentRecovery.service';
 import { requestIdMiddleware } from './middleware/requestId';
+import { scanQueueService } from './services/scanQueue.service';
 
 // Initialize Firebase
 initializeFirebaseAdmin();
@@ -19,6 +20,9 @@ initializeFirebaseAdmin();
 recoverOrphanedInProgressAssessments().catch((e) => {
   logger.warn(`Failed to run assessment recovery: ${String(e)}`);
 });
+
+// DB-backed scan queue worker (can run in-process; disable for separate worker dyno).
+scanQueueService.startWorkerLoop();
 
 const app = express();
 const port = process.env.PORT || 3001;
