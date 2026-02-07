@@ -90,6 +90,8 @@ RUN --mount=type=cache,target=/root/.cache/pip \
 COPY tsconfig.backend.json tsconfig.backend.json
 COPY tsconfig.json tsconfig.json
 COPY src ./src
+COPY scripts/docker/start.sh ./scripts/docker/start.sh
+RUN chmod +x ./scripts/docker/start.sh
 RUN npm run build:backend
 
 # Prune dev dependencies for a smaller production image
@@ -99,4 +101,4 @@ RUN npm prune --omit=dev
 EXPOSE 3001
 
 # Start command
-CMD ["sh", "-c", "npx prisma migrate deploy && node dist/server.js"]
+CMD ["sh", "-c", "./scripts/docker/start.sh"]

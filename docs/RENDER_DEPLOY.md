@@ -1,15 +1,16 @@
 # Render deploy (recommended)
 
-This repo deploys cleanly on Render using two services:
+This repo deploys cleanly on Render using three services:
 
 - `sentinelstack-api` (Docker): Express + Prisma + Puppeteer/scanners
+- `sentinelstack-worker` (Docker): dedicated scan worker (no HTTP)
 - `sentinelstack-web` (Node): Next.js frontend
 
 ## 1) Create from Blueprint
 
 1. In Render: **New** → **Blueprint**
 2. Select your GitHub repo: `ciphernet01/sentinelstack`
-3. Render will detect [render.yaml](../render.yaml) and propose two services.
+3. Render will detect [render.yaml](../render.yaml) and propose three services.
 4. Create the services.
 
 ## 2) Set environment variables
@@ -35,6 +36,25 @@ Notes for `FIREBASE_PRIVATE_KEY`:
 Email (optional; only if you want password reset/invite emails):
 - `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `EMAIL_FROM`
 
+Queue/worker role:
+- `SCAN_QUEUE_WORKER_ENABLED=false` (API should not run scan jobs when you have a dedicated worker)
+- `PROCESS_TYPE=api`
+- `RUN_MIGRATIONS_ON_START=true`
+
+### Worker service: `sentinelstack-worker`
+
+Uses the same Docker image as the API service, but runs the dedicated worker entrypoint.
+
+Required:
+- `DATABASE_URL`, `DIRECT_URL`
+- `CLIENT_URL`, `INTERNAL_API_TOKEN`
+- Firebase Admin env vars
+
+Queue/worker role:
+- `SCAN_QUEUE_WORKER_ENABLED=true`
+- `PROCESS_TYPE=worker`
+- `RUN_MIGRATIONS_ON_START=false`
+
 ### Web service: `sentinelstack-web`
 
 Required:
@@ -52,8 +72,9 @@ Firebase client (public values):
 
 1. Deploy `sentinelstack-api` first.
    - It runs `prisma migrate deploy` automatically on startup.
-2. After API is live, set `BACKEND_URL` on `sentinelstack-web` and deploy web.
-3. Set `CLIENT_URL` on API to the web URL and redeploy API (CORS).
+2. Deploy `sentinelstack-worker`.
+3. After API is live, set `BACKEND_URL` on `sentinelstack-web` and deploy web.
+4. Set `CLIENT_URL` on API to the web URL and redeploy API (CORS).
 
 ## 4) Quick verification
 

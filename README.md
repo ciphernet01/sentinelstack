@@ -98,6 +98,23 @@ See [docs/SECURITY_CHECKLIST.md](docs/SECURITY_CHECKLIST.md) for key rotation an
 
 See [docs/RENDER_DEPLOY.md](docs/RENDER_DEPLOY.md).
 
+### Scan Worker (recommended)
+
+Scans are processed by a DB-backed queue. In production, run scans in a dedicated worker service so API restarts/traffic don’t interrupt scan execution.
+
+Render services:
+- `sentinelstack-api` (Docker): HTTP API only
+- `sentinelstack-worker` (Docker worker): scan execution only
+- `sentinelstack-web` (Node): Next.js frontend
+
+Key env vars:
+- API: `PROCESS_TYPE=api`, `SCAN_QUEUE_WORKER_ENABLED=false`, `RUN_MIGRATIONS_ON_START=true`
+- Worker: `PROCESS_TYPE=worker`, `SCAN_QUEUE_WORKER_ENABLED=true`, `RUN_MIGRATIONS_ON_START=false`
+
+Optional worker tuning:
+- `SCAN_QUEUE_CONCURRENCY` (default 1)
+- `SCAN_QUEUE_POLL_MS` (default 2000)
+
 ## 📖 API Endpoints
 
 A Postman collection or further API documentation would typically be provided here, detailing all routes, required headers, and request/response bodies.

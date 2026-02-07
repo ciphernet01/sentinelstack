@@ -202,7 +202,11 @@ export class ScanQueueService {
     const timer = setInterval(() => {
       tick().catch((e) => logger.warn(`[SCAN_QUEUE] Tick error: ${String(e)}`));
     }, pollMs);
-    timer.unref?.();
+
+    // In a dedicated worker process, an unref'd timer may allow the process to exit.
+    // Only unref when explicitly requested.
+    const unrefTimer = envTruthy('SCAN_QUEUE_TIMER_UNREF', false);
+    if (unrefTimer) timer.unref?.();
   }
 }
 
