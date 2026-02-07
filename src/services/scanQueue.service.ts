@@ -16,6 +16,41 @@ const envTruthy = (name: string, defaultValue: boolean): boolean => {
 };
 
 export class ScanQueueService {
+  async getQueueStats() {
+    const now = new Date();
+
+    const grouped = await prisma.scanJob.groupBy({
+      by: ['status'],
+      _count: { _all: true },
+    });
+
+    const counts = grouped.reduce<Record<string, number>>((acc, row) => {
+      acc[row.status] = row._count._all;
+      return acc;
+    }, {});
+
+    const runnableQueued = await prisma.scanJob.count({
+      where: { status: 'QUEUED', runAt: { lte: now } },
+    });
+
+    const oldestQueued = await prisma.scanJob.findFirst({
+      where: { status: 'QUEUED' },
+      orderBy: [{ runAt: 'asc' }, { createdAt: 'asc' }],
+      select: { runAt: true, createdAt: true },
+    });
+
+    const oldestQueuedAgeSeconds = oldestQueued
+      ? Math.max(0, Math.floor((now.getTime() - oldestQueued.runAt.getTime()) / 1000))
+      : 0;
+
+    return {
+      now: now.toISOString(),
+      counts,
+      runnableQueued,
+      oldestQueuedAgeSeconds,
+    };
+  }
+
   async enqueueForAssessment(assessmentId: string, options?: { priority?: number; maxAttempts?: number }) {
     const priority = options?.priority ?? 0;
     const maxAttempts = options?.maxAttempts ?? envNumber('SCAN_JOB_MAX_ATTEMPTS', 3);
@@ -155,6 +190,25 @@ export class ScanQueueService {
     const concurrency = envNumber('SCAN_QUEUE_CONCURRENCY', 1);
 
     logger.info(`[SCAN_QUEUE] Worker starting (id=${lockId}, pollMs=${pollMs}, concurrency=${concurrency})`);
+
+    // Periodic queue health log for ops visibility.
+    // Defaults to on (every 5 minutes) while worker is enabled.
+    const statsLogEnabled = envTruthy('SCAN_QUEUE_STATS_LOG_ENABLED', true);
+    const statsLogMs = envNumber('SCAN_QUEUE_STATS_LOG_MS', 5 * 60 * 1000);
+    if (statsLogEnabled && statsLogMs > 0) {
+      const statsTimer = setInterval(() => {
+        this.getQueueStats()
+          .then((stats) => {
+            logger.info(
+              `[SCAN_QUEUE] Stats queued=${stats.counts.QUEUED || 0} running=${stats.counts.RUNNING || 0} failed=${stats.counts.FAILED || 0} runnableQueued=${stats.runnableQueued} oldestQueuedAgeSec=${stats.oldestQueuedAgeSeconds}`,
+            );
+          })
+          .catch((e) => logger.warn(`[SCAN_QUEUE] Stats error: ${String(e)}`));
+      }, statsLogMs);
+
+      const unrefStatsTimer = envTruthy('SCAN_QUEUE_STATS_TIMER_UNREF', true);
+      if (unrefStatsTimer) statsTimer.unref?.();
+    }
 
     let active = 0;
 
