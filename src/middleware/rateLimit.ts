@@ -3,15 +3,10 @@ import type { Request } from 'express';
 import type { AuthenticatedRequest } from './auth';
 
 function getClientIp(req: Request): string | undefined {
+  // Do NOT parse x-forwarded-for manually.
+  // Rely on Express's req.ip, which honors app.set('trust proxy', ...)
+  // and prevents trivial header spoofing bypasses in our key generator.
   const anyReq = req as any;
-  const xff = anyReq?.headers?.['x-forwarded-for'];
-  if (typeof xff === 'string' && xff.trim().length > 0) {
-    return xff.split(',')[0]?.trim();
-  }
-  if (Array.isArray(xff) && xff.length > 0) {
-    return xff[0]?.split(',')[0]?.trim();
-  }
-
   return anyReq?.ip || anyReq?.socket?.remoteAddress || anyReq?.connection?.remoteAddress;
 }
 
