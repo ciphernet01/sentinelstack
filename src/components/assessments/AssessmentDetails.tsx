@@ -14,7 +14,7 @@ import { AISummaryButton } from './AISummaryButton';
 import { Pie, PieChart, Cell } from 'recharts';
 import { ChartContainer, ChartTooltipContent, ChartLegend, ChartLegendContent } from '@/components/ui/chart';
 import { getSeverityCounts } from '@/services/riskScoring.service';
-import { DEFAULT_SCANNER_TIMEOUT_MS } from '@/shared/scannerDefaults';
+import { DEFAULT_SCANNER_TIMEOUT_MS, getDefaultScannerTimeoutMs } from '@/shared/scannerDefaults';
 import {
   coerceJsonObject as coerceEvidenceObject,
   hasLegacyTimeoutEvidence,
@@ -96,10 +96,13 @@ function getNormalizedTimeoutFinding(finding: Finding) {
   if (!looksLikeTimeout) return null;
 
   const timeoutMs = Number(evidenceObj?.timeoutMs);
+  const evidencePreset = (evidenceObj as any)?.preset;
+  const evidenceScope = (evidenceObj as any)?.scope;
+  const computedDefaultTimeoutMs = getDefaultScannerTimeoutMs(evidencePreset, evidenceScope);
   const timeoutSource =
     typeof evidenceObj?.timeoutSource === 'string'
       ? String(evidenceObj.timeoutSource)
-      : Number.isFinite(timeoutMs) && timeoutMs !== DEFAULT_SCANNER_TIMEOUT_MS
+      : Number.isFinite(timeoutMs) && timeoutMs !== (computedDefaultTimeoutMs || DEFAULT_SCANNER_TIMEOUT_MS)
         ? 'SCANNER_TIMEOUT_MS'
         : 'default';
 

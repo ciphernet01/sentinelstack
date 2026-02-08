@@ -3,6 +3,7 @@ import {
   DEFAULT_SCANNER_STUCK_WARN_MS,
   DEFAULT_SCANNER_TOOL_STUCK_WARN_MS,
   DEFAULT_SCANNER_WATCHDOG_INTERVAL_MS,
+  getDefaultScannerTimeoutMs,
 } from '../shared/scannerDefaults';
 
 export { isScannerTimeoutFinding } from '../shared/scannerFindings';
@@ -23,7 +24,8 @@ export function getEffectiveScannerConfig(preset: string, scope: string): Effect
   const runtime = String(process.env.SCANNER_RUNTIME || 'local').toLowerCase();
 
   const timeoutEnvRaw = process.env.SCANNER_TIMEOUT_MS;
-  const timeoutMs = Number(timeoutEnvRaw || DEFAULT_SCANNER_TIMEOUT_MS);
+  const computedDefaultTimeoutMs = getDefaultScannerTimeoutMs(preset, scope);
+  const timeoutMs = Number(timeoutEnvRaw || computedDefaultTimeoutMs || DEFAULT_SCANNER_TIMEOUT_MS);
   const timeoutSource: EffectiveScannerConfig['timeoutSource'] = timeoutEnvRaw ? 'SCANNER_TIMEOUT_MS' : 'default';
 
   const stuckWarnMs = Number(process.env.SCANNER_STUCK_WARN_MS || DEFAULT_SCANNER_STUCK_WARN_MS);
