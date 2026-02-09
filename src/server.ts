@@ -12,6 +12,7 @@ import logger from './utils/logger';
 import { recoverOrphanedInProgressAssessments } from './services/assessmentRecovery.service';
 import { requestIdMiddleware } from './middleware/requestId';
 import { scanQueueService } from './services/scanQueue.service';
+import { apiGlobalLimiter } from './middleware/rateLimit';
 
 // Initialize Firebase
 initializeFirebaseAdmin();
@@ -51,7 +52,7 @@ morgan.token('id', (req) => {
 app.use(morgan(':id :method :url :status :res[content-length] - :response-time ms', { stream }));
 
 // API Routes
-app.use('/api', apiRoutes);
+app.use('/api', apiGlobalLimiter, apiRoutes);
 
 // Health Check
 app.get('/health', (req, res) => {

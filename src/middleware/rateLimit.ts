@@ -70,3 +70,22 @@ export const webhookLimiter = rateLimit({
     error: 'Too many requests',
   },
 });
+
+// General API protection: catches endpoints that don't have route-specific limiters.
+// Keep it permissive enough for normal dashboard usage.
+export const apiGlobalLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 300,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: keyByUserOrIp,
+  skip: (req) => {
+    // Webhooks are validated by signature; rate limit them separately.
+    const path = String((req as any)?.path || '');
+    return path.startsWith('/billing/webhook');
+  },
+  message: {
+    message: 'Too many requests. Please slow down and try again.',
+    code: 'RATE_LIMITED',
+  },
+});

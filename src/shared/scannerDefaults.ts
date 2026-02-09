@@ -20,12 +20,12 @@ export function getDefaultScannerTimeoutMs(preset: unknown, scope: unknown): num
 
 	// FULL scope typically runs more tools / wider coverage.
 	if (normalizedScope === 'full') {
-		candidates.push(15 * 60 * 1000);
+		candidates.push(20 * 60 * 1000);
 	}
 
 	// Enterprise preset is expected to be the deepest/slowest.
 	if (normalizedPreset === 'enterprise') {
-		candidates.push(20 * 60 * 1000);
+		candidates.push(30 * 60 * 1000);
 	}
 
 	return Math.max(...candidates);
