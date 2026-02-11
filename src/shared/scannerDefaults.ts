@@ -25,7 +25,7 @@ export function getDefaultScannerTimeoutMs(preset: unknown, scope: unknown): num
 
 	// Enterprise preset is expected to be the deepest/slowest.
 	if (normalizedPreset === 'enterprise') {
-		candidates.push(30 * 60 * 1000);
+		candidates.push(50 * 60 * 1000);
 	}
 
 	return Math.max(...candidates);
