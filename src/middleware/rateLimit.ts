@@ -89,3 +89,16 @@ export const apiGlobalLimiter = rateLimit({
     code: 'RATE_LIMITED',
   },
 });
+
+// Protects high-value write operations: webhooks, scheduled scans, org invites.
+export const writeOperationLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: keyByUserOrIp,
+  message: {
+    message: 'Too many creation requests. Please wait before trying again.',
+    code: 'RATE_LIMITED',
+  },
+});

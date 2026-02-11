@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { webhookController } from '../controllers/webhook.controller';
 import { firebaseAuth } from '../middleware/auth';
+import { writeOperationLimiter } from '../middleware/rateLimit';
 
 const router = Router();
 
@@ -14,7 +15,7 @@ router.get('/', webhookController.list);
 router.get('/:id', webhookController.getById);
 
 // Create webhook
-router.post('/', webhookController.create);
+router.post('/', writeOperationLimiter, webhookController.create);
 
 // Update webhook
 router.patch('/:id', webhookController.update);

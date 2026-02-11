@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { orgController } from '../controllers/org.controller';
 import { firebaseAuth, requireOrganizationRole } from '../middleware/auth';
+import { writeOperationLimiter } from '../middleware/rateLimit';
 
 const router = Router();
 
@@ -22,7 +23,7 @@ router.get('/invitations', firebaseAuth, requireOrganizationRole(['OWNER', 'ADMI
 // @route   POST /api/org/invitations
 // @desc    Invite a member by email
 // @access  Private (Org OWNER/ADMIN)
-router.post('/invitations', firebaseAuth, requireOrganizationRole(['OWNER', 'ADMIN']), orgController.createInvitation);
+router.post('/invitations', firebaseAuth, requireOrganizationRole(['OWNER', 'ADMIN']), writeOperationLimiter, orgController.createInvitation);
 
 // @route   POST /api/org/invitations/:id/resend
 // @desc    Resend an invitation (refresh token/expiry)

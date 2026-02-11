@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { scheduledScanController } from '../controllers/scheduled-scan.controller';
 import { firebaseAuth } from '../middleware/auth';
+import { writeOperationLimiter } from '../middleware/rateLimit';
 
 const router = Router();
 
@@ -20,7 +21,7 @@ router.get('/:id', scheduledScanController.getById);
 // @route   POST /api/scheduled-scans
 // @desc    Create a new scheduled scan
 // @access  Private
-router.post('/', scheduledScanController.create);
+router.post('/', writeOperationLimiter, scheduledScanController.create);
 
 // @route   PATCH /api/scheduled-scans/:id
 // @desc    Update a scheduled scan
