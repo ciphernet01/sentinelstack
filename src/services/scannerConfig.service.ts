@@ -30,7 +30,13 @@ export function getEffectiveScannerConfig(preset: string, scope: string): Effect
 
   const stuckWarnMs = Number(process.env.SCANNER_STUCK_WARN_MS || DEFAULT_SCANNER_STUCK_WARN_MS);
   const toolStuckWarnMs = Number(process.env.SCANNER_TOOL_STUCK_WARN_MS || DEFAULT_SCANNER_TOOL_STUCK_WARN_MS);
-  const killOnStuck = String(process.env.SCANNER_KILL_ON_STUCK || 'false').toLowerCase() === 'true';
+  
+  // Enable killOnStuck by default to prevent hung scans; explicitly set SCANNER_KILL_ON_STUCK=false to disable.
+  const killOnStuckEnv = process.env.SCANNER_KILL_ON_STUCK;
+  const killOnStuck = killOnStuckEnv === undefined 
+    ? true 
+    : String(killOnStuckEnv).toLowerCase() === 'true';
+  
   const watchdogIntervalMs = Number(
     process.env.SCANNER_WATCHDOG_INTERVAL_MS || DEFAULT_SCANNER_WATCHDOG_INTERVAL_MS,
   );
