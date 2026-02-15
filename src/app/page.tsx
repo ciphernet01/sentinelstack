@@ -114,12 +114,12 @@ export default function Home() {
           <div className="container px-2 sm:px-4 md:px-6">
             <div className="grid gap-10 sm:gap-12 lg:grid-cols-2 lg:gap-16">
               <div className="flex flex-col justify-center space-y-6 text-center lg:text-left">
-                <div className="inline-block rounded-lg bg-secondary px-3 py-1 text-xs sm:text-sm text-secondary-foreground">Security compliance for Indian startups</div>
+                <div className="inline-block rounded-lg bg-secondary px-3 py-1 text-xs sm:text-sm text-secondary-foreground">Security compliance for startups</div>
                 <h1 className="text-3xl sm:text-4xl font-bold tracking-tighter sm:text-5xl xl:text-6xl/none font-headline">
                   Audit-ready security in weeks, not quarters.
                 </h1>
                 <p className="max-w-full sm:max-w-[600px] text-muted-foreground text-base sm:text-lg md:text-xl mx-auto lg:mx-0">
-                  SentinelStack helps Indian SaaS teams run continuous security assessments, map findings to common frameworks (OWASP, ISO 27001, SOC 2), and ship reports customers and auditors can trust.
+                  SentinelStack helps SaaS teams run continuous security assessments, map findings to common frameworks (OWASP, ISO 27001, SOC 2), and ship reports customers and auditors can trust.
                 </p>
                 <div className="flex flex-col gap-2 w-full sm:w-auto sm:flex-row justify-center lg:justify-start">
                   <Button asChild size="lg" className="group w-full sm:w-auto">
@@ -295,7 +295,7 @@ export default function Home() {
             <div className="space-y-3">
               <h2 className="text-3xl font-bold tracking-tighter md:text-4xl/tight font-headline">Simple, Transparent Pricing</h2>
               <p className="mx-auto max-w-[600px] text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
-                Built for early-stage Indian SaaS teams. Start free, then upgrade when you need audit-ready reporting.
+                Built for early-stage SaaS teams. Start free, then upgrade when you need audit-ready reporting.
               </p>
             </div>
             <div className="mx-auto grid max-w-4xl grid-cols-1 gap-8 pt-12 md:grid-cols-3">

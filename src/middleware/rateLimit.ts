@@ -61,6 +61,18 @@ export const billingActionLimiter = rateLimit({
   },
 });
 
+export const aiChatLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000,
+  max: 40,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: keyByUserOrIp,
+  message: {
+    message: 'Too many assistant requests. Please wait and try again.',
+    code: 'RATE_LIMITED',
+  },
+});
+
 export const webhookLimiter = rateLimit({
   windowMs: 60 * 1000,
   max: 120,

@@ -4,6 +4,7 @@ import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 import { AppProviders } from '@/components/layout/AppProviders';
 import { ThemeProvider } from '@/components/layout/ThemeProvider';
+import { ChatWidget } from '@/components/chat/ChatWidget';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -48,6 +49,7 @@ export default function RootLayout({
             disableTransitionOnChange
           >
             {children}
+            <ChatWidget />
             <Toaster />
           </ThemeProvider>
         </AppProviders>

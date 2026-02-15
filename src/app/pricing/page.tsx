@@ -44,7 +44,7 @@ const tiers = [
   {
     name: 'Pro',
     id: 'PRO',
-    description: 'For growing Indian SaaS teams (launch offer)',
+    description: 'For growing SaaS teams (launch offer)',
     monthlyPrice: 99,
     yearlyPrice: 990,
     icon: Crown,
@@ -218,7 +218,7 @@ export default function PricingPage() {
               Simple, Transparent Pricing
             </div>
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tighter font-headline mb-6">
-              Security Compliance Pricing (India-ready)
+              Security Compliance Pricing
             </h1>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-10">
               Start free, then upgrade when you need audit-ready reporting for customers and compliance.

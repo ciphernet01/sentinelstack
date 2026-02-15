@@ -13,6 +13,7 @@ import publicApiRoutes from './public-api.routes';
 import brandingRoutes from './branding.routes';
 import complianceRoutes from './compliance.routes';
 import adminRoutes from './admin.routes';
+import aiRoutes from './ai.routes';
 
 const router = Router();
 
@@ -30,5 +31,6 @@ router.use('/v1', publicApiRoutes); // Public API endpoints
 router.use('/branding', brandingRoutes);
 router.use('/compliance', complianceRoutes);
 router.use('/admin', adminRoutes);
+router.use('/ai', aiRoutes);
 
 export default router;
