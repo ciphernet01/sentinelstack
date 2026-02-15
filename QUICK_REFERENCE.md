@@ -70,6 +70,34 @@ set TIER=ENTERPRISE
 npm run test:razorpay:webhook
 ```
 
+## Razorpay Webhook (Production Test)
+
+Fastest safe production validation (no real payments): send a signed synthetic event to your live webhook endpoint.
+
+```bash
+set WEBHOOK_URL=https://YOUR_API_BASE_URL/api/billing/webhook
+set RAZORPAY_WEBHOOK_SECRET=YOUR_LIVE_WEBHOOK_SECRET
+set ORG_ID=your_organization_id
+set TIER=PRO
+set EVENT=subscription.activated
+npm run test:razorpay:webhook
+```
+
+You should see `{"received":true}` and the API logs should show a 200 response.
+
+## Launch Discount (First 50 Customers)
+
+Backend supports a capped launch discount for Razorpay subscriptions:
+
+- Applies only to `PRO` + `INR` + `monthly`
+- Uses a separate Razorpay plan id until `LAUNCH_DISCOUNT_MAX_CUSTOMERS` is reached
+
+Env vars:
+
+- `RAZORPAY_PRO_INR_MONTHLY_LAUNCH_PLAN_ID` (required for discount)
+- `LAUNCH_DISCOUNT_ENABLED=true` (optional; defaults to true if launch plan id is set)
+- `LAUNCH_DISCOUNT_MAX_CUSTOMERS=50`
+
 ## Test User
 
 - Email: `shrey@gmail.com`

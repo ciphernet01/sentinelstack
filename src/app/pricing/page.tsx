@@ -44,7 +44,7 @@ const tiers = [
   {
     name: 'Pro',
     id: 'PRO',
-    description: 'For growing security teams',
+    description: 'For growing Indian SaaS teams (launch offer)',
     monthlyPrice: 99,
     yearlyPrice: 990,
     icon: Crown,
@@ -94,7 +94,7 @@ const faqs = [
   },
   {
     q: 'What payment methods do you accept?',
-    a: 'We accept all major credit cards (Visa, Mastercard, American Express) through our secure payment processor.',
+    a: 'We support secure payments via Razorpay (cards, UPI, netbanking) and Stripe (cards) depending on your region.',
   },
   {
     q: 'Is there a free trial?',
@@ -117,12 +117,22 @@ const faqs = [
 const trustBadges = [
   { icon: Shield, text: 'SOC 2 Compliant' },
   { icon: CreditCard, text: 'Secure Payments' },
-  { icon: Clock, text: '99.9% Uptime SLA' },
+  { icon: Clock, text: 'Queue-backed reliability' },
 ];
 
 export default function PricingPage() {
   const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'yearly'>('monthly');
   const [isLoading, setIsLoading] = useState<string | null>(null);
+
+  const inferredCurrency: 'INR' | 'USD' = (() => {
+    try {
+      return Intl.DateTimeFormat().resolvedOptions().timeZone === 'Asia/Kolkata' ? 'INR' : 'USD';
+    } catch {
+      return 'USD';
+    }
+  })();
+
+  const showLaunchOffer = inferredCurrency === 'INR' && billingPeriod === 'monthly';
 
   const handleSubscribe = async (tierId: string) => {
     if (tierId === 'FREE') {
@@ -147,13 +157,7 @@ export default function PricingPage() {
         body: JSON.stringify({
           tier: tierId,
           billingPeriod,
-          currency: (() => {
-            try {
-              return Intl.DateTimeFormat().resolvedOptions().timeZone === 'Asia/Kolkata' ? 'INR' : 'USD';
-            } catch {
-              return undefined;
-            }
-          })(),
+          currency: inferredCurrency,
         }),
       });
 
@@ -214,11 +218,17 @@ export default function PricingPage() {
               Simple, Transparent Pricing
             </div>
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tighter font-headline mb-6">
-              Choose Your Security Plan
+              Security Compliance Pricing (India-ready)
             </h1>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-10">
-              Start free and scale as you grow. All plans include our core security assessment features.
+              Start free, then upgrade when you need audit-ready reporting for customers and compliance.
             </p>
+
+            {showLaunchOffer && (
+              <div className="mx-auto mb-8 max-w-2xl rounded-xl border bg-background px-4 py-3 text-sm text-muted-foreground">
+                <span className="font-medium text-foreground">Launch offer:</span> Pro is <span className="font-medium text-foreground">₹1999/month</span> for the first 50 customers (normally ₹2999/month).
+              </div>
+            )}
 
             <div className="flex flex-wrap items-center justify-center gap-6 mb-12 text-muted-foreground">
               {trustBadges.map((badge, idx) => (
@@ -272,8 +282,39 @@ export default function PricingPage() {
             <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
               {tiers.map((tier) => {
                 const Icon = tier.icon;
-                const price =
-                  billingPeriod === 'monthly' ? tier.monthlyPrice : tier.yearlyPrice / 12;
+
+                const baseMonthlyUsd = tier.monthlyPrice;
+                const baseYearlyUsd = tier.yearlyPrice;
+
+                const proLaunchMonthlyInr = 1999;
+                const proNormalMonthlyInr = 2999;
+                const proYearlyInr = 0; // not advertised in this launch copy
+
+                const enterpriseMonthlyInr = 0; // shown as Contact Sales
+
+                const isInr = inferredCurrency === 'INR';
+
+                const computed = (() => {
+                  if (tier.id === 'FREE') return { display: '₹0', billedLine: '' };
+                  if (tier.id === 'ENTERPRISE') return { display: 'Custom', billedLine: '' };
+
+                  // PRO
+                  if (isInr && billingPeriod === 'monthly') {
+                    return {
+                      display: showLaunchOffer ? `₹${proLaunchMonthlyInr}` : `₹${proNormalMonthlyInr}`,
+                      billedLine: showLaunchOffer ? `Normally ₹${proNormalMonthlyInr}/month` : '',
+                    };
+                  }
+
+                  if (isInr && billingPeriod === 'yearly' && proYearlyInr > 0) {
+                    return { display: `₹${Math.round(proYearlyInr / 12)}`, billedLine: `Billed ₹${proYearlyInr}/year` };
+                  }
+
+                  // USD fallback
+                  const price = billingPeriod === 'monthly' ? baseMonthlyUsd : baseYearlyUsd / 12;
+                  const billedLine = billingPeriod === 'yearly' && price > 0 ? `Billed $${baseYearlyUsd}/year` : '';
+                  return { display: `$${Math.round(price)}`, billedLine };
+                })();
                 const isPopular = tier.featured;
                 const loading = isLoading === tier.id;
 
@@ -312,12 +353,10 @@ export default function PricingPage() {
                     <p className="text-muted-foreground text-sm mb-6">{tier.description}</p>
 
                     <div className="mb-6">
-                      <span className="text-4xl font-bold">${Math.round(price)}</span>
-                      {price > 0 && <span className="text-muted-foreground ml-2">/month</span>}
-                      {billingPeriod === 'yearly' && price > 0 && (
-                        <p className="text-sm text-muted-foreground mt-1">
-                          Billed ${tier.yearlyPrice}/year
-                        </p>
+                      <span className="text-4xl font-bold">{computed.display}</span>
+                      {tier.id !== 'FREE' && tier.id !== 'ENTERPRISE' && <span className="text-muted-foreground ml-2">/month</span>}
+                      {computed.billedLine && (
+                        <p className="text-sm text-muted-foreground mt-1">{computed.billedLine}</p>
                       )}
                     </div>
 

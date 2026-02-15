@@ -4,6 +4,19 @@ import { DEFAULT_CURRENCY, getRazorpayCheckoutKeyId, getRazorpayPlanId, razorpay
 import { prisma } from '../config/db';
 import logger from '../utils/logger';
 
+const envTruthy = (name: string, defaultValue: boolean): boolean => {
+  const raw = process.env[name];
+  if (raw === undefined) return defaultValue;
+  return ['1', 'true', 'yes', 'y', 'on'].includes(String(raw).trim().toLowerCase());
+};
+
+const envNumber = (name: string, defaultValue: number): number => {
+  const raw = process.env[name];
+  if (raw === undefined) return defaultValue;
+  const parsed = Number(raw);
+  return Number.isFinite(parsed) ? parsed : defaultValue;
+};
+
 // Define types locally since the migration hasn't been run
 type SubscriptionStatus = 'FREE' | 'ACTIVE' | 'PAST_DUE' | 'CANCELED' | 'TRIALING';
 type SubscriptionTier = 'FREE' | 'PRO' | 'ENTERPRISE';
@@ -13,6 +26,51 @@ type CheckoutResult =
   | { provider: 'razorpay'; keyId: string; subscriptionId: string; currency: SupportedCurrency };
 
 export class BillingService {
+  private async getRazorpayPlanIdForCheckout(params: {
+    tier: 'PRO' | 'ENTERPRISE';
+    billingPeriod: 'monthly' | 'yearly';
+    currency: SupportedCurrency;
+  }): Promise<string> {
+    const { tier, billingPeriod, currency } = params;
+
+    // Launch discount (India-focused): first N PRO customers on INR monthly.
+    // This is best-effort (not perfectly race-free) but good enough for launch.
+    const launchPlanId = process.env.RAZORPAY_PRO_INR_MONTHLY_LAUNCH_PLAN_ID;
+    const launchEnabled = envTruthy('LAUNCH_DISCOUNT_ENABLED', Boolean(launchPlanId));
+    const maxCustomers = envNumber('LAUNCH_DISCOUNT_MAX_CUSTOMERS', 50);
+
+    const isEligibleCheckout =
+      launchEnabled &&
+      Boolean(launchPlanId) &&
+      tier === 'PRO' &&
+      currency === 'INR' &&
+      billingPeriod === 'monthly' &&
+      maxCustomers > 0;
+
+    if (isEligibleCheckout) {
+      const claimedCount = await prisma.organization.count({
+        where: {
+          billingProvider: 'razorpay',
+          subscriptionTier: 'PRO',
+          subscriptionStatus: {
+            in: ['ACTIVE', 'TRIALING', 'PAST_DUE'],
+          },
+        },
+      });
+
+      if (claimedCount < maxCustomers) {
+        logger.info(
+          `[BILLING] Applying launch discount plan for PRO INR monthly (claimed=${claimedCount}/${maxCustomers})`,
+        );
+        return launchPlanId!;
+      }
+
+      logger.info(`[BILLING] Launch discount exhausted (claimed=${claimedCount}/${maxCustomers})`);
+    }
+
+    return getRazorpayPlanId({ tier, billingPeriod, currency });
+  }
+
   private isAdminBypassEmail(userEmail?: string): boolean {
     const adminEmailsEnv = process.env.ADMIN_EMAILS || '';
     const adminEmails = adminEmailsEnv
@@ -88,7 +146,11 @@ export class BillingService {
         throw new Error('Razorpay is not configured');
       }
 
-      const planId = getRazorpayPlanId({ tier, billingPeriod, currency: resolvedCurrency });
+      const planId = await this.getRazorpayPlanIdForCheckout({
+        tier,
+        billingPeriod,
+        currency: resolvedCurrency,
+      });
 
       // Razorpay subscriptions need a finite total_count; use a large number to approximate "until canceled".
       const totalCount = billingPeriod === 'monthly' ? 120 : 10;

@@ -114,12 +114,12 @@ export default function Home() {
           <div className="container px-2 sm:px-4 md:px-6">
             <div className="grid gap-10 sm:gap-12 lg:grid-cols-2 lg:gap-16">
               <div className="flex flex-col justify-center space-y-6 text-center lg:text-left">
-                <div className="inline-block rounded-lg bg-secondary px-3 py-1 text-xs sm:text-sm text-secondary-foreground">Enterprise Security Assessment Platform</div>
+                <div className="inline-block rounded-lg bg-secondary px-3 py-1 text-xs sm:text-sm text-secondary-foreground">Security compliance for Indian startups</div>
                 <h1 className="text-3xl sm:text-4xl font-bold tracking-tighter sm:text-5xl xl:text-6xl/none font-headline">
-                  Continuous Security, On-Demand.
+                  Audit-ready security in weeks, not quarters.
                 </h1>
                 <p className="max-w-full sm:max-w-[600px] text-muted-foreground text-base sm:text-lg md:text-xl mx-auto lg:mx-0">
-                  Sentinel Stack empowers you to run comprehensive security assessments, visualize risks on an interactive dashboard, and generate actionable reports—all automated.
+                  SentinelStack helps Indian SaaS teams run continuous security assessments, map findings to common frameworks (OWASP, ISO 27001, SOC 2), and ship reports customers and auditors can trust.
                 </p>
                 <div className="flex flex-col gap-2 w-full sm:w-auto sm:flex-row justify-center lg:justify-start">
                   <Button asChild size="lg" className="group w-full sm:w-auto">
@@ -156,16 +156,16 @@ export default function Home() {
                 <div className="text-sm text-muted-foreground">Security Tools</div>
               </div>
               <div className="text-center">
-                <div className="text-3xl font-bold text-primary">10K+</div>
-                <div className="text-sm text-muted-foreground">Scans Completed</div>
+                <div className="text-3xl font-bold text-primary">SOC 2</div>
+                <div className="text-sm text-muted-foreground">Evidence-ready reporting</div>
               </div>
               <div className="text-center">
-                <div className="text-3xl font-bold text-primary">99.9%</div>
-                <div className="text-sm text-muted-foreground">Uptime SLA</div>
+                <div className="text-3xl font-bold text-primary">ISO 27001</div>
+                <div className="text-sm text-muted-foreground">Control mapping</div>
               </div>
               <div className="text-center">
-                <div className="text-3xl font-bold text-primary">&lt;5min</div>
-                <div className="text-sm text-muted-foreground">Avg Scan Time</div>
+                <div className="text-3xl font-bold text-primary">DPDP</div>
+                <div className="text-sm text-muted-foreground">Privacy-aware posture</div>
               </div>
             </div>
           </div>
@@ -243,50 +243,50 @@ export default function Home() {
         </section>
         
         <section id="why" className="w-full pb-20 md:pb-32">
-           <div className="container px-4 md:px-6">
-                <div className="flex flex-col items-center justify-center space-y-4 text-center mb-16">
-                    <h2 className="text-3xl font-bold tracking-tighter sm:text-5xl font-headline">Why SentinelStack is Different</h2>
-                    <p className="max-w-[900px] text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
-                        Built for security leaders who need to communicate risk in business terms
-                    </p>
-                </div>
-                <div className="mx-auto grid max-w-6xl items-center gap-12 lg:grid-cols-2">
-                    <div className="flex flex-col justify-center space-y-8">
-                        {whyFeatures.map((feature, index) => (
-                            <div key={index} className="flex items-start gap-4">
-                                <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-secondary">
-                                    {feature.icon}
-                                </div>
-                                <div className="grid gap-1">
-                                    <h3 className="text-lg font-bold font-headline">{feature.title}</h3>
-                                    <p className="text-muted-foreground">{feature.description}</p>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                    <div className="flex flex-col items-center justify-center space-y-6 rounded-xl bg-card p-8 shadow-inner-lg">
-                        <div className="flex h-60 w-full items-center justify-center rounded-lg border-2 border-dashed bg-secondary/50">
-                            <div className="text-center">
-                                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/20 mb-4">
-                                    <LockIcon className="h-8 w-8 text-primary" />
-                                </div>
-                                <p className="font-semibold text-primary-foreground">Interactive Dashboard Preview</p>
-                            </div>
-                        </div>
-                        <div className="text-center">
-                            <h3 className="text-2xl font-bold font-headline">See Risk in Business Terms</h3>
-                            <p className="mt-2 max-w-md text-muted-foreground">
-                              Our dashboard shows you not just what&apos;s vulnerable, but what it means for your business—financial impact, compliance exposure, and reputation risk.
-                            </p>
-                        </div>
-                         <Button asChild size="lg" className="group">
-                            <Link href="/dashboard">
-                                Explore Demo Dashboard <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
-                            </Link>
-                        </Button>
-                    </div>
-                </div>
+          <div className="container px-4 md:px-6">
+            <div className="flex flex-col items-center justify-center space-y-4 text-center mb-16">
+              <h2 className="text-3xl font-bold tracking-tighter sm:text-5xl font-headline">Why SentinelStack is Different</h2>
+              <p className="max-w-[900px] text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
+                Built for security leaders who need to communicate risk in business terms
+              </p>
             </div>
+            <div className="mx-auto grid max-w-6xl items-center gap-12 lg:grid-cols-2">
+              <div className="flex flex-col justify-center space-y-8">
+                {whyFeatures.map((feature, index) => (
+                  <div key={index} className="flex items-start gap-4">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-secondary">
+                      {feature.icon}
+                    </div>
+                    <div className="grid gap-1">
+                      <h3 className="text-lg font-bold font-headline">{feature.title}</h3>
+                      <p className="text-muted-foreground">{feature.description}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="flex flex-col items-center justify-center space-y-6 rounded-xl bg-card p-8 shadow-inner-lg">
+                <div className="flex h-60 w-full items-center justify-center rounded-lg border-2 border-dashed bg-secondary/50">
+                  <div className="text-center">
+                    <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/20 mb-4">
+                      <LockIcon className="h-8 w-8 text-primary" />
+                    </div>
+                    <p className="font-semibold text-primary-foreground">Interactive Dashboard Preview</p>
+                  </div>
+                </div>
+                <div className="text-center">
+                  <h3 className="text-2xl font-bold font-headline">See Risk in Business Terms</h3>
+                  <p className="mt-2 max-w-md text-muted-foreground">
+                    Our dashboard shows you not just what&apos;s vulnerable, but what it means for your business—financial impact, compliance exposure, and reputation risk.
+                  </p>
+                </div>
+                <Button asChild size="lg" className="group">
+                  <Link href="/dashboard">
+                    Explore Demo Dashboard <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
+                  </Link>
+                </Button>
+              </div>
+            </div>
+          </div>
         </section>
 
 
@@ -295,7 +295,7 @@ export default function Home() {
             <div className="space-y-3">
               <h2 className="text-3xl font-bold tracking-tighter md:text-4xl/tight font-headline">Simple, Transparent Pricing</h2>
               <p className="mx-auto max-w-[600px] text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
-                Choose the plan that fits your needs. All plans include our core security assessment and reporting features.
+                Built for early-stage Indian SaaS teams. Start free, then upgrade when you need audit-ready reporting.
               </p>
             </div>
             <div className="mx-auto grid max-w-4xl grid-cols-1 gap-8 pt-12 md:grid-cols-3">
@@ -305,37 +305,43 @@ export default function Home() {
                 period="/mo"
                 description="Perfect for trying out SentinelStack"
                 features={[
-                  "3 scans per month",
-                  "Basic vulnerability reports",
-                  "Email support",
-                  "7-day scan history",
+                  '3 scans per month',
+                  'Basic vulnerability reports',
+                  'Email support',
+                  '7-day scan history',
                 ]}
+                ctaHref="/signup"
+                ctaLabel="Start Free"
               />
               <PricingCard
                 tier="Pro"
-                price="$99"
+                price="₹1999"
                 period="/mo"
-                description="For growing security teams"
+                description="Launch offer for first 50 customers (₹2999/mo after)"
                 features={[
-                  "50 scans per month",
-                  "AI-powered risk summaries",
-                  "Up to 5 team members",
-                  "90-day scan history",
-                  "Slack notifications",
+                  '50 scans per month',
+                  'AI-powered risk summaries',
+                  'Up to 5 team members',
+                  '90-day scan history',
+                  'Slack notifications',
                 ]}
                 isPrimary
+                ctaHref="/pricing"
+                ctaLabel="Start Pro"
               />
               <PricingCard
                 tier="Enterprise"
-                price="$299"
-                period="/mo"
+                price="Custom"
+                period=""
                 description="For large organizations"
                 features={[
-                  "Unlimited scans",
-                  "API access & webhooks",
-                  "SOC2 compliance reports",
-                  "Dedicated account manager",
+                  'Unlimited scans',
+                  'API access & webhooks',
+                  'SOC2 compliance reports',
+                  'Dedicated account manager',
                 ]}
+                ctaHref="mailto:sales@sentinel-stack.tech?subject=Enterprise%20Inquiry"
+                ctaLabel="Contact Sales"
               />
             </div>
           </div>
@@ -345,19 +351,27 @@ export default function Home() {
           <div className="container flex flex-col items-center gap-6 px-4 text-center md:px-6">
             <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl font-headline">Start Securing Your Applications Today</h2>
             <p className="max-w-[600px] text-primary-foreground/80">
-              Join 500+ security teams who trust SentinelStack for comprehensive vulnerability assessments.
+              Join security teams who trust SentinelStack for comprehensive vulnerability assessments.
             </p>
             <div className="flex flex-col gap-4 min-[400px]:flex-row">
-              <Button asChild variant="outline" size="lg" className="bg-primary-foreground text-primary hover:bg-primary-foreground/90">
+              <Button
+                asChild
+                variant="outline"
+                size="lg"
+                className="bg-primary-foreground text-primary hover:bg-primary-foreground/90"
+              >
                 <Link href="/signup">Get Started Free</Link>
               </Button>
-               <Button asChild variant="outline" size="lg" className="border-primary-foreground/50 text-primary-foreground hover:bg-primary-foreground/10">
+              <Button
+                asChild
+                variant="outline"
+                size="lg"
+                className="border-primary-foreground/50 text-primary-foreground hover:bg-primary-foreground/10"
+              >
                 <Link href="/pricing">View Pricing</Link>
               </Button>
             </div>
-            <p className="text-xs text-primary-foreground/70">
-              No credit card required • 3 free scans/month • Cancel anytime
-            </p>
+            <p className="text-xs text-primary-foreground/70">No credit card required • 3 free scans/month • Cancel anytime</p>
           </div>
         </section>
       </main>
@@ -373,6 +387,8 @@ function PricingCard({
   description,
   features,
   isPrimary = false,
+  ctaHref,
+  ctaLabel,
 }: {
   tier: string;
   price: string;
@@ -380,6 +396,8 @@ function PricingCard({
   description: string;
   features: string[];
   isPrimary?: boolean;
+  ctaHref: string;
+  ctaLabel: string;
 }) {
   return (
     <Card className={isPrimary ? 'border-primary ring-2 ring-primary' : ''}>
@@ -401,13 +419,7 @@ function PricingCard({
           ))}
         </ul>
         <Button asChild className={isPrimary ? '' : 'bg-primary/90 hover:bg-primary'} variant={isPrimary ? 'default' : 'secondary'}>
-          <Link href={
-            price === '$0' ? '/signup' : 
-            price === '$299' ? 'mailto:sales@sentinel-stack.tech?subject=Enterprise%20Inquiry' : 
-            '/pricing'
-          }>
-            {price === '$0' ? 'Start Free' : price === '$299' ? 'Contact Sales' : 'Start Pro Trial'}
-          </Link>
+          <Link href={ctaHref}>{ctaLabel}</Link>
         </Button>
       </CardContent>
     </Card>

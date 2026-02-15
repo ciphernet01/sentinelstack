@@ -115,6 +115,22 @@ Optional worker tuning:
 - `SCAN_QUEUE_CONCURRENCY` (default 1)
 - `SCAN_QUEUE_POLL_MS` (default 2000)
 
+## 📈 Uptime Monitoring (UptimeRobot Free Tier)
+
+Create two HTTP(s) monitors in UptimeRobot:
+
+1) **Frontend**
+- Monitor type: HTTP(s)
+- URL: `https://YOUR_APP_DOMAIN/`
+- Interval: 5 minutes
+
+2) **API Health**
+- Monitor type: HTTP(s)
+- URL: `https://YOUR_API_DOMAIN/health`
+- Interval: 5 minutes
+
+Tip: add a keyword alert for the API response body `OK`.
+
 ## 📖 API Endpoints
 
 A Postman collection or further API documentation would typically be provided here, detailing all routes, required headers, and request/response bodies.
