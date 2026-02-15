@@ -44,7 +44,7 @@ const tiers = [
   {
     name: 'Pro',
     id: 'PRO',
-    description: 'For growing SaaS teams (launch offer)',
+    description: 'For growing SaaS teams',
     monthlyPrice: 99,
     yearlyPrice: 990,
     icon: Crown,
@@ -295,7 +295,7 @@ export default function PricingPage() {
                 const isInr = inferredCurrency === 'INR';
 
                 const computed = (() => {
-                  if (tier.id === 'FREE') return { display: '₹0', billedLine: '' };
+                  if (tier.id === 'FREE') return { display: isInr ? '₹0' : '$0', billedLine: '' };
                   if (tier.id === 'ENTERPRISE') return { display: 'Custom', billedLine: '' };
 
                   // PRO

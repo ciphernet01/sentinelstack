@@ -301,7 +301,7 @@ export default function Home() {
             <div className="mx-auto grid max-w-4xl grid-cols-1 gap-8 pt-12 md:grid-cols-3">
               <PricingCard
                 tier="Free"
-                price="$0"
+                price="$0 / ₹0"
                 period="/mo"
                 description="Perfect for trying out SentinelStack"
                 features={[
@@ -315,9 +315,9 @@ export default function Home() {
               />
               <PricingCard
                 tier="Pro"
-                price="₹1999"
+                price="₹1999 / $99"
                 period="/mo"
-                description="Launch offer for first 50 customers (₹2999/mo after)"
+                description="INR launch offer for first 50 customers (₹2999/mo after) • USD standard pricing"
                 features={[
                   '50 scans per month',
                   'AI-powered risk summaries',
