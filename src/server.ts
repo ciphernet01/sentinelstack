@@ -56,8 +56,25 @@ app.use(
     optionsSuccessStatus: 200,
   })
 );
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+
+// IMPORTANT: Webhook signature verification requires the raw body.
+// If express.json() runs first, it consumes the stream and breaks signature checks.
+const jsonParser = express.json();
+const urlencodedParser = express.urlencoded({ extended: true });
+app.use((req, res, next) => {
+  const url = String((req as any).originalUrl || req.url || '');
+  if (url.startsWith('/api/billing/webhook')) {
+    return next();
+  }
+  return jsonParser(req, res, next);
+});
+app.use((req, res, next) => {
+  const url = String((req as any).originalUrl || req.url || '');
+  if (url.startsWith('/api/billing/webhook')) {
+    return next();
+  }
+  return urlencodedParser(req, res, next);
+});
 
 morgan.token('id', (req) => {
   const anyReq = req as any;

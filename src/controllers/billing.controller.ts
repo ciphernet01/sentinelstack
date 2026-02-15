@@ -7,6 +7,18 @@ import type { Request } from 'express';
 import { getBillingProvider } from '../config/billingProvider';
 import crypto from 'crypto';
 
+function timingSafeEqualHex(a: string, b: string): boolean {
+  const aNorm = String(a || '').trim().toLowerCase();
+  const bNorm = String(b || '').trim().toLowerCase();
+  if (!aNorm || !bNorm) return false;
+  if (aNorm.length !== bNorm.length) return false;
+  // Razorpay signatures are hex-encoded HMAC-SHA256.
+  const aBuf = Buffer.from(aNorm, 'hex');
+  const bBuf = Buffer.from(bNorm, 'hex');
+  if (aBuf.length !== bBuf.length) return false;
+  return crypto.timingSafeEqual(aBuf, bBuf);
+}
+
 export class BillingController {
   /**
    * GET /api/billing/subscription
@@ -118,8 +130,12 @@ export class BillingController {
         return res.status(400).json({ error: 'Missing Razorpay signature or webhook secret' });
       }
 
-      const expected = crypto.createHmac('sha256', secret).update(bodyString).digest('hex');
-      if (expected !== sig) {
+      const expected = crypto
+        .createHmac('sha256', secret)
+        .update(Buffer.isBuffer(bodyBuffer) ? bodyBuffer : Buffer.from(bodyString, 'utf8'))
+        .digest('hex');
+
+      if (!timingSafeEqualHex(expected, sig)) {
         return res.status(400).json({ error: 'Invalid Razorpay webhook signature' });
       }
 

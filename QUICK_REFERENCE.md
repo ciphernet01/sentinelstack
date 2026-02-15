@@ -49,6 +49,27 @@ Terminal 2: npm run dev:frontend  # http://localhost:3002
 docker-compose up -d
 ```
 
+## Razorpay Webhook (Local Test)
+
+The billing webhook endpoint is:
+
+- `POST http://localhost:3001/api/billing/webhook`
+
+To test signature verification + event parsing locally:
+
+```bash
+set RAZORPAY_WEBHOOK_SECRET=your_webhook_secret
+npm run test:razorpay:webhook
+```
+
+Optional (to exercise DB updates for a real org):
+
+```bash
+set ORG_ID=your_organization_id
+set TIER=ENTERPRISE
+npm run test:razorpay:webhook
+```
+
 ## Test User
 
 - Email: `shrey@gmail.com`

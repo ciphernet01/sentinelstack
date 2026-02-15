@@ -33,7 +33,8 @@
     "security:precommit": "node scripts/security/check-staged-env.js && node scripts/security/check-secrets.js",
     "prepare": "node scripts/husky-install.js",
     "hooks:install": "node scripts/husky-install.js",
-    "admin:grant-scans": "node scripts/admin/grant-scans.js"
+    "admin:grant-scans": "node scripts/admin/grant-scans.js",
+    "test:razorpay:webhook": "node scripts/test-razorpay-webhook.js"
   },
   "keywords": [],
   "author": "",
