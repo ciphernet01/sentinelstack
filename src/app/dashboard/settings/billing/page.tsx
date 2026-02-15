@@ -13,6 +13,7 @@ import {
   Building2,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { PRICING, formatMoney, inferCurrencyFromTimezone } from '@/lib/pricing';
 
 interface Subscription {
   provider?: string;
@@ -88,6 +89,9 @@ export default function BillingPage() {
       setLoading(false);
     }
   };
+
+  const inferredCurrency: 'INR' | 'USD' = inferCurrencyFromTimezone();
+  const showInrLaunchOffer = inferredCurrency === 'INR';
 
   const handleUpgrade = async (tier: 'PRO' | 'ENTERPRISE') => {
     setActionLoading(tier);
@@ -360,7 +364,15 @@ export default function BillingPage() {
                   50 scans/month, 5 team members, priority support
                 </p>
                 <p className="text-2xl font-bold text-white mb-4">
-                  $99<span className="text-sm font-normal text-slate-400">/month</span>
+                  {inferredCurrency === 'INR'
+                    ? formatMoney(showInrLaunchOffer ? PRICING.INR.PRO.launchMonthly : PRICING.INR.PRO.monthly, 'INR')
+                    : formatMoney(PRICING.USD.PRO.monthly, 'USD')}
+                  <span className="text-sm font-normal text-slate-400">/month</span>
+                </p>
+                <p className="text-sm text-slate-400 mb-4">
+                  {inferredCurrency === 'INR'
+                    ? `Also: ${formatMoney(PRICING.USD.PRO.monthly, 'USD')}/month`
+                    : `Also: ${formatMoney(PRICING.INR.PRO.launchMonthly, 'INR')}/month launch (then ${formatMoney(PRICING.INR.PRO.monthly, 'INR')}/month)`}
                 </p>
                 <button
                   onClick={() => handleUpgrade('PRO')}
@@ -388,22 +400,15 @@ export default function BillingPage() {
                 Unlimited scans, API access, white-labeling, dedicated support
               </p>
               <p className="text-2xl font-bold text-white mb-4">
-                $299<span className="text-sm font-normal text-slate-400">/month</span>
+                Custom
               </p>
-              <button
-                onClick={() => handleUpgrade('ENTERPRISE')}
-                disabled={actionLoading === 'ENTERPRISE'}
-                className="w-full flex items-center justify-center gap-2 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg hover:from-purple-600 hover:to-pink-600 transition-all disabled:opacity-50"
+              <a
+                href="mailto:sales@sentinel-stack.tech?subject=Enterprise%20Inquiry"
+                className="w-full flex items-center justify-center gap-2 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg hover:from-purple-600 hover:to-pink-600 transition-all"
               >
-                {actionLoading === 'ENTERPRISE' ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <>
-                    Upgrade to Enterprise
-                    <ArrowUpRight className="w-4 h-4" />
-                  </>
-                )}
-              </button>
+                Contact Sales
+                <ArrowUpRight className="w-4 h-4" />
+              </a>
             </div>
           </div>
         </div>

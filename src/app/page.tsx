@@ -9,6 +9,7 @@ import { Footer } from '@/components/layout/Footer';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { Badge } from '@/components/ui/badge';
 
+import { PRICING, formatMoney } from '@/lib/pricing'
 const heroImage = PlaceHolderImages.find(img => img.id === 'hero-dashboard');
 const featureAutomationImage = PlaceHolderImages.find(img => img.id === 'feature-automation');
 const featureReportingImage = PlaceHolderImages.find(img => img.id === 'feature-reporting');
@@ -301,7 +302,7 @@ export default function Home() {
             <div className="mx-auto grid max-w-4xl grid-cols-1 gap-8 pt-12 md:grid-cols-3">
               <PricingCard
                 tier="Free"
-                price="$0 / ₹0"
+                price={`${formatMoney(PRICING.USD.FREE.monthly, 'USD')} / ${formatMoney(PRICING.INR.FREE.monthly, 'INR')}`}
                 period="/mo"
                 description="Perfect for trying out SentinelStack"
                 features={[
@@ -315,9 +316,9 @@ export default function Home() {
               />
               <PricingCard
                 tier="Pro"
-                price="₹1999 / $99"
+                price={`${formatMoney(PRICING.USD.PRO.monthly, 'USD')} / ${formatMoney(PRICING.INR.PRO.launchMonthly, 'INR')}`}
                 period="/mo"
-                description="INR launch offer for first 50 customers (₹2999/mo after) • USD standard pricing"
+                description={`USD ${formatMoney(PRICING.USD.PRO.monthly, 'USD')}/mo or ${formatMoney(PRICING.USD.PRO.yearly, 'USD')}/yr • INR launch ${formatMoney(PRICING.INR.PRO.launchMonthly, 'INR')}/mo (then ${formatMoney(PRICING.INR.PRO.monthly, 'INR')}/mo) or ${formatMoney(PRICING.INR.PRO.yearly, 'INR')}/yr`}
                 features={[
                   '50 scans per month',
                   'AI-powered risk summaries',

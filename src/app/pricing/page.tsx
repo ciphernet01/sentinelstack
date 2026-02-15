@@ -22,14 +22,15 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion';
 import Link from 'next/link';
+import { PRICING, formatMoney, getProPrice, inferCurrencyFromTimezone } from '@/lib/pricing';
 
 const tiers = [
   {
     name: 'Free',
     id: 'FREE',
     description: 'Perfect for trying out SentinelStack',
-    monthlyPrice: 0,
-    yearlyPrice: 0,
+    monthlyPrice: PRICING.USD.FREE.monthly,
+    yearlyPrice: PRICING.USD.FREE.yearly,
     icon: Zap,
     featured: false,
     features: [
@@ -45,8 +46,8 @@ const tiers = [
     name: 'Pro',
     id: 'PRO',
     description: 'For growing SaaS teams',
-    monthlyPrice: 99,
-    yearlyPrice: 990,
+    monthlyPrice: PRICING.USD.PRO.monthly,
+    yearlyPrice: PRICING.USD.PRO.yearly,
     icon: Crown,
     featured: true,
     badge: 'Most Popular',
@@ -66,8 +67,8 @@ const tiers = [
     name: 'Enterprise',
     id: 'ENTERPRISE',
     description: 'For large organizations',
-    monthlyPrice: 299,
-    yearlyPrice: 2990,
+    monthlyPrice: 0,
+    yearlyPrice: 0,
     icon: Building2,
     featured: false,
     features: [
@@ -124,13 +125,7 @@ export default function PricingPage() {
   const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'yearly'>('monthly');
   const [isLoading, setIsLoading] = useState<string | null>(null);
 
-  const inferredCurrency: 'INR' | 'USD' = (() => {
-    try {
-      return Intl.DateTimeFormat().resolvedOptions().timeZone === 'Asia/Kolkata' ? 'INR' : 'USD';
-    } catch {
-      return 'USD';
-    }
-  })();
+  const inferredCurrency: 'INR' | 'USD' = inferCurrencyFromTimezone();
 
   const showLaunchOffer = inferredCurrency === 'INR' && billingPeriod === 'monthly';
 
@@ -226,7 +221,9 @@ export default function PricingPage() {
 
             {showLaunchOffer && (
               <div className="mx-auto mb-8 max-w-2xl rounded-xl border bg-background px-4 py-3 text-sm text-muted-foreground">
-                <span className="font-medium text-foreground">Launch offer:</span> Pro is <span className="font-medium text-foreground">₹1999/month</span> for the first 50 customers (normally ₹2999/month).
+                <span className="font-medium text-foreground">Launch offer:</span> Pro is{' '}
+                <span className="font-medium text-foreground">{formatMoney(PRICING.INR.PRO.launchMonthly, 'INR')}/month</span>{' '}
+                for the first 50 customers (normally {formatMoney(PRICING.INR.PRO.monthly, 'INR')}/month).
               </div>
             )}
 
@@ -283,37 +280,28 @@ export default function PricingPage() {
               {tiers.map((tier) => {
                 const Icon = tier.icon;
 
-                const baseMonthlyUsd = tier.monthlyPrice;
-                const baseYearlyUsd = tier.yearlyPrice;
-
-                const proLaunchMonthlyInr = 1999;
-                const proNormalMonthlyInr = 2999;
-                const proYearlyInr = 0; // not advertised in this launch copy
-
-                const enterpriseMonthlyInr = 0; // shown as Contact Sales
-
-                const isInr = inferredCurrency === 'INR';
-
                 const computed = (() => {
-                  if (tier.id === 'FREE') return { display: isInr ? '₹0' : '$0', billedLine: '' };
-                  if (tier.id === 'ENTERPRISE') return { display: 'Custom', billedLine: '' };
-
-                  // PRO
-                  if (isInr && billingPeriod === 'monthly') {
+                  if (tier.id === 'FREE') {
                     return {
-                      display: showLaunchOffer ? `₹${proLaunchMonthlyInr}` : `₹${proNormalMonthlyInr}`,
-                      billedLine: showLaunchOffer ? `Normally ₹${proNormalMonthlyInr}/month` : '',
+                      display:
+                        inferredCurrency === 'INR'
+                          ? formatMoney(PRICING.INR.FREE.monthly, 'INR')
+                          : formatMoney(PRICING.USD.FREE.monthly, 'USD'),
+                      billedLine: '',
+                      alsoLine:
+                        inferredCurrency === 'INR'
+                          ? `Also: ${formatMoney(PRICING.USD.FREE.monthly, 'USD')}/month`
+                          : `Also: ${formatMoney(PRICING.INR.FREE.monthly, 'INR')}/month`,
                     };
                   }
 
-                  if (isInr && billingPeriod === 'yearly' && proYearlyInr > 0) {
-                    return { display: `₹${Math.round(proYearlyInr / 12)}`, billedLine: `Billed ₹${proYearlyInr}/year` };
-                  }
+                  if (tier.id === 'ENTERPRISE') return { display: 'Custom', billedLine: '', alsoLine: '' };
 
-                  // USD fallback
-                  const price = billingPeriod === 'monthly' ? baseMonthlyUsd : baseYearlyUsd / 12;
-                  const billedLine = billingPeriod === 'yearly' && price > 0 ? `Billed $${baseYearlyUsd}/year` : '';
-                  return { display: `$${Math.round(price)}`, billedLine };
+                  return getProPrice({
+                    currency: inferredCurrency,
+                    billingPeriod,
+                    showLaunchOffer,
+                  });
                 })();
                 const isPopular = tier.featured;
                 const loading = isLoading === tier.id;
@@ -357,6 +345,9 @@ export default function PricingPage() {
                       {tier.id !== 'FREE' && tier.id !== 'ENTERPRISE' && <span className="text-muted-foreground ml-2">/month</span>}
                       {computed.billedLine && (
                         <p className="text-sm text-muted-foreground mt-1">{computed.billedLine}</p>
+                      )}
+                      {computed.alsoLine && (
+                        <p className="text-sm text-muted-foreground mt-1">{computed.alsoLine}</p>
                       )}
                     </div>
 
