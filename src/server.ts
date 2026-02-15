@@ -13,6 +13,7 @@ import { recoverOrphanedInProgressAssessments } from './services/assessmentRecov
 import { requestIdMiddleware } from './middleware/requestId';
 import { scanQueueService } from './services/scanQueue.service';
 import { apiGlobalLimiter } from './middleware/rateLimit';
+import { prisma } from './config/db';
 
 // Initialize Firebase
 initializeFirebaseAdmin();
@@ -89,6 +90,22 @@ app.use('/api', apiGlobalLimiter, apiRoutes);
 // Health Check
 app.get('/health', (req, res) => {
   res.status(200).send('OK');
+});
+
+// Readiness Check (DB reachable)
+app.get('/health/ready', async (req, res) => {
+  const timeoutMs = Number(process.env.HEALTH_READY_TIMEOUT_MS || 2000);
+
+  try {
+    await Promise.race([
+      prisma.$queryRaw`SELECT 1`,
+      new Promise((_, reject) => setTimeout(() => reject(new Error('readiness timeout')), timeoutMs)),
+    ]);
+
+    res.status(200).json({ ok: true });
+  } catch (e: any) {
+    res.status(503).json({ ok: false, error: e?.message || 'not ready' });
+  }
 });
 
 // Error Handling Middleware

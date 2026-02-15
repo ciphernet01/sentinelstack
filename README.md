@@ -126,10 +126,10 @@ Create two HTTP(s) monitors in UptimeRobot:
 
 2) **API Health**
 - Monitor type: HTTP(s)
-- URL: `https://YOUR_API_DOMAIN/health`
+- URL: `https://YOUR_API_DOMAIN/health/ready`
 - Interval: 5 minutes
 
-Tip: add a keyword alert for the API response body `OK`.
+Tip: add a keyword alert for the API response body `"ok":true`.
 
 ## 📖 API Endpoints
 
