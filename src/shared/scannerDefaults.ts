@@ -1,6 +1,6 @@
 export const DEFAULT_SCANNER_TIMEOUT_MS = 10 * 60 * 1000;
 export const DEFAULT_SCANNER_STUCK_WARN_MS = 5 * 60 * 1000;
-export const DEFAULT_SCANNER_TOOL_STUCK_WARN_MS = 8 * 60 * 1000;
+export const DEFAULT_SCANNER_TOOL_STUCK_WARN_MS = 15 * 60 * 1000;
 export const DEFAULT_SCANNER_WATCHDOG_INTERVAL_MS = 30 * 1000;
 
 function normalizeKey(value: unknown): string {

@@ -108,10 +108,16 @@ const runPythonScanner = (
                     '/work',
                     image,
                     'python',
+                    '-u',
                     ...scannerArgs,
                 ]);
             })()
-            : spawn('python', scannerArgs);
+            : spawn('python', ['-u', ...scannerArgs], {
+                env: {
+                    ...process.env,
+                    PYTHONUNBUFFERED: '1',
+                },
+            });
 
         let findingsOutput = '';
         let errorOutput = '';
@@ -139,6 +145,7 @@ const runPythonScanner = (
         let currentToolStartedAt: number | null = null;
         let watchdogTimer: NodeJS.Timeout | null = null;
         let lastWarnAt = 0;
+        let lastToolLongWarnAt = 0;
 
         const bumpProgress = () => {
             lastProgressAt = Date.now();
@@ -162,20 +169,33 @@ const runPythonScanner = (
                     lastWarnAt = now;
 
                     if (killOnStuck) {
-                        logger.error(
-                            `Killing scanner due to SCANNER_KILL_ON_STUCK=true after ${idleForMs}ms without output (pid=${pythonProcess.pid}).`,
-                        );
-                        pythonProcess.kill('SIGKILL');
+                        // Only kill aggressively when truly idle.
+                        // If a tool is currently running, let it run longer (toolStuckWarnMs)
+                        // and rely on the global timeout as a final safety net.
+                        const shouldKill = currentToolName
+                            ? idleForMs >= toolStuckWarnMs
+                            : idleForMs >= stuckWarnMs;
+
+                        if (shouldKill) {
+                            logger.error(
+                                `Killing scanner due to SCANNER_KILL_ON_STUCK=true after ${idleForMs}ms without output (pid=${pythonProcess.pid}).`,
+                            );
+                            pythonProcess.kill('SIGKILL');
+                        }
                     }
                 }
 
-                if (currentToolName && currentToolStartedAt && now - currentToolStartedAt >= toolStuckWarnMs) {
+                if (
+                    currentToolName &&
+                    currentToolStartedAt &&
+                    now - currentToolStartedAt >= toolStuckWarnMs &&
+                    now - lastToolLongWarnAt >= toolStuckWarnMs
+                ) {
                     // This is informational and may happen on heavy tools; it helps pinpoint which tool is slow.
                     logger.warn(
                         `Scanner tool running long: tool=${currentToolName} durationMs=${now - currentToolStartedAt} (runtime=${runtime}, preset=${normalizedPreset}, assessmentId=${assessmentId}).`,
                     );
-                    // Avoid repeated tool-long warnings every tick.
-                    currentToolStartedAt = now;
+                    lastToolLongWarnAt = now;
                 }
             }, watchdogIntervalMs);
 
