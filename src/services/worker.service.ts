@@ -169,18 +169,20 @@ const runPythonScanner = (
                     lastWarnAt = now;
 
                     if (killOnStuck) {
-                        // Only kill aggressively when truly idle.
-                        // If a tool is currently running, let it run longer (toolStuckWarnMs)
-                        // and rely on the global timeout as a final safety net.
-                        const shouldKill = currentToolName
-                            ? idleForMs >= toolStuckWarnMs
-                            : idleForMs >= stuckWarnMs;
+                        // Only kill aggressively when truly idle BETWEEN tools.
+                        // If a tool is currently running, do NOT kill based solely on lack of output;
+                        // rely on the global timeout as the hard stop.
+                        const shouldKill = !currentToolName && idleForMs >= stuckWarnMs;
 
                         if (shouldKill) {
                             logger.error(
-                                `Killing scanner due to SCANNER_KILL_ON_STUCK=true after ${idleForMs}ms without output (pid=${pythonProcess.pid}).`,
+                                `Killing scanner due to SCANNER_KILL_ON_STUCK=true after ${idleForMs}ms without output (pid=${pythonProcess.pid}, currentTool=${currentToolName ?? 'none'}).`,
                             );
                             pythonProcess.kill('SIGKILL');
+                        } else if (currentToolName) {
+                            logger.warn(
+                                `Not killing scanner despite ${idleForMs}ms idle because a tool is running (tool=${currentToolName}, toolRunningForMs=${currentToolStartedAt ? now - currentToolStartedAt : 'unknown'}, toolStuckWarnMs=${toolStuckWarnMs}).`,
+                            );
                         }
                     }
                 }
@@ -269,6 +271,10 @@ const runPythonScanner = (
 
         logger.info(
             `Spawning scanner runtime=${runtime} for ${targetUrl} with scope ${scope}, preset ${normalizedPreset} (assessmentId=${assessmentId}, authorizationConfirmed=${authorizationConfirmed})`,
+        );
+
+        logger.info(
+            `Scanner watchdog config: stuckWarnMs=${stuckWarnMs} toolStuckWarnMs=${toolStuckWarnMs} killOnStuck=${killOnStuck} watchdogIntervalMs=${watchdogIntervalMs} timeoutMs=${timeoutMs} (timeoutSource=${timeoutSource}, runtime=${runtime}, preset=${normalizedPreset}, assessmentId=${assessmentId})`,
         );
 
         startWatchdog();
