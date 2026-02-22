@@ -142,25 +142,25 @@ export default function BrandingPage() {
   
   if (isLoading) {
     return (
-      <div className="container mx-auto py-6">
+      <div className="p-4 sm:p-6 flex-1">
         <div className="text-center py-8 text-muted-foreground">Loading branding settings...</div>
       </div>
     );
   }
   
   return (
-    <div className="container mx-auto py-6 space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="p-4 sm:p-6 flex-1 space-y-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">White-Label Branding</h1>
+          <h1 className="text-lg font-semibold md:text-2xl font-headline">White-Label Branding</h1>
           <p className="text-muted-foreground">
             Customize the look and feel of SentinelStack for your organization.
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 w-full sm:w-auto">
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <Button variant="outline">
+              <Button variant="outline" className="w-full sm:w-auto">
                 <RefreshCw className="h-4 w-4 mr-2" />
                 Reset to Defaults
               </Button>

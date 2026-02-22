@@ -247,10 +247,10 @@ export default function CompliancePage() {
   );
 
   return (
-    <div className="space-y-6">
+    <div className="p-4 sm:p-6 flex-1 space-y-6">
       <div>
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          <Shield className="h-6 w-6" />
+        <h1 className="text-lg font-semibold md:text-2xl font-headline flex items-center gap-2">
+          <Shield className="h-5 w-5" />
           Compliance & Trust Badges
         </h1>
         <p className="text-muted-foreground">

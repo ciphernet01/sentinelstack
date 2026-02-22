@@ -197,10 +197,10 @@ export default function BillingPage() {
   const TierIcon = subscription ? tierIcons[subscription.tier] || Zap : Zap;
 
   return (
-    <div className="space-y-8">
+    <div className="p-4 sm:p-6 flex-1 space-y-8">
       <div>
-        <h1 className="text-2xl font-bold text-white">Billing & Subscription</h1>
-        <p className="text-slate-400 mt-1">Manage your subscription and billing settings</p>
+        <h1 className="text-lg font-semibold md:text-2xl font-headline">Billing & Subscription</h1>
+        <p className="text-muted-foreground mt-1">Manage your subscription and billing settings</p>
       </div>
 
       {message && (

@@ -166,22 +166,22 @@ export default function ApiKeysPage() {
   };
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="p-4 sm:p-6 flex-1 space-y-6">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">API Keys</h1>
+          <h1 className="text-lg font-semibold md:text-2xl font-headline">API Keys</h1>
           <p className="text-muted-foreground">
             Manage API keys for programmatic access to SentinelStack.
           </p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => refetch()} disabled={loading}>
+        <div className="flex gap-2 w-full sm:w-auto">
+          <Button variant="outline" onClick={() => refetch()} disabled={loading} className="flex-1 sm:flex-none">
             <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
           <Dialog open={isCreateOpen} onOpenChange={handleCloseCreateDialog}>
             <DialogTrigger asChild>
-              <Button onClick={() => setIsCreateOpen(true)}>
+              <Button onClick={() => setIsCreateOpen(true)} className="flex-1 sm:flex-none">
                 <Plus className="h-4 w-4 mr-2" />
                 Create API Key
               </Button>

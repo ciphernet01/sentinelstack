@@ -545,8 +545,8 @@ export default function SettingsPage() {
             <Link href="/dashboard/settings/branding" className="block">
               <Card className="h-full hover:bg-accent/50 transition-colors cursor-pointer">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-base">
-                    <Palette className="h-4 w-4" />
+                  <CardTitle className="flex items-start gap-2 text-base leading-tight">
+                    <Palette className="h-4 w-4 shrink-0 mt-0.5" />
                     White-Label Branding
                   </CardTitle>
                   <CardDescription className="text-sm">
@@ -558,8 +558,8 @@ export default function SettingsPage() {
             <Link href="/dashboard/settings/compliance" className="block">
               <Card className="h-full hover:bg-accent/50 transition-colors cursor-pointer">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-base">
-                    <Shield className="h-4 w-4" />
+                  <CardTitle className="flex items-start gap-2 text-base leading-tight">
+                    <Shield className="h-4 w-4 shrink-0 mt-0.5" />
                     Compliance Badges
                   </CardTitle>
                   <CardDescription className="text-sm">
@@ -571,8 +571,8 @@ export default function SettingsPage() {
             <Link href="/dashboard/settings/billing" className="block">
               <Card className="h-full hover:bg-accent/50 transition-colors cursor-pointer">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-base">
-                    <CreditCard className="h-4 w-4" />
+                  <CardTitle className="flex items-start gap-2 text-base leading-tight">
+                    <CreditCard className="h-4 w-4 shrink-0 mt-0.5" />
                     Billing & Subscription
                   </CardTitle>
                   <CardDescription className="text-sm">
@@ -584,8 +584,8 @@ export default function SettingsPage() {
             <Link href="/dashboard/api-keys" className="block">
               <Card className="h-full hover:bg-accent/50 transition-colors cursor-pointer">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-base">
-                    <Key className="h-4 w-4" />
+                  <CardTitle className="flex items-start gap-2 text-base leading-tight">
+                    <Key className="h-4 w-4 shrink-0 mt-0.5" />
                     API Keys
                   </CardTitle>
                   <CardDescription className="text-sm">
