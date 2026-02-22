@@ -286,33 +286,39 @@ const runPythonScanner = (
 
         pythonProcess.stderr.on('data', (data) => {
             // This captures messages printed to stderr by the Python script, useful for debugging progress.
-            errorOutput += data.toString();
+            const text = data.toString();
+            errorOutput += text;
 
-            const line = data.toString().trim();
-            // Surface explicit progress lines at info level so long scans don't look stuck.
-            if (line.startsWith('[SCAN]')) {
-                logger.info(`[Scanner Progress for ${targetUrl}]: ${line}`);
+            // Split because multiple lines may arrive in a single chunk.
+            for (const rawLine of text.split(/\r?\n/)) {
+                const line = rawLine.trim();
+                if (!line) continue;
 
-                // Parse tool_start/tool_end to improve stuck diagnostics.
-                // Examples:
-                //  [SCAN] tool_start name=ai30_api_enum
-                //  [SCAN] tool_end name=ai30_api_enum status=ok findings=3 duration_ms=1234
-                const isToolStart = line.includes('tool_start') && line.includes('name=');
-                const isToolEnd = line.includes('tool_end') && line.includes('name=');
-                const nameMatch = line.match(/name=([^\s]+)/);
-                const name = nameMatch?.[1] || null;
+                // Surface explicit progress lines at info level so long scans don't look stuck.
+                if (line.startsWith('[SCAN]')) {
+                    logger.info(`[Scanner Progress for ${targetUrl}]: ${line}`);
 
-                if (isToolStart && name) {
-                    currentToolName = name;
-                    currentToolStartedAt = Date.now();
+                    // Parse tool_start/tool_end to improve stuck diagnostics.
+                    // Examples:
+                    //  [SCAN] tool_start name=ai30_api_enum
+                    //  [SCAN] tool_end name=ai30_api_enum status=ok findings=3 duration_ms=1234
+                    const isToolStart = line.includes('tool_start') && line.includes('name=');
+                    const isToolEnd = line.includes('tool_end') && line.includes('name=');
+                    const nameMatch = line.match(/name=([^\s]+)/);
+                    const name = nameMatch?.[1] || null;
+
+                    if (isToolStart && name) {
+                        currentToolName = name;
+                        currentToolStartedAt = Date.now();
+                    }
+
+                    if (isToolEnd && name && currentToolName === name) {
+                        currentToolName = null;
+                        currentToolStartedAt = null;
+                    }
+                } else {
+                    logger.debug(`[Scanner STDERR for ${targetUrl}]: ${line}`);
                 }
-
-                if (isToolEnd && name && currentToolName === name) {
-                    currentToolName = null;
-                    currentToolStartedAt = null;
-                }
-            } else {
-                logger.debug(`[Scanner STDERR for ${targetUrl}]: ${line}`);
             }
 
             bumpProgress();
