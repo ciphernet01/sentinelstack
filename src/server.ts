@@ -18,6 +18,10 @@ import { prisma } from './config/db';
 // Initialize Firebase
 initializeFirebaseAdmin();
 
+logger.info(
+  `[API] Boot pid=${process.pid} node=${process.version} service=${process.env.RENDER_SERVICE_NAME || 'unknown'} commit=${process.env.RENDER_GIT_COMMIT || process.env.GIT_COMMIT || 'unknown'} instance=${process.env.RENDER_INSTANCE_ID || 'unknown'} processType=${process.env.PROCESS_TYPE || 'api'}`,
+);
+
 // Best-effort recovery for scans that were running during a restart.
 recoverOrphanedInProgressAssessments().catch((e) => {
   logger.warn(`Failed to run assessment recovery: ${String(e)}`);
