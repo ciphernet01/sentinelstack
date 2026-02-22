@@ -333,9 +333,26 @@ const runPythonScanner = (
                 return safeReject(new Error(`Scanner failed: ${errorOutput}`));
             }
             try {
-                // The Python script should print a JSON array of findings to stdout.
-                const findings = JSON.parse(findingsOutput);
-                
+                // Try to extract the first valid JSON object/array from findingsOutput
+                let findings;
+                try {
+                    findings = JSON.parse(findingsOutput);
+                } catch (e1) {
+                    // Try to recover if there is extra output before/after JSON
+                    const jsonMatch = findingsOutput.match(/(\{[\s\S]*\}|\[[\s\S]*\])/);
+                    if (jsonMatch) {
+                        try {
+                            findings = JSON.parse(jsonMatch[0]);
+                            logger.warn('Recovered findings by extracting JSON from noisy output.');
+                        } catch (e2) {
+                            logger.error('Failed to parse extracted JSON from Python output.', { output: findingsOutput });
+                            throw e2;
+                        }
+                    } else {
+                        logger.error('No JSON object/array found in Python output.', { output: findingsOutput });
+                        throw e1;
+                    }
+                }
                 // Clean up backup file on successful completion
                 try {
                     const os = require('os');
@@ -348,10 +365,9 @@ const runPythonScanner = (
                 } catch {
                     // ignore cleanup errors
                 }
-                
                 safeResolve(findings);
             } catch (e) {
-                logger.error('Failed to parse JSON output from Python script.');
+                logger.error('Failed to parse JSON output from Python script.', { output: findingsOutput });
                 safeReject(e as Error);
             }
         });
