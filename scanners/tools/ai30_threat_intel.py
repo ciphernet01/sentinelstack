@@ -8,29 +8,7 @@ from pathlib import Path
 from typing import Any, Dict, List
 
 from scanners.engine.registry import register_tool
-
-
-def _repo_root() -> Path:
-    return Path(__file__).resolve().parents[2]
-
-
-def _safe_import_ai30_script(script_filename: str):
-    ai30_dir = _repo_root() / "AI 30 Days"
-    script_path = ai30_dir / script_filename
-    if not script_path.exists():
-        raise FileNotFoundError(f"AI30 script not found: {script_path}")
-
-    import importlib.util
-
-    module_name = f"ai30_{script_filename.replace('.', '_')}"
-    spec = importlib.util.spec_from_file_location(module_name, script_path)
-    if spec is None or spec.loader is None:
-        raise ImportError(f"Could not load spec for: {script_path}")
-
-    module = importlib.util.module_from_spec(spec)
-    sys.modules[module_name] = module
-    spec.loader.exec_module(module)
-    return module
+from scanners.tools._safe_import import safe_import_ai30_script
 
 
 def _normalize_severity(raw: str) -> str:
@@ -97,7 +75,7 @@ class AI30ThreatIntel:
             ]
 
         try:
-            module = _safe_import_ai30_script("threat_intel_aggregator_pro.py")
+            module = safe_import_ai30_script("threat_intel_aggregator_pro.py")
 
             analyze_ips = getattr(module, "analyze_ips", None)
             extract_ips_from_text = getattr(module, "extract_ips_from_text", None)

@@ -162,7 +162,15 @@ def main():
     )
 
     engine.run(ctx)
-    print(dumps_findings(ctx.findings))
+
+    # Restore the *real* stdout before emitting JSON.
+    # Some AI30 scripts call colorama.init(autoreset=True) at import time which
+    # wraps sys.stdout and can inject ANSI escape codes into the output.
+    real_stdout = sys.__stdout__ or sys.stdout
+    sys.stdout = real_stdout
+    real_stdout.write(dumps_findings(ctx.findings))
+    real_stdout.write("\n")
+    real_stdout.flush()
     raise SystemExit(0)
 
 if __name__ == "__main__":
