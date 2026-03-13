@@ -61,8 +61,11 @@ def safe_import_ai30_script(script_filename: str) -> Any:
     with redirect_stdout(sink), redirect_stderr(sink):
         spec.loader.exec_module(module)
 
-    # Restore real stdout/stderr — undoes colorama.init(autoreset=True) wrapping.
-    sys.stdout = _REAL_STDOUT
-    sys.stderr = _REAL_STDERR
+    # Do NOT restore sys.stdout/sys.stderr here.
+    # redirect_stdout already restored them to whatever they were before this
+    # call (real fd, or an outer StringIO from a caller's redirect context).
+    # Explicitly resetting to _REAL_STDOUT here would break any outer
+    # redirect_stdout context and allow subsequent prints to leak into the
+    # scanner's JSON output stream.
 
     return module

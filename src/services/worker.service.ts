@@ -116,6 +116,12 @@ const runPythonScanner = (
                 env: {
                     ...process.env,
                     PYTHONUNBUFFERED: '1',
+                    // Prevent colorama and other tools from emitting ANSI escape
+                    // codes into the stdout JSON stream.
+                    NO_COLOR: '1',
+                    TERM: 'dumb',
+                    FORCE_COLOR: '0',
+                    COLORAMA_STRIP: '1',
                 },
             });
 
@@ -333,24 +339,38 @@ const runPythonScanner = (
                 return safeReject(new Error(`Scanner failed: ${errorOutput}`));
             }
             try {
-                // Try to extract the first valid JSON object/array from findingsOutput
+                // Strip ANSI escape codes (colorama may inject them even with NO_COLOR).
+                const cleanOutput = findingsOutput.replace(/\x1b\[[0-9;]*[A-Za-z]/g, '').trim();
+
+                // Try to extract the first valid JSON object/array from output.
+                // Strategy: try the full output first, then scan lines in reverse
+                // for the last line that parses as a JSON array (the findings line),
+                // then fall back to greedy regex extraction.
                 let findings;
+                const tryParse = (s: string) => JSON.parse(s.trim());
                 try {
-                    findings = JSON.parse(findingsOutput);
-                } catch (e1) {
-                    // Try to recover if there is extra output before/after JSON
-                    const jsonMatch = findingsOutput.match(/(\{[\s\S]*\}|\[[\s\S]*\])/);
-                    if (jsonMatch) {
+                    findings = tryParse(cleanOutput);
+                } catch {
+                    // Scan lines in reverse — scanner.py writes JSON as the last line.
+                    let parsed = false;
+                    const lines = cleanOutput.split('\n');
+                    for (let i = lines.length - 1; i >= 0; i--) {
+                        const line = lines[i].trim();
+                        if (!line || (!line.startsWith('[') && !line.startsWith('{'))) continue;
                         try {
-                            findings = JSON.parse(jsonMatch[0]);
-                            logger.warn('Recovered findings by extracting JSON from noisy output.');
-                        } catch (e2) {
-                            logger.error('Failed to parse extracted JSON from Python output.', { output: findingsOutput });
-                            throw e2;
+                            findings = tryParse(line);
+                            parsed = true;
+                            if (lines.length > 1) {
+                                logger.warn(`Recovered findings from line ${i + 1}/${lines.length} of noisy output.`);
+                            }
+                            break;
+                        } catch {
+                            continue;
                         }
-                    } else {
-                        logger.error('No JSON object/array found in Python output.', { output: findingsOutput });
-                        throw e1;
+                    }
+                    if (!parsed) {
+                        logger.error('No parseable JSON line found in Python output.', { output: findingsOutput });
+                        throw new Error(`Scanner produced no parseable JSON. First 500 chars: ${findingsOutput.slice(0, 500)}`);
                     }
                 }
                 // Clean up backup file on successful completion

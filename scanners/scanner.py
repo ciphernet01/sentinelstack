@@ -163,14 +163,12 @@ def main():
 
     engine.run(ctx)
 
-    # Restore the *real* stdout before emitting JSON.
-    # Some AI30 scripts call colorama.init(autoreset=True) at import time which
-    # wraps sys.stdout and can inject ANSI escape codes into the output.
-    real_stdout = sys.__stdout__ or sys.stdout
-    sys.stdout = real_stdout
-    real_stdout.write(dumps_findings(ctx.findings))
-    real_stdout.write("\n")
-    real_stdout.flush()
+    # Write findings via the raw OS file descriptor (fd 1 = stdout).
+    # This bypasses ALL sys.stdout wrappers — colorama, redirect_stdout, etc. —
+    # and guarantees the JSON reaches the Node worker unpolluted by ANSI codes.
+    findings_bytes = (dumps_findings(ctx.findings) + "\n").encode("utf-8")
+    import os as _os
+    _os.write(1, findings_bytes)
     raise SystemExit(0)
 
 if __name__ == "__main__":
