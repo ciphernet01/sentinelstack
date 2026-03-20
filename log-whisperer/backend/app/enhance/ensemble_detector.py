@@ -5,7 +5,8 @@ Phase 1 Enhancement: Better Anomaly Detection
 
 import numpy as np
 from typing import List, Dict, Tuple
-from sklearn.ensemble import IsolationForest, LocalOutlierFactor
+from sklearn.ensemble import IsolationForest
+from sklearn.neighbors import LocalOutlierFactor
 from sklearn.svm import OneClassSVM
 from sklearn.covariance import EllipticEnvelope
 from sklearn.preprocessing import StandardScaler

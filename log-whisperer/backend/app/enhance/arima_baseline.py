@@ -31,10 +31,7 @@ class ARIMABaselineManager:
             window_size: Windows of history to track (hours)
             min_observations: Minimum points needed to fit model
         """
-        if not STATSMODELS_AVAILABLE:
-            raise ImportError("statsmodels required for ARIMABaselineManager. "
-                            "Install with: pip install statsmodels")
-        
+        self.available = STATSMODELS_AVAILABLE
         self.window_size = window_size
         self.min_observations = min_observations
         self.arima_models = {}  # service -> model
@@ -53,6 +50,9 @@ class ARIMABaselineManager:
             True if fit successful, False otherwise
         """
         try:
+            if not self.available:
+                return False
+
             if len(timeseries) < self.min_observations:
                 return False
             
@@ -72,6 +72,68 @@ class ARIMABaselineManager:
         except Exception as e:
             print(f"⚠️  Failed to fit ARIMA for {service}: {e}")
             return False
+
+    def analyze(self, window_features) -> Dict:
+        """
+        Analyze current window and return ARIMA-compatible trend signal.
+
+        This method is used by the enhancement integration engine. If
+        statsmodels is unavailable, it falls back to lightweight trend logic.
+        """
+        service = getattr(window_features, 'service', 'unknown')
+        metric = float(getattr(window_features, 'error_rate', 0.0) or 0.0)
+
+        self.update_timeseries(service, metric)
+
+        if self.available and len(self.timeseries_history.get(service, [])) >= self.min_observations:
+            expected = self.predict_next_window(service)
+            anomaly_score = self.deviation_score(service, metric) * 100
+            if expected is None:
+                trend = 'stable'
+            elif metric > expected * 1.2:
+                trend = 'degrading'
+            elif metric < expected * 0.8:
+                trend = 'improving'
+            else:
+                trend = 'stable'
+            return {
+                'trend': trend,
+                'anomaly_score': float(anomaly_score),
+                'expected': float(expected) if expected is not None else None,
+                'actual': metric,
+                'source': 'arima',
+            }
+
+        history = self.timeseries_history.get(service, [])
+        if len(history) < 3:
+            return {
+                'trend': 'stable',
+                'anomaly_score': 0.0,
+                'expected': metric,
+                'actual': metric,
+                'source': 'fallback',
+            }
+
+        recent = history[-5:]
+        recent_avg = float(np.mean(recent[-2:]))
+        older_avg = float(np.mean(recent[:2])) if len(recent) >= 2 else recent_avg
+        direction = 0.0 if older_avg == 0 else (recent_avg - older_avg) / abs(older_avg)
+        if direction > 0.2:
+            trend = 'degrading'
+        elif direction < -0.2:
+            trend = 'improving'
+        else:
+            trend = 'stable'
+
+        expected = older_avg if older_avg > 0 else recent_avg
+        deviation = 0.0 if expected == 0 else abs(metric - expected) / abs(expected)
+        return {
+            'trend': trend,
+            'anomaly_score': float(min(100.0, deviation * 100.0)),
+            'expected': float(expected),
+            'actual': metric,
+            'source': 'fallback',
+        }
     
     def update_timeseries(self, service: str, value: float):
         """

@@ -62,6 +62,7 @@ query.sql
 **/__pycache__/
 *.pyc
 *.pyo
+log-whisperer/backend/*.db
 
 # AI 30 Days generated artifacts (keep source code only)
 /AI 30 Days/reports/

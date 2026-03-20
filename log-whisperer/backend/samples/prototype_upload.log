@@ -1,0 +1,5 @@
+{"timestamp":"2026-03-20T10:10:00Z","service":"gateway","level":"INFO","message":"request started","trace_id":"up-001"}
+{"timestamp":"2026-03-20T10:10:01Z","service":"gateway","level":"WARN","message":"upstream latency increased","trace_id":"up-001"}
+{"timestamp":"2026-03-20T10:10:02Z","service":"gateway","level":"ERROR","message":"connection refused from auth-service","trace_id":"up-002"}
+{"timestamp":"2026-03-20T10:10:03Z","service":"gateway","level":"ERROR","message":"timeout waiting for auth-service","trace_id":"up-003"}
+{"timestamp":"2026-03-20T10:10:04Z","service":"gateway","level":"FATAL","message":"crash loop detected in gateway process","trace_id":"up-004"}

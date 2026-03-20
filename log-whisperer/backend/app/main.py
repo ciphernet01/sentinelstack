@@ -1,15 +1,16 @@
-"""
-Log-Whisperer ML Pipeline - FastAPI Application
-Complete ML system for log anomaly detection with Phase 1-5 enhancements
-"""
+"""Log-Whisperer FastAPI application entrypoint with production-safe middleware."""
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 import logging
+import time
+import uuid
 
 from app.api.routes import router, AppState
 from app.core.schemas import Config
+from app.core.settings import RuntimeSettings
 from app.enhance.integration import EnhancementIntegrationEngine
 
 # ============================================================================
@@ -21,6 +22,7 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
+settings = RuntimeSettings.load()
 
 # ============================================================================
 # APP LIFECYCLE
@@ -32,10 +34,10 @@ async def lifespan(app: FastAPI):
     # Startup
     logger.info("🚀 Log-Whisperer ML Pipeline starting up...")
     config = Config(
-        alert_threshold=61,
-        critical_threshold=81,
-        warmup_event_threshold=100,
-        window_size_sec=60
+        alert_threshold=settings.alert_threshold,
+        critical_threshold=settings.critical_threshold,
+        warmup_event_threshold=settings.warmup_event_threshold,
+        window_size_sec=settings.window_size_sec,
     )
     AppState.initialize(config=config)
     logger.info("✅ Core ML detector initialized")
@@ -55,8 +57,8 @@ async def lifespan(app: FastAPI):
 # ============================================================================
 
 app = FastAPI(
-    title="Log-Whisperer ML API",
-    version="1.5.0",
+    title=settings.app_name,
+    version=settings.app_version,
     description="Real-time anomaly detection with Phase 1-5 ML enhancements",
     docs_url="/docs",
     redoc_url="/redoc",
@@ -67,11 +69,52 @@ app = FastAPI(
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=settings.cors_allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def request_context_middleware(request: Request, call_next):
+    request_id = request.headers.get("x-request-id") or str(uuid.uuid4())
+    start = time.perf_counter()
+
+    if settings.require_api_key and request.url.path.startswith(settings.api_prefix):
+        if request.url.path not in {"/health", f"{settings.api_prefix}/status"}:
+            provided = request.headers.get("x-api-key")
+            if not settings.api_key or provided != settings.api_key:
+                return JSONResponse(
+                    status_code=401,
+                    content={
+                        "error": "unauthorized",
+                        "message": "Missing or invalid API key",
+                        "request_id": request_id,
+                    },
+                )
+
+    response = await call_next(request)
+    process_time_ms = round((time.perf_counter() - start) * 1000, 2)
+    response.headers["x-request-id"] = request_id
+    response.headers["x-process-time-ms"] = str(process_time_ms)
+    response.headers["x-content-type-options"] = "nosniff"
+    response.headers["x-frame-options"] = "DENY"
+    response.headers["referrer-policy"] = "strict-origin-when-cross-origin"
+    return response
+
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception):
+    logger.exception("Unhandled server error at %s", request.url.path)
+    return JSONResponse(
+        status_code=500,
+        content={
+            "error": "internal_server_error",
+            "message": "Unexpected error occurred",
+            "path": request.url.path,
+        },
+    )
 
 # Include router
 app.include_router(router)
@@ -87,7 +130,8 @@ def health() -> dict:
     return {
         "status": "ok",
         "service": "log-whisperer-backend",
-        "version": "1.5.0"
+        "version": settings.app_version,
+        "env": settings.env,
     }
 
 

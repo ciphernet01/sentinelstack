@@ -1,0 +1,10 @@
+2026-03-20T10:00:00Z api-gateway INFO request completed trace_id=trc-001
+2026-03-20T10:00:00Z auth-service INFO token validated trace_id=trc-001
+2026-03-20T10:00:01Z payment-service WARN payment provider latency high trace_id=trc-002
+2026-03-20T10:00:01Z inventory-service INFO stock check completed trace_id=trc-002
+2026-03-20T10:00:02Z auth-service ERROR connection refused to redis cache trace_id=trc-003
+2026-03-20T10:00:02Z auth-service ERROR connection refused to redis cache trace_id=trc-004
+2026-03-20T10:00:03Z api-gateway ERROR timeout while calling auth-service trace_id=trc-005
+2026-03-20T10:00:03Z payment-service ERROR timeout while writing payment ledger trace_id=trc-006
+2026-03-20T10:00:04Z auth-service ERROR out of memory while allocating session buffer trace_id=trc-007
+2026-03-20T10:00:05Z auth-service FATAL service crashed due to out of memory trace_id=trc-008

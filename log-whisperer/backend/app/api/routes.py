@@ -788,6 +788,75 @@ async def reset_detector() -> Dict:
 
 
 # ============================================================================
+# COMPATIBILITY ALIASES (Frontend contract)
+# ============================================================================
+
+@router.get("/logs/recent", response_model=Dict)
+async def logs_recent(
+    limit: int = Query(50, ge=1, le=500, description="Max windows to return"),
+) -> Dict:
+    """Compatibility route for recent log snapshots consumed by dashboard UI."""
+    AppState.initialize()
+
+    windows = AppState.ingest_service.get_current_windows() if AppState.ingest_service else []
+    windows = sorted(windows, key=lambda w: w.window_end, reverse=True)[:limit]
+
+    items = []
+    for window in windows:
+        items.append({
+            "service": window.service,
+            "window_start": window.window_start.isoformat() + "Z",
+            "window_end": window.window_end.isoformat() + "Z",
+            "event_count": window.event_count,
+            "error_rate": round(window.error_rate, 4),
+            "throughput_eps": round(window.throughput_eps, 3),
+            "severity": get_severity(window.error_rate * 100),
+        })
+
+    return {
+        "total": len(items),
+        "items": items,
+        "timestamp": datetime.utcnow().isoformat() + "Z",
+    }
+
+
+@router.get("/anomalies/live", response_model=Dict)
+async def anomalies_live(
+    limit: int = Query(50, ge=1, le=500, description="Max anomaly alerts"),
+    min_score: int = Query(41, ge=0, le=100, description="Minimum anomaly score"),
+) -> Dict:
+    """Compatibility route for live anomaly feed used by frontend cards/widgets."""
+    AppState.initialize()
+
+    anomalies = [
+        a for a in AppState.anomaly_buffer
+        if a.get("anomaly_score", 0) >= min_score
+    ]
+    anomalies = sorted(anomalies, key=lambda x: x.get("window", ""), reverse=True)[:limit]
+
+    return {
+        "total": len(anomalies),
+        "items": anomalies,
+        "timestamp": datetime.utcnow().isoformat() + "Z",
+    }
+
+
+@router.get("/reports/latest", response_model=Dict)
+async def reports_latest() -> Dict:
+    """Compatibility route for latest crash report panel."""
+    AppState.initialize()
+
+    reports = AppState.report_generator.get_recent_reports(limit=1) if AppState.report_generator else []
+    latest = reports[0] if reports else None
+
+    return {
+        "item": latest,
+        "report": latest,
+        "timestamp": datetime.utcnow().isoformat() + "Z",
+    }
+
+
+# ============================================================================
 # HELPER FUNCTIONS
 # ============================================================================
 
