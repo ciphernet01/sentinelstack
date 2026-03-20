@@ -12,7 +12,7 @@ from datetime import datetime, timedelta
 import asyncio
 import uuid
 
-from app.ingest.service import IngestionService, BatchLogProcessor
+from app.ingest.service import IngestionService, BatchLogProcessor, LogStreamSimulator
 from app.detect.anomaly import AnomalyDetector
 from app.detect.notifier import build_alert_payload, send_webhook
 from app.report.generator import CrashReportGenerator
@@ -387,6 +387,87 @@ async def detector_status() -> Dict:
     }
 
 
+@router.post("/stream/simulate", response_model=Dict)
+async def simulate_stream(
+    profile: str = Query("healthy", pattern="^(healthy|error_burst|crash_like)$"),
+    lines: int = Query(120, ge=10, le=5000),
+    events_per_second: float = Query(50.0, ge=1.0, le=10000.0),
+    service_override: Optional[str] = Query("sim-service"),
+) -> Dict:
+    """
+    Generate synthetic logs and ingest them for demo/testing.
+    Profiles: healthy, error_burst, crash_like.
+    """
+    AppState.initialize()
+
+    logs = build_simulated_logs(profile=profile, lines=lines, service=service_override or "sim-service")
+    simulator = LogStreamSimulator(logs=logs, events_per_second=events_per_second)
+    simulated_text = "\n".join([line for line in simulator.stream()])
+
+    result = AppState.ingest_service.ingest_file(
+        file_content=simulated_text,
+        format_hint="apache",
+        service_name=service_override,
+    )
+
+    return {
+        "profile": profile,
+        "requested_lines": lines,
+        "events_per_second": events_per_second,
+        "service": service_override,
+        "ingested": result.get("total", 0),
+        "parsed": result.get("parsed", 0),
+        "failed": result.get("failed", 0),
+        "new_anomalies": 0,
+        "windows_created": result.get("windows_created", 0),
+        "timestamp": datetime.utcnow().isoformat() + "Z",
+    }
+
+
+@router.post("/alerts/evaluate", response_model=Dict)
+async def evaluate_alerts(
+    threshold: int = Query(75, ge=0, le=100),
+    min_anomalous_events: int = Query(3, ge=1, le=1000),
+    limit: int = Query(400, ge=20, le=5000),
+) -> Dict:
+    """
+    Evaluate whether current anomaly state should trigger an alert.
+    """
+    AppState.initialize()
+
+    recent = AppState.anomaly_buffer[-limit:]
+    anomalous = [item for item in recent if float(item.get("anomaly_score", 0)) >= threshold]
+    max_score = max((float(item.get("anomaly_score", 0)) for item in anomalous), default=0.0)
+    affected_services = sorted({str(item.get("service", "unknown")) for item in anomalous})
+
+    severity = "info"
+    if max_score >= 90:
+        severity = "critical"
+    elif max_score >= threshold:
+        severity = "warning"
+
+    triggered = len(anomalous) >= min_anomalous_events
+    latest_report = AppState.report_generator.get_recent_reports(limit=1)
+
+    return {
+        "triggered": triggered,
+        "evaluation_time": datetime.utcnow().isoformat() + "Z",
+        "rules": {
+            "threshold": threshold,
+            "min_anomalous_events": min_anomalous_events,
+            "limit": limit,
+        },
+        "latest_alert": {
+            "severity": severity,
+            "message": f"Anomaly threshold crossed by {len(anomalous)} events" if triggered else "No alert triggered",
+            "anomalous_events": len(anomalous),
+            "max_anomaly_score": max_score,
+            "affected_services": affected_services,
+        },
+        "latest_crash_report": latest_report[0] if latest_report else None,
+    }
+
+
 # ============================================================================
 # 6. RESET ENDPOINT (Testing/Maintenance)
 # ============================================================================
@@ -498,3 +579,37 @@ def extract_patterns(score: float, window: WindowFeatures) -> List[Dict]:
         })
     
     return patterns
+
+
+def build_simulated_logs(profile: str, lines: int, service: str) -> List[str]:
+    base_time = datetime.utcnow() - timedelta(seconds=lines)
+    generated = []
+
+    for i in range(lines):
+        ts = (base_time + timedelta(seconds=i)).strftime("%d/%b/%Y:%H:%M:%S")
+        ip = f"10.0.0.{(i % 250) + 1}"
+
+        if profile == "error_burst":
+            status = 500 if i > int(lines * 0.65) else 200
+            path = "/api/orders" if i % 3 == 0 else "/api/health"
+        elif profile == "crash_like":
+            if i < int(lines * 0.5):
+                status = 200
+                path = "/api/heartbeat"
+            elif i < int(lines * 0.8):
+                status = 429
+                path = "/api/retry"
+            else:
+                status = 503 if i % 2 == 0 else 500
+                path = "/api/payment"
+        else:
+            status = 200
+            path = "/api/resource"
+
+        line = (
+            f'{ip} - - [{ts}] "GET {path} HTTP/1.1" '
+            f"{status} {300 + (i % 700)} \"-\" \"simulator/1.0\""
+        )
+        generated.append(line)
+
+    return generated

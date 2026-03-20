@@ -36,6 +36,15 @@
 - Destination: webhook URL passed in request, or `ALERT_WEBHOOK_URL` / `SLACK_WEBHOOK_URL`
 - Output: delivery status, status code, anomaly count, max score
 
+## Phase 3 Runtime Endpoints
+- `POST /api/v1/stream/simulate`
+  - Profiles: `healthy`, `error_burst`, `crash_like`
+  - Controls: `lines`, `events_per_second`, `service_override`
+  - Use for live demo injection and synthetic failure playback
+- `POST /api/v1/alerts/evaluate`
+  - Inputs: `threshold`, `min_anomalous_events`, `limit`
+  - Output: `triggered`, `latest_alert`, optional `latest_crash_report`
+
 ## Throughput Benchmark
 - Script: `log-whisperer/backend/scripts/benchmark_ingestion.py`
 - Example:

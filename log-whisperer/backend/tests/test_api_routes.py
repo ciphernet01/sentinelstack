@@ -511,3 +511,48 @@ def test_alert_dispatch_success(client, monkeypatch):
     assert data["sent"] is True
     assert data["status_code"] == 200
     assert data["anomaly_count"] == 1
+
+
+def test_simulate_stream_endpoint(client):
+    response = client.post(
+        "/api/v1/stream/simulate",
+        params={
+            "profile": "healthy",
+            "lines": 30,
+            "events_per_second": 10000,
+            "service_override": "sim-test",
+        },
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["profile"] == "healthy"
+    assert data["requested_lines"] == 30
+    assert data["parsed"] >= 1
+
+
+def test_alerts_evaluate_endpoint(client):
+    AppState.anomaly_buffer = [
+        {
+            "window": datetime.utcnow().isoformat() + "Z",
+            "anomaly_score": 88,
+            "service": "sim-service",
+            "reason": "HEURISTIC",
+        },
+        {
+            "window": datetime.utcnow().isoformat() + "Z",
+            "anomaly_score": 76,
+            "service": "sim-service",
+            "reason": "HEURISTIC",
+        },
+    ]
+
+    response = client.post(
+        "/api/v1/alerts/evaluate",
+        params={"threshold": 75, "min_anomalous_events": 2, "limit": 100},
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["triggered"] is True
+    assert data["latest_alert"]["anomalous_events"] >= 2
