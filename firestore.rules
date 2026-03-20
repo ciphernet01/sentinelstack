@@ -1,0 +1,184 @@
+/**
+ * Core Philosophy: This ruleset enforces a strict, user-centric ownership model. All sensitive data, such as assessments and their findings,
+ * is nested within a user-specific data tree, making path-based ownership the primary security mechanism. This ensures that a user can only
+ * ever access their own information.
+ *
+ * Data Structure: The data is organized into top-level collections for shared or public data (`organizations`, `subscriptionTiers`, `reports`)
+ * and a primary `users` collection. Each user document (`/users/{userId}`) acts as a root for their private subcollections, such as
+ * `/users/{userId}/assessments`. This structural segregation simplifies rules and enhances query performance and security.
+ *
+ * Key Security Decisions:
+ * - User Isolation: User data is strictly private. A user can only access documents under their own `/users/{userId}` path. Listing users is disabled to protect privacy.
+ * - Read-Only Shared Data: Collections like `subscriptionTiers` and `organizations` are treated as read-only for any authenticated user. Since the provided schema lacks a mechanism for role-based access control within an organization (e.g., a 'members' map), all write operations are denied as a secure default.
+ * - Incomplete Report Security: The `reports` collection cannot be securely implemented as-is because the `Report` entity is missing a denormalized `ownerId` field. To prevent unauthorized access, all access to `/reports/{reportId}` is denied until the data model is updated.
+ * - Default Deny: Any operation not explicitly granted is denied.
+ *
+ * Denormalization for Authorization: To ensure fast and secure rule evaluation, this ruleset relies on denormalized data. For example, an `Assessment` document created at `/users/{userId}/assessments/{assessmentId}` must contain its own `userId` field. This avoids costly `get()` calls and makes the ownership explicit within the data itself.
+ *
+ * Structural Segregation: The separation of private user data (e.g., `/users/{userId}/assessments`) from other top-level collections is a deliberate choice. It prevents data leakage and allows for secure and efficient list operations, as a client can only query collections they have explicit path-based access to.
+ */
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /********************************************************************************
+     * Helper Functions
+     *
+     * These functions abstract common logic for readability and reusability.
+     ********************************************************************************/
+
+    /**
+     * Checks if a user is authenticated.
+     */
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    /**
+     * Checks if the currently authenticated user's UID matches the given userId.
+     * This is the primary function for enforcing data ownership.
+     */
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    /**
+     * Checks for ownership on an existing document. Used for update and delete
+     * operations to prevent acting on non-existent data.
+     */
+    function isExistingOwner(userId) {
+      return isOwner(userId) && resource != null;
+    }
+
+    /**
+     * Validates that the user ID within a new Assessment document matches the
+     * user ID from the path. Enforces relational integrity on creation.
+     */
+    function hasValidAssessmentData(userId) {
+      return request.resource.data.userId == userId;
+    }
+
+    /**
+     * Ensures the owner ID of an existing Assessment cannot be changed.
+     * Enforces immutability for critical relational fields on update.
+     */
+    function isAssessmentOwnerImmutable() {
+      return request.resource.data.userId == resource.data.id;
+    }
+
+    /**
+     * Validates that the ID within a new User document matches the
+     * user ID from the path. Enforces relational integrity on creation.
+     */
+    function hasValidUserData(userId) {
+        return request.resource.data.id == userId;
+    }
+
+    /**
+     * Ensures the ID of an existing User document cannot be changed.
+     * Enforces immutability for the primary key on update.
+     */
+    function isUserIdImmutable() {
+        return request.resource.data.id == resource.data.id;
+    }
+
+
+    /********************************************************************************
+     * Collection Rules
+     *
+     * Rules are defined for each collection path in the database.
+     ********************************************************************************/
+
+    /**
+     * @description A user can create their own profile, and then only they can read or update it. Users cannot be listed or deleted.
+     * @path /users/{userId}
+     * @allow (create) An authenticated user creating their own user document: `create /users/user_abc` with auth.uid=`user_abc`.
+     * @deny (read) An authenticated user trying to read another user's profile: `get /users/user_xyz` with auth.uid=`user_abc`.
+     * @principle Restricts access to a user's own data tree and allows self-creation of a profile document.
+     */
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow list: if false;
+      allow create: if isOwner(userId) && hasValidUserData(userId);
+      allow update: if isExistingOwner(userId) && isUserIdImmutable();
+      allow delete: if false;
+    }
+
+    /**
+     * @description Any authenticated user can read organization data, but no one can write to it.
+     * @path /organizations/{organizationId}
+     * @allow (read) Any signed-in user fetching an organization's details: `get /organizations/org_123` with any valid auth.
+     * @deny (write) Any user, regardless of role, trying to modify an organization: `update /organizations/org_123`.
+     * @principle Provides read-only access to shared application data for all authenticated users while defaulting to secure (denied) writes.
+     */
+    match /organizations/{organizationId} {
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    /**
+     * @description Any authenticated user can read subscription tier data, but no one can write to it.
+     * @path /subscriptionTiers/{subscriptionTierId}
+     * @allow (read) Any signed-in user fetching subscription tier details: `get /subscriptionTiers/pro_tier` with any valid auth.
+     * @deny (write) Any user trying to modify a subscription tier: `create /subscriptionTiers/new_tier`.
+     * @principle Provides read-only access to public application data for all authenticated users.
+     */
+    match /subscriptionTiers/{subscriptionTierId} {
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    /**
+     * @description Only the owner of an assessment can read, create, update, or delete it.
+     * @path /users/{userId}/assessments/{assessmentId}
+     * @allow (create) An authenticated user creating an assessment for themselves: `create /users/user_abc/assessments/as_123` with auth.uid=`user_abc`.
+     * @deny (read) A user trying to read an assessment owned by another user: `get /users/user_xyz/assessments/as_456` with auth.uid=`user_abc`.
+     * @principle Enforces strict path-based document ownership for all operations.
+     */
+    match /users/{userId}/assessments/{assessmentId} {
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow create: if isOwner(userId) && hasValidAssessmentData(userId);
+      allow update: if isExistingOwner(userId) && isAssessmentOwnerImmutable();
+      allow delete: if isExistingOwner(userId);
+    }
+
+    /**
+     * @description A user can only access findings that belong to an assessment they own.
+     * @path /users/{userId}/assessments/{assessmentId}/findings/{findingId}
+     * @allow (read) A user reading a finding from one of their own assessments: `get /users/user_abc/assessments/as_123/findings/f_001` with auth.uid=`user_abc`.
+     * @deny (create) A user trying to create a finding under someone else's assessment: `create /users/user_xyz/assessments/as_456/findings/f_002` with auth.uid=`user_abc`.
+     * @principle Inherits ownership from the parent path, ensuring findings are as secure as the assessment they belong to.
+     */
+    match /users/{userId}/assessments/{assessmentId}/findings/{findingId} {
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow create: if isOwner(userId);
+      allow update: if isExistingOwner(userId);
+      allow delete: if isExistingOwner(userId);
+    }
+
+    /**
+     * @description CRITICAL: Access is fully denied. The 'Report' entity is missing an 'ownerId' or 'userId' field.
+     * @path /reports/{reportId}
+     * @allow (none) No operations are permitted.
+     * @deny (read) A user trying to read any report: `get /reports/report_123`. The rule will fail because there is no way to verify ownership.
+     * @principle Security by default. Without a denormalized ownership field on the document, it's impossible to write a secure rule for this top-level collection. Access is disabled until the data model is corrected.
+     */
+    match /reports/{reportId} {
+      // TODO: Add a denormalized 'ownerId' (e.g., the userId from the parent Assessment) to the Report document in Firestore.
+      // Then, update these rules to check for ownership, for example: `allow get: if isOwner(resource.data.ownerId);`.
+      allow get: if false;
+      allow list: if false;
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
+    }
+  }
+}

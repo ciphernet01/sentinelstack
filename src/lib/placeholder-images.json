@@ -1,0 +1,34 @@
+{
+  "placeholderImages": [
+    {
+      "id": "hero-dashboard",
+      "description": "Screenshot of the Sentinel Stack dashboard (local)",
+      "imageUrl": "/branding/hero.png",
+      "imageHint": "dashboard screenshot"
+    },
+    {
+      "id": "feature-automation",
+      "description": "Illustration for automated scanning feature",
+      "imageUrl": "https://images.unsplash.com/photo-1763738173457-2a874a207215?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw3fHxhdXRvbWF0aW9uJTIwZ2VhcnN8ZW58MHx8fHwxNzY3NDYwNTg0fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "automation gears"
+    },
+    {
+      "id": "feature-reporting",
+      "description": "Illustration for PDF reporting feature",
+      "imageUrl": "https://images.unsplash.com/photo-1724302988170-84977bd1f03a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw3fHxyZXBvcnQlMjBkb2N1bWVudHxlbnwwfHx8fDE3NjczNzMwMzJ8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "report document"
+    },
+    {
+      "id": "feature-ai",
+      "description": "Illustration for AI summary feature",
+      "imageUrl": "https://images.unsplash.com/photo-1677442135703-1787eea5ce01?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwyfHxhaSUyMGJyYWlufGVufDB8fHx8MTc2NzM2MDUyNnww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "ai brain"
+    },
+    {
+      "id": "user-avatar-1",
+      "description": "Avatar for Shreyansh",
+      "imageUrl": "https://images.unsplash.com/photo-1724435811349-32d27f4d5806?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw2fHxwZXJzb24lMjBhdmF0YXJ8ZW58MHx8fHwxNzY3MzYwMzMwfDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "person avatar"
+    }
+  ]
+}

@@ -1,0 +1,113 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+/node_modules
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# testing
+/coverage
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+/dist/
+
+# misc
+.DS_Store
+*.pem
+*.pdf
+*.doc
+*.docx
+*.ppt
+*.pptx
+*.xls
+*.xlsx
+*.zip
+next-build.log
+.modified
+.idx/
+/reports/
+
+# SECURITY: Credential files - NEVER commit these
+client_secret*.json
+**/client_secret*.json
+gen-lang-client*.json
+**/gen-lang-client*.json
+*.p12
+*.key
+service-account*.json
+**/service-account*.json
+credentials*.json
+**/credentials*.json
+*-key.json
+**/*-key.json
+
+# stray bundled starter project (not part of this repo)
+/public-google-integration-starter/
+
+# local scratch SQL files
+cleanup.sql
+query.sql
+
+# python caches
+**/__pycache__/
+*.pyc
+*.pyo
+log-whisperer/backend/*.db
+
+# AI 30 Days generated artifacts (keep source code only)
+/AI 30 Days/reports/
+/AI 30 Days/*.log
+/AI 30 Days/*visual selection*.png
+/AI 30 Days/_-*.png
+
+# stray local screenshots (should live in /public if needed)
+/src/app/(auth)/*.png
+/src/context/*.jpg
+/src/context/*.jpeg
+/src/context/*.png
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# npm audit artifacts
+audit.json
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+
+.genkit/*
+
+# env files (never commit real secrets)
+.env
+.env.*
+!.env.example
+!.env.local.example
+!.env.host.example
+!.env.backend.example
+
+# Firebase / Google secret material
+*-firebase-adminsdk-*.json
+**/client_secret_*.json
+**/gen-lang-client-*.json
+
+# firebase
+firebase-debug.log
+firestore-debug.log

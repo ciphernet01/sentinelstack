@@ -1,0 +1,27 @@
+fastapi==0.115.0
+uvicorn[standard]==0.30.6
+pydantic==2.9.2
+scikit-learn==1.5.2
+numpy==2.1.1
+pandas==2.2.3
+python-dateutil==2.9.0.post0
+orjson==3.10.7
+scipy==1.14.1
+
+# Phase 1: Advanced Detection
+statsmodels==0.14.0
+tensorflow==2.15.0
+
+# Phase 3: Online Learning
+river==0.21.0
+
+# Phase 4: Forecasting (optional, Prophet)
+# prophet==1.1.5
+
+# Phase 5: NLP (optional, for advanced text analysis)
+# transformers==4.36.0
+# torch==2.0.0
+
+# Prototype optional acceleration/parsing
+# faiss-cpu==1.9.0.post1
+# drain3==0.9.11
