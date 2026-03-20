@@ -3,6 +3,19 @@
   "private": true,
   "version": "0.1.0",
   "scripts": {
-    "dev": "echo \"Frontend scaffold ready. Integrate with Next.js app or initialize here.\""
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "typecheck": "echo \"No TypeScript checks configured\""
+  },
+  "dependencies": {
+    "next": "15.2.4",
+    "react": "19.0.0",
+    "react-dom": "19.0.0"
+  },
+  "devDependencies": {
+    "eslint": "9.22.0",
+    "eslint-config-next": "15.2.4"
   }
 }

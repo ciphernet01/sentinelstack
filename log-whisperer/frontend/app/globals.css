@@ -1,0 +1,56 @@
+:root {
+  color-scheme: light;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  background: linear-gradient(135deg, #f7f4ee 0%, #edf7ff 100%);
+  color: #1d2733;
+}
+
+.container {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 40px 20px;
+  display: grid;
+  gap: 16px;
+}
+
+.card {
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid #dce6f2;
+  border-radius: 12px;
+  padding: 20px;
+}
+
+h1, h2 {
+  margin: 0 0 10px;
+}
+
+p {
+  margin: 0;
+}
+
+.ok {
+  color: #116b39;
+  font-weight: 700;
+}
+
+.down {
+  color: #9f2f2f;
+  font-weight: 700;
+}
+
+pre {
+  margin-top: 10px;
+  padding: 12px;
+  border-radius: 10px;
+  background: #0f1824;
+  color: #d4ecff;
+  overflow-x: auto;
+}
