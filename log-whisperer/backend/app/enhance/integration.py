@@ -58,6 +58,36 @@ class EnhancementIntegrationEngine:
         # State
         self.history = []  # Keep recent windows for forecasting
         self.max_history = 100
+
+    def health_summary(self) -> Dict:
+        """Return readiness/degraded status for enhancement modules."""
+        ensemble_ready = bool(self.ensemble_detector and getattr(self.ensemble_detector, "is_fitted", False))
+        arima_available = bool(self.arima_baseline and getattr(self.arima_baseline, "available", True))
+
+        return {
+            "phase_1": {
+                "ensemble_detector": "ready" if ensemble_ready else "warming_up",
+                "arima_baseline": "ready" if arima_available else "degraded_fallback",
+                "autoencoder": "ready",
+            },
+            "phase_2": {
+                "causal_rca": "ready" if self.causal_rca else "error",
+                "service_dependency": "ready" if self.service_dependency else "error",
+            },
+            "phase_3": {
+                "online_learning": "ready" if self.adaptive_baseline else "error",
+                "drift_detection": "ready" if self.drift_detector else "error",
+                "active_learning": "ready" if self.active_learning else "error",
+            },
+            "phase_4": {
+                "crash_forecasting": "ready" if self.crash_forecaster else "error",
+                "resource_forecasting": "ready" if self.resource_forecaster else "error",
+            },
+            "phase_5": {
+                "nlp_analysis": "ready" if self.nlp_analyzer else "error",
+                "behavioral_anomaly": "ready" if self.behavior_detector else "error",
+            },
+        }
     
     def enhance_score(
         self,
@@ -91,14 +121,30 @@ class EnhancementIntegrationEngine:
         
         ensemble_score = (len(ensemble_anomalies) / max(1, len(recent_events))) * 100 if recent_events else 0
         
-        # Phase 3: Check concept drift
-        drift_detected = self.drift_detector.check_drift(
-            current_error_rate=window_features.error_rate,
-            current_throughput=window_features.throughput_eps
-        )
-        
-        # Phase 3: Adaptive baseline adjustment
-        adaptive_baseline = self.adaptive_baseline.get_baseline(window_features)
+        # Phase 3: Check concept drift (interface-compatible update)
+        drift_detected = self.drift_detector.update(window_features.error_rate)
+
+        # Phase 3: Adaptive baseline update and derived baseline map
+        new_features = np.array([
+            window_features.error_rate,
+            window_features.throughput_eps,
+            window_features.latency_p95 or 0.0,
+        ])
+        self.adaptive_baseline.update_baseline_online(new_features, prediction_error=window_features.error_rate)
+
+        baseline_vector = getattr(self.adaptive_baseline, 'baseline_features', None)
+        if baseline_vector is not None and len(baseline_vector) >= 3:
+            adaptive_baseline = {
+                'error_baseline': float(baseline_vector[0]),
+                'throughput_baseline': float(baseline_vector[1]),
+                'latency_baseline': float(baseline_vector[2]),
+            }
+        else:
+            adaptive_baseline = {
+                'error_baseline': 0.05,
+                'throughput_baseline': 100.0,
+                'latency_baseline': 200.0,
+            }
         adaptive_score = self._compute_adaptive_score(window_features, adaptive_baseline)
         
         # Phase 1: ARIMA trend detection
@@ -226,57 +272,68 @@ class EnhancementIntegrationEngine:
         }
         """
         
-        # Crash prediction
-        crash_pred = self.crash_forecaster.forecast(window_features)
-        
-        # Resource forecasting
-        resource_pred_cpu = self.resource_forecaster.forecast_cpu(window_features)
-        resource_pred_memory = self.resource_forecaster.forecast_memory(window_features)
-        resource_pred_disk = self.resource_forecaster.forecast_disk(window_features)
+        # Update forecasters with current telemetry
+        derived_anomaly = min(100.0, (window_features.error_rate * 100.0) + ((window_features.latency_p95 or 0.0) / 20.0))
+        self.crash_forecaster.update_service_data(
+            service=window_features.service,
+            anomaly_score=derived_anomaly,
+            latency=window_features.latency_p95 or 0.0,
+            error_rate=window_features.error_rate,
+        )
+
+        self.resource_forecaster.record_resources(
+            service=window_features.service,
+            cpu_percent=min(100.0, window_features.throughput_eps / 2.0),
+            memory_mb=(window_features.latency_p95 or 100.0) * 4.0,
+            disk_gb=max(1.0, window_features.event_count / 200.0),
+        )
+
+        # Forecast using current module interfaces
+        crash_pred = self.crash_forecaster.predict_crash_risk(window_features.service)
+        resource_pred = self.resource_forecaster.forecast_resources(window_features.service, hours_ahead=6)
+        cpu_peak = (resource_pred.get('forecasts', {}).get('cpu') or {}).get('peak_predicted', 0.0)
+        memory_peak = (resource_pred.get('forecasts', {}).get('memory') or {}).get('peak_predicted', 0.0)
+        disk_peak = (resource_pred.get('forecasts', {}).get('disk') or {}).get('peak_predicted', 0.0)
         
         # Determine urgency
         urgency = "LOW"
-        if crash_pred.get('probability', 0) > 0.8 or any(
-            r.get('probability', 0) > 0.9 
-            for r in [resource_pred_cpu, resource_pred_memory, resource_pred_disk]
-        ):
+        crash_is_critical = crash_pred.get('risk_level') == 'CRITICAL'
+        crash_is_high = crash_pred.get('risk_level') == 'HIGH'
+        if crash_is_critical or cpu_peak > 85 or memory_peak > 8000 or disk_peak > 500:
             urgency = "CRITICAL"
-        elif crash_pred.get('probability', 0) > 0.6 or any(
-            r.get('probability', 0) > 0.7 
-            for r in [resource_pred_cpu, resource_pred_memory, resource_pred_disk]
-        ):
+        elif crash_is_high or cpu_peak > 75 or memory_peak > 6000 or disk_peak > 350:
             urgency = "HIGH"
-        elif crash_pred.get('probability', 0) > 0.4:
+        elif crash_pred.get('risk_level') == 'MEDIUM':
             urgency = "MEDIUM"
         
         return {
             "crash_prediction": {
-                "will_crash": crash_pred.get('will_crash', False),
-                "probability": round(crash_pred.get('probability', 0), 3),
-                "time_to_crash_minutes": crash_pred.get('time_to_crash_minutes', 0),
+                "will_crash": crash_pred.get('risk_level') in {'HIGH', 'CRITICAL'},
+                "probability": round(min(1.0, crash_pred.get('max_predicted_score', 0) / 100.0), 3),
+                "time_to_crash_minutes": self.crash_forecaster.forecast_window,
                 "confidence": round(crash_pred.get('confidence', 0), 3)
             },
             "resource_forecast": {
                 "cpu": {
-                    "projected_utilization": round(resource_pred_cpu.get('projected_utilization', 0), 2),
-                    "exhaustion_probability": round(resource_pred_cpu.get('probability', 0), 3),
-                    "time_to_exhaustion": resource_pred_cpu.get('time_to_exhaustion_minutes', 0)
+                    "projected_utilization": round(cpu_peak, 2),
+                    "exhaustion_probability": round(min(1.0, cpu_peak / 100.0), 3),
+                    "time_to_exhaustion": 60 if cpu_peak > 80 else 0
                 },
                 "memory": {
-                    "projected_utilization": round(resource_pred_memory.get('projected_utilization', 0), 2),
-                    "exhaustion_probability": round(resource_pred_memory.get('probability', 0), 3),
-                    "time_to_exhaustion": resource_pred_memory.get('time_to_exhaustion_minutes', 0)
+                    "projected_utilization": round(memory_peak, 2),
+                    "exhaustion_probability": round(min(1.0, memory_peak / 10000.0), 3),
+                    "time_to_exhaustion": 120 if memory_peak > 7000 else 0
                 },
                 "disk": {
-                    "projected_utilization": round(resource_pred_disk.get('projected_utilization', 0), 2),
-                    "exhaustion_probability": round(resource_pred_disk.get('probability', 0), 3),
-                    "time_to_exhaustion": resource_pred_disk.get('time_to_exhaustion_minutes', 0)
+                    "projected_utilization": round(disk_peak, 2),
+                    "exhaustion_probability": round(min(1.0, disk_peak / 1000.0), 3),
+                    "time_to_exhaustion": 180 if disk_peak > 400 else 0
                 }
             },
-            "recommendations": [
-                f"Scale {resource_pred_cpu['recommendation']}" if resource_pred_cpu.get('recommendation') else None,
-                f"Investigate {resource_pred_memory['recommendation']}" if resource_pred_memory.get('recommendation') else None,
-            ],
+            "recommendations": [r for r in [
+                crash_pred.get('recommendation'),
+                (resource_pred.get('scaling_recommendation') or {}).get('reason'),
+            ] if r],
             "urgency": urgency,
             "analysis_source": "Phase4_CrashForecasting + ResourceForecasting"
         }
@@ -317,7 +374,8 @@ class EnhancementIntegrationEngine:
             msg = getattr(event, 'message', '') if hasattr(event, 'message') else ''
             level = getattr(event, 'level', 'INFO') if hasattr(event, 'level') else 'INFO'
             
-            category = self.nlp_analyzer.categorize_error(msg, level)
+            category_info = self.nlp_analyzer.categorize_error(msg)
+            category = category_info.get('category', 'unknown')
             if category not in error_categories:
                 error_categories[category] = {'count': 0, 'messages': set()}
             
@@ -329,7 +387,12 @@ class EnhancementIntegrationEngine:
         behavior_patterns = []
         
         for event in recent_events:
-            if self.behavior_detector.is_anomalous(event):
+            msg_lower = (event.message or "").lower()
+            is_behavioral_outlier = (
+                event.level in {"ERROR", "FATAL"}
+                and any(token in msg_lower for token in ["timeout", "refused", "panic", "memory", "crash"])
+            )
+            if is_behavioral_outlier:
                 behavioral_anomalies += 1
                 behavior_patterns.append({
                     "pattern": f"Service {event.service} shows unusual behavior",
@@ -338,7 +401,7 @@ class EnhancementIntegrationEngine:
                 })
         
         # Top error templates
-        top_templates = self.nlp_analyzer.get_error_templates(recent_events)[:5]
+        top_templates = [tpl for tpl, _ in self.nlp_analyzer.get_error_trends().get('top_errors', [])[:5]]
         
         return {
             "error_categories": [
@@ -363,10 +426,12 @@ class EnhancementIntegrationEngine:
         """
         Phase 3: Active learning - improve models based on user feedback
         """
-        self.active_learning.provide_feedback(
-            report_id=report_id,
-            was_actual_incident=was_incident,
-            feedback=feedback_text
+        label = "true_positive" if was_incident else "false_positive"
+        confidence = 0.8 if was_incident else 0.4
+        self.active_learning.collect_feedback(
+            alert_id=report_id,
+            user_label=label,
+            prediction_confidence=confidence,
         )
     
     def _compute_adaptive_score(

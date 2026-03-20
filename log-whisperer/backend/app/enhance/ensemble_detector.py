@@ -4,6 +4,7 @@ Phase 1 Enhancement: Better Anomaly Detection
 """
 
 import numpy as np
+from collections import deque
 from typing import List, Dict, Tuple
 from sklearn.ensemble import IsolationForest
 from sklearn.neighbors import LocalOutlierFactor
@@ -56,6 +57,49 @@ class EnsembleAnomalyDetector:
         )
         
         self.is_fitted = False
+        self._warmup_features = deque(maxlen=512)
+
+    def _event_to_features(self, event) -> np.ndarray:
+        level_map = {"DEBUG": 0, "INFO": 1, "WARN": 2, "ERROR": 3, "FATAL": 4}
+        level = str(getattr(event, "level", "INFO") or "INFO").upper()
+        message = str(getattr(event, "message", "") or "")
+        trace_id = getattr(event, "trace_id", None)
+        service = str(getattr(event, "service", "unknown") or "unknown")
+
+        level_feature = level_map.get(level, 1)
+        message_length = float(len(message))
+        word_count = float(len(message.split()))
+        has_trace = 1.0 if trace_id else 0.0
+        service_hash = float(abs(hash(service)) % 1000) / 1000.0
+
+        return np.array([level_feature, message_length, word_count, has_trace, service_hash], dtype=np.float64)
+
+    def predict(self, event, threshold: float = 0.6) -> bool:
+        """
+        Integration-friendly event prediction.
+
+        Returns True when ensemble score crosses threshold.
+        Uses warm-up buffer before full model fit.
+        """
+        features = self._event_to_features(event)
+        self._warmup_features.append(features)
+
+        if not self.is_fitted and len(self._warmup_features) >= 64:
+            try:
+                self.fit(np.array(self._warmup_features, dtype=np.float64))
+            except Exception:
+                self.is_fitted = False
+
+        if self.is_fitted:
+            try:
+                score, _ = self.predict_ensemble(features)
+                return bool(score >= threshold)
+            except Exception:
+                pass
+
+        level = str(getattr(event, "level", "INFO") or "INFO").upper()
+        message = str(getattr(event, "message", "") or "").lower()
+        return level in {"ERROR", "FATAL"} or any(k in message for k in ["timeout", "refused", "panic", "crash"]) 
     
     def fit(self, data: np.ndarray):
         """

@@ -435,16 +435,24 @@ async def get_enhanced_score(
         service=service,
         window_start=datetime.utcnow(),
         window_end=datetime.utcnow(),
+        duration_sec=60,
         event_count=int(throughput_eps * 60),  # Approximate
+        error_count=max(0, int((throughput_eps * 60) * error_rate)),
         throughput_eps=throughput_eps,
         error_rate=error_rate,
+        latency_p50=latency_p95_ms * 0.6 if latency_p95_ms else None,
         latency_p95=latency_p95_ms,
+        latency_p99=latency_p95_ms * 1.2 if latency_p95_ms else None,
+        latency_max=latency_p95_ms * 1.5 if latency_p95_ms else None,
         level_distribution={"ERROR": int(error_rate * 100)},
         unique_messages=1,
+        unique_templates=1,
+        top_error_messages=[("synthetic_error", int(error_rate * 100))],
         error_burst=error_rate > 0.10,
         volume_spike=False,
         heartbeat_missing=False,
-        sequence_anomaly=False
+        sequence_anomaly=False,
+        service_down=False,
     )
     
     # Get base score
@@ -518,16 +526,24 @@ async def get_causal_rca(
         service=service,
         window_start=datetime.utcnow(),
         window_end=datetime.utcnow(),
+        duration_sec=60,
         event_count=100,
+        error_count=int((error_rate or 0.0) * 100),
         throughput_eps=throughput_eps or 10.0,
         error_rate=error_rate or 0.0,
+        latency_p50=(latency_p95_ms or 100) * 0.6,
         latency_p95=latency_p95_ms or 100,
+        latency_p99=(latency_p95_ms or 100) * 1.2,
+        latency_max=(latency_p95_ms or 100) * 1.5,
         level_distribution={"ERROR": 1},
         unique_messages=1,
+        unique_templates=1,
+        top_error_messages=[("synthetic_error", 1)],
         error_burst=error_rate and error_rate > 0.10,
         volume_spike=False,
         heartbeat_missing=False,
-        sequence_anomaly=False
+        sequence_anomaly=False,
+        service_down=False,
     )
     
     # Perform causal analysis
@@ -596,16 +612,24 @@ async def forecast_issues(
         service=service,
         window_start=datetime.utcnow(),
         window_end=datetime.utcnow(),
+        duration_sec=60,
         event_count=100,
+        error_count=int((error_rate or 0.0) * 100),
         throughput_eps=throughput_eps or 10.0,
         error_rate=error_rate or 0.0,
+        latency_p50=(latency_p95_ms or 100) * 0.6,
         latency_p95=latency_p95_ms or 100,
+        latency_p99=(latency_p95_ms or 100) * 1.2,
+        latency_max=(latency_p95_ms or 100) * 1.5,
         level_distribution={"ERROR": 1},
         unique_messages=1,
+        unique_templates=1,
+        top_error_messages=[("synthetic_error", 1)],
         error_burst=False,
         volume_spike=False,
         heartbeat_missing=False,
-        sequence_anomaly=False
+        sequence_anomaly=False,
+        service_down=False,
     )
     
     # Get forecast
@@ -741,32 +765,10 @@ async def enhancement_status() -> Dict:
     """
     
     AppState.initialize()
-    
-    return {
-        "phase_1": {
-            "ensemble_detector": "ready" if AppState.enhancement_engine.ensemble_detector else "error",
-            "arima_baseline": "ready" if AppState.enhancement_engine.arima_baseline else "error",
-            "autoencoder": "ready"
-        },
-        "phase_2": {
-            "causal_rca": "ready" if AppState.enhancement_engine.causal_rca else "error",
-            "service_dependency": "ready" if AppState.enhancement_engine.service_dependency else "error"
-        },
-        "phase_3": {
-            "online_learning": "ready" if AppState.enhancement_engine.adaptive_baseline else "error",
-            "drift_detection": "ready" if AppState.enhancement_engine.drift_detector else "error",
-            "active_learning": "ready" if AppState.enhancement_engine.active_learning else "error"
-        },
-        "phase_4": {
-            "crash_forecasting": "ready" if AppState.enhancement_engine.crash_forecaster else "error",
-            "resource_forecasting": "ready" if AppState.enhancement_engine.resource_forecaster else "error"
-        },
-        "phase_5": {
-            "nlp_analysis": "ready" if AppState.enhancement_engine.nlp_analyzer else "error",
-            "behavioral_anomaly": "ready" if AppState.enhancement_engine.behavior_detector else "error"
-        },
-        "timestamp": datetime.utcnow().isoformat() + "Z"
-    }
+
+    health = AppState.enhancement_engine.health_summary() if AppState.enhancement_engine else {}
+    health["timestamp"] = datetime.utcnow().isoformat() + "Z"
+    return health
 
 
 @router.post("/admin/reset", response_model=Dict)
