@@ -37,9 +37,11 @@
 - `POST /api/v1/ingest/json`
 - `POST /api/v1/ingest/upload`
 - `POST /api/v1/ingest/stream`
+- `POST /api/v1/ingest/simulate`
 - `GET /api/v1/logs/recent?limit=100`
 - `GET /api/v1/anomalies/live?limit=300&threshold=60`
 - `GET /api/v1/reports/latest?limit=500&threshold=75`
+- `POST /api/v1/alerts/evaluate`
 
 ### `GET /api/v1/anomalies/live` response highlights
 - `generated_at`
@@ -55,3 +57,21 @@
 - `report.affected_services`
 - `report.timeline[]`
 - `report.recommended_fix[]`
+
+### `POST /api/v1/ingest/simulate` request body
+```json
+{
+  "profile": "healthy | error_burst | crash_like",
+  "lines": 120,
+  "service": "api-gateway"
+}
+```
+
+### `POST /api/v1/alerts/evaluate` request body (optional)
+```json
+{
+  "anomaly_threshold": 75,
+  "min_anomalous_events": 3,
+  "max_window_events": 400
+}
+```

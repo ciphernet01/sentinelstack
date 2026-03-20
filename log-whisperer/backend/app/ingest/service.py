@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 import json
 
 from app.core.schemas import IngestResponse, NormalizedLogEvent, PipelineStatus
+from app.ingest.simulator import generate_stream_lines
 from app.parse.parser import parse_log_line, parse_many_lines
 
 MAX_STORED_EVENTS = 10000
@@ -68,6 +69,12 @@ def ingest_raw_lines(lines: list[str], source: str = "stream") -> IngestResponse
 		failed_samples=failed_lines[:5],
 		source=source,
 	)
+
+
+def ingest_simulated_stream(profile: str, lines: int, service: str) -> IngestResponse:
+	generated_lines = generate_stream_lines(profile=profile, lines=lines, service=service)
+	result = ingest_raw_lines(generated_lines, source=f"simulated_{profile}")
+	return result.model_copy(update={"generated_lines": len(generated_lines)})
 
 
 def recent_events(limit: int = 100) -> list[NormalizedLogEvent]:

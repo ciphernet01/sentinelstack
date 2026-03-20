@@ -47,6 +47,7 @@ class IngestResponse(BaseModel):
 	failed_count: int
 	failed_samples: list[str] = Field(default_factory=list)
 	source: str
+	generated_lines: int | None = None
 
 
 class PipelineStatus(BaseModel):
@@ -99,3 +100,32 @@ class CrashReport(BaseModel):
 class CrashReportResponse(BaseModel):
 	generated_at: datetime
 	report: CrashReport | None = None
+
+
+class StreamSimulationRequest(BaseModel):
+	profile: Literal["healthy", "error_burst", "crash_like"] = "healthy"
+	lines: int = Field(default=120, ge=10, le=5000)
+	service: str = "api-gateway"
+
+
+class AlertRuleConfig(BaseModel):
+	anomaly_threshold: int = Field(default=75, ge=0, le=100)
+	min_anomalous_events: int = Field(default=3, ge=1, le=1000)
+	max_window_events: int = Field(default=400, ge=20, le=5000)
+
+
+class AlertEvent(BaseModel):
+	timestamp: datetime
+	severity: Literal["info", "warning", "critical"]
+	message: str
+	threshold: int
+	anomalous_events: int
+	max_anomaly_score: int
+	affected_services: list[str] = Field(default_factory=list)
+
+
+class AlertEvaluationResponse(BaseModel):
+	triggered: bool
+	evaluation_time: datetime
+	rules: AlertRuleConfig
+	latest_alert: AlertEvent | None = None

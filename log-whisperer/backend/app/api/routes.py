@@ -6,14 +6,25 @@ from fastapi import APIRouter, File, HTTPException, UploadFile
 
 from app.core.schemas import (
 	AnomaliesLiveResponse,
+	AlertEvaluationResponse,
+	AlertRuleConfig,
 	CrashReportResponse,
 	IngestJsonRequest,
 	IngestResponse,
 	IngestTextRequest,
 	PipelineStatus,
+	StreamSimulationRequest,
 )
+from app.detect.alerts import evaluate_alert_rules
 from app.detect.anomaly import build_live_anomaly_response, score_events_fallback
-from app.ingest.service import ingest_json_records, ingest_raw_lines, ingest_text_blob, pipeline_status, recent_events
+from app.ingest.service import (
+	ingest_json_records,
+	ingest_raw_lines,
+	ingest_simulated_stream,
+	ingest_text_blob,
+	pipeline_status,
+	recent_events,
+)
 from app.report.generator import build_latest_crash_report
 
 router = APIRouter(prefix="/api/v1", tags=["log-whisperer"])
@@ -71,6 +82,11 @@ def ingest_stream(lines: list[str]) -> IngestResponse:
 	return ingest_raw_lines(lines, source="stream")
 
 
+@router.post("/ingest/simulate", response_model=IngestResponse)
+def ingest_simulate(payload: StreamSimulationRequest) -> IngestResponse:
+	return ingest_simulated_stream(profile=payload.profile, lines=payload.lines, service=payload.service)
+
+
 @router.get("/logs/recent")
 def get_recent_logs(limit: int = 100):
 	safe_limit = min(max(limit, 1), 1000)
@@ -91,3 +107,11 @@ def get_latest_report(limit: int = 500, threshold: int = 75) -> CrashReportRespo
 	events = recent_events(limit=safe_limit)
 	scored = score_events_fallback(events)
 	return build_latest_crash_report(scored_events=scored, threshold=threshold)
+
+
+@router.post("/alerts/evaluate", response_model=AlertEvaluationResponse)
+def evaluate_alerts(rules: AlertRuleConfig | None = None) -> AlertEvaluationResponse:
+	active_rules = rules or AlertRuleConfig()
+	events = recent_events(limit=active_rules.max_window_events)
+	scored = score_events_fallback(events)
+	return evaluate_alert_rules(scored_events=scored, rules=active_rules)
