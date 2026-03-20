@@ -132,7 +132,7 @@ async def upload_logs(
         result = AppState.ingest_service.ingest_file(
             file_content=file_text,
             format_hint=format_hint,
-            service_override=service_override
+            service_name=service_override
         )
         
         # Score all windows

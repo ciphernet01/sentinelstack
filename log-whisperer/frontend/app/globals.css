@@ -14,7 +14,7 @@ body {
 }
 
 .container {
-  max-width: 860px;
+  max-width: 1120px;
   margin: 0 auto;
   padding: 40px 20px;
   display: grid;
@@ -28,12 +28,59 @@ body {
   padding: 20px;
 }
 
+.hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.grid {
+  display: grid;
+  gap: 16px;
+}
+
+.metrics {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.two-col {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 h1, h2 {
   margin: 0 0 10px;
 }
 
 p {
-  margin: 0;
+  margin: 0 0 6px;
+}
+
+button {
+  border: none;
+  border-radius: 10px;
+  background: #0d6efd;
+  color: #fff;
+  padding: 10px 14px;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.label {
+  color: #5f6b7a;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.metric {
+  font-size: 30px;
+  font-weight: 700;
+  margin-top: 4px;
 }
 
 .ok {
@@ -53,4 +100,53 @@ pre {
   background: #0f1824;
   color: #d4ecff;
   overflow-x: auto;
+}
+
+.phase-list {
+  display: grid;
+  gap: 8px;
+}
+
+.phase {
+  border: 1px solid #dde7f5;
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+
+.phase ul {
+  margin: 6px 0 0;
+  padding-left: 18px;
+}
+
+.feed {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 8px;
+}
+
+.feed li {
+  display: flex;
+  justify-content: space-between;
+  border: 1px solid #dde7f5;
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+
+.mono {
+  font-family: Consolas, Monaco, monospace;
+}
+
+.error {
+  border-color: #f4c2c2;
+  background: #fff1f1;
+  color: #8b1b1b;
+}
+
+@media (max-width: 900px) {
+  .metrics,
+  .two-col {
+    grid-template-columns: 1fr;
+  }
 }

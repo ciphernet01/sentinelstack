@@ -7,7 +7,7 @@ import io
 import threading
 import time
 from collections import defaultdict, deque
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import List, Dict, Optional, Callable, Generator
 from statistics import mean, stdev, median
 
@@ -63,23 +63,27 @@ class TimeWindow:
         """Convert TimeWindow to WindowFeatures for ML pipeline"""
         event_count = len(self.events)
         error_count = sum(self.level_counts[level] for level in ['ERROR', 'FATAL'])
+        duration_sec = int(max((self.window_end - self.window_start).total_seconds(), 1))
         
         # Calculate metrics
         error_rate = error_count / event_count if event_count > 0 else 0.0
-        throughput_eps = event_count / max((self.window_end - self.window_start).total_seconds(), 1)
+        throughput_eps = event_count / duration_sec
         
         # Latency statistics
         if self.latencies:
+            latency_p50 = median(self.latencies)
             latency_p95 = sorted(self.latencies)[int(len(self.latencies) * 0.95)] if self.latencies else None
             latency_p99 = sorted(self.latencies)[int(len(self.latencies) * 0.99)] if self.latencies else None
-            latency_mean = mean(self.latencies)
+            latency_max = max(self.latencies)
         else:
+            latency_p50 = None
             latency_p95 = None
             latency_p99 = None
-            latency_mean = None
+            latency_max = None
         
         # Unique messages
         unique_messages = len(set(e.message[:100] for e in self.events))
+        unique_templates = len(set((e.template or e.message[:100]) for e in self.events))
         
         # Detect special conditions
         heartbeat_missing = event_count == 0
@@ -89,16 +93,22 @@ class TimeWindow:
         
         # Service detection
         services = list(set(e.service for e in self.events))
+        service = services[0] if services else "unknown-service"
+        top_error_messages = sorted(self.error_patterns.items(), key=lambda x: x[1], reverse=True)[:10]
         
         return WindowFeatures(
             window_start=self.window_start,
             window_end=self.window_end,
+            duration_sec=duration_sec,
+            service=service,
             event_count=event_count,
+            error_count=error_count,
             error_rate=error_rate,
             throughput_eps=throughput_eps,
+            latency_p50=latency_p50,
             latency_p95=latency_p95,
             latency_p99=latency_p99,
-            latency_mean=latency_mean,
+            latency_max=latency_max,
             level_distribution={
                 'DEBUG': self.level_counts['DEBUG'],
                 'INFO': self.level_counts['INFO'],
@@ -107,11 +117,13 @@ class TimeWindow:
                 'FATAL': self.level_counts['FATAL'],
             },
             unique_messages=unique_messages,
+            unique_templates=unique_templates,
+            top_error_messages=top_error_messages,
             heartbeat_missing=heartbeat_missing,
             error_burst=error_burst,
             volume_spike=volume_spike,
             sequence_anomaly=sequence_anomaly,
-            affected_services=services
+            service_down=False,
         )
     
     def get_window_key(self) -> str:
@@ -301,6 +313,8 @@ class IngestionService:
     
     def _get_window_start(self, timestamp: datetime) -> datetime:
         """Get start of window for a given timestamp"""
+        if timestamp.tzinfo is not None:
+            timestamp = timestamp.astimezone(timezone.utc).replace(tzinfo=None)
         epoch = datetime.utcfromtimestamp(0)
         seconds_since_epoch = (timestamp - epoch).total_seconds()
         window_number = int(seconds_since_epoch / self.window_size_sec)
