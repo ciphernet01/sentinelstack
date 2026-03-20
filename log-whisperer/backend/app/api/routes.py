@@ -6,6 +6,7 @@ Endpoints: log upload, real-time streaming, anomaly queries, crash reports.
 from fastapi import APIRouter, File, UploadFile, HTTPException, Query, BackgroundTasks
 from fastapi.responses import StreamingResponse
 import json
+import os
 from typing import Dict, List, Optional, AsyncGenerator
 from datetime import datetime, timedelta
 import asyncio
@@ -13,9 +14,11 @@ import uuid
 
 from app.ingest.service import IngestionService, BatchLogProcessor
 from app.detect.anomaly import AnomalyDetector
+from app.detect.notifier import build_alert_payload, send_webhook
 from app.report.generator import CrashReportGenerator
 from app.core.schemas import (
-    LogEvent, WindowFeatures, AnomalyAlert, CrashReport, Config
+    LogEvent, WindowFeatures, AnomalyAlert, CrashReport, Config,
+    AlertDispatchRequest, AlertDispatchResponse,
 )
 
 # ============================================================================
@@ -404,6 +407,43 @@ async def reset_detector() -> Dict:
         "status": "reset_complete",
         "timestamp": datetime.utcnow().isoformat() + "Z"
     }
+
+
+@router.post("/alerts/send", response_model=AlertDispatchResponse)
+async def send_alert(payload: AlertDispatchRequest) -> AlertDispatchResponse:
+    AppState.initialize()
+
+    webhook_url = (
+        payload.webhook_url
+        or os.getenv("ALERT_WEBHOOK_URL")
+        or os.getenv("SLACK_WEBHOOK_URL")
+    )
+    if not webhook_url:
+        raise HTTPException(status_code=400, detail="No webhook URL provided. Set ALERT_WEBHOOK_URL or SLACK_WEBHOOK_URL.")
+
+    anomalies = [
+        item for item in AppState.anomaly_buffer
+        if float(item.get("anomaly_score", 0)) >= payload.min_score
+    ]
+    anomalies = sorted(anomalies, key=lambda item: float(item.get("anomaly_score", 0)), reverse=True)[:payload.max_alerts]
+
+    reports = AppState.report_generator.get_recent_reports(limit=1) if payload.include_crash_summary else []
+    body = build_alert_payload(anomalies=anomalies, crash_reports=reports)
+    sent, status_code, message = send_webhook(webhook_url, body)
+
+    destination = webhook_url.split("?")[0]
+    max_score = max((float(item.get("anomaly_score", 0)) for item in anomalies), default=0.0)
+
+    return AlertDispatchResponse(
+        sent=sent,
+        destination=destination,
+        anomaly_count=len(anomalies),
+        max_score=max_score,
+        crash_reports_included=len(reports),
+        status_code=status_code,
+        message=message,
+        timestamp=datetime.utcnow().isoformat() + "Z",
+    )
 
 
 # ============================================================================

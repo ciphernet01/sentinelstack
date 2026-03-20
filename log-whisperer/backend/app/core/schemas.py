@@ -4,7 +4,7 @@ Defines event structures, feature vectors, and report outputs.
 """
 
 from datetime import datetime
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional, Any, Literal
 from pydantic import BaseModel, Field
 
 
@@ -207,3 +207,22 @@ class Config(BaseModel):
     alert_threshold: int = Field(default=61, description="Alert level starts at score >= this")
     critical_threshold: int = Field(default=81, description="Critical level starts at score >= this")
     sustained_critical_windows: int = Field(default=3, description="Consecutive windows for crash detection")
+
+
+class AlertDispatchRequest(BaseModel):
+    webhook_url: Optional[str] = Field(default=None, description="Override webhook URL")
+    min_score: int = Field(default=61, ge=0, le=100)
+    max_alerts: int = Field(default=10, ge=1, le=100)
+    include_crash_summary: bool = True
+
+
+class AlertDispatchResponse(BaseModel):
+    sent: bool
+    provider: Literal["webhook"] = "webhook"
+    destination: str
+    anomaly_count: int = Field(default=0, ge=0)
+    max_score: float = Field(default=0, ge=0, le=100)
+    crash_reports_included: int = Field(default=0, ge=0)
+    status_code: Optional[int] = None
+    message: str
+    timestamp: str
