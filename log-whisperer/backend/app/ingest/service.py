@@ -80,8 +80,8 @@ def pipeline_status() -> PipelineStatus:
 	return PipelineStatus(
 		ingest="ready",
 		parse="ready",
-		detect="pending",
-		report="pending",
+		detect="ready-fallback",
+		report="ready-fallback",
 		metrics={
 			"buffered_events": len(_event_store),
 			**_metrics,

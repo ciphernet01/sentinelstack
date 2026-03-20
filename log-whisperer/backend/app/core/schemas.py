@@ -55,3 +55,47 @@ class PipelineStatus(BaseModel):
 	detect: str
 	report: str
 	metrics: dict
+
+
+class AnomalyCluster(BaseModel):
+	service: str
+	event_count: int
+	avg_score: float
+	max_score: int
+	reasons: list[str] = Field(default_factory=list)
+
+
+class AnomaliesLiveResponse(BaseModel):
+	generated_at: datetime
+	total_events: int
+	evaluated_events: int
+	anomalous_events: int
+	threshold: int
+	events: list[NormalizedLogEvent] = Field(default_factory=list)
+	clusters: list[AnomalyCluster] = Field(default_factory=list)
+
+
+class TimelineEvent(BaseModel):
+	timestamp: datetime
+	service: str
+	level: LogLevel
+	message: str
+	anomaly_score: int = Field(default=0, ge=0, le=100)
+
+
+class CrashReport(BaseModel):
+	report_id: str
+	created_at: datetime
+	status: Literal["detected", "clear"]
+	first_anomalous_event: NormalizedLogEvent | None = None
+	probable_root_cause: str
+	affected_services: list[str] = Field(default_factory=list)
+	timeline: list[TimelineEvent] = Field(default_factory=list)
+	recommended_fix: list[str] = Field(default_factory=list)
+	anomaly_threshold: int = Field(default=75, ge=0, le=100)
+	max_anomaly_score: int = Field(default=0, ge=0, le=100)
+
+
+class CrashReportResponse(BaseModel):
+	generated_at: datetime
+	report: CrashReport | None = None

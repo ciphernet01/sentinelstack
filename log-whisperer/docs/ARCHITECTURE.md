@@ -29,3 +29,29 @@
 - affected_services
 - timeline
 - recommended_fix
+
+## API Contract (Phase 2 Fallback)
+- `GET /health`
+- `GET /api/v1/status`
+- `POST /api/v1/ingest/text`
+- `POST /api/v1/ingest/json`
+- `POST /api/v1/ingest/upload`
+- `POST /api/v1/ingest/stream`
+- `GET /api/v1/logs/recent?limit=100`
+- `GET /api/v1/anomalies/live?limit=300&threshold=60`
+- `GET /api/v1/reports/latest?limit=500&threshold=75`
+
+### `GET /api/v1/anomalies/live` response highlights
+- `generated_at`
+- `total_events`, `evaluated_events`, `anomalous_events`, `threshold`
+- `events[]` (normalized events with `anomaly_score` and `reasons`)
+- `clusters[]` (`service`, `event_count`, `avg_score`, `max_score`, `reasons`)
+
+### `GET /api/v1/reports/latest` response highlights
+- `generated_at`
+- `report` (nullable)
+- `report.first_anomalous_event`
+- `report.probable_root_cause`
+- `report.affected_services`
+- `report.timeline[]`
+- `report.recommended_fix[]`
