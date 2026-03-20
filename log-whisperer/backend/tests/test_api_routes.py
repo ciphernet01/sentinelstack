@@ -465,3 +465,49 @@ def test_api_status_endpoint(client):
     assert "report" in data
     assert data["ingest"] == "ready"
     assert data["parse"] == "ready"
+
+
+def test_alert_dispatch_missing_webhook(client):
+    response = client.post(
+        "/api/v1/alerts/send",
+        json={
+            "min_score": 61,
+            "max_alerts": 5,
+            "include_crash_summary": False
+        }
+    )
+
+    assert response.status_code == 400
+    assert "webhook" in response.json()["detail"].lower()
+
+
+def test_alert_dispatch_success(client, monkeypatch):
+    AppState.anomaly_buffer = [
+        {
+            "window": datetime.utcnow().isoformat() + "Z",
+            "anomaly_score": 82,
+            "service": "auth-service",
+            "reason": "NORMAL"
+        }
+    ]
+
+    def fake_send_webhook(url, payload):
+        return True, 200, "ok"
+
+    monkeypatch.setattr("app.api.routes.send_webhook", fake_send_webhook)
+
+    response = client.post(
+        "/api/v1/alerts/send",
+        json={
+            "webhook_url": "https://example.com/hook",
+            "min_score": 61,
+            "max_alerts": 5,
+            "include_crash_summary": True
+        }
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["sent"] is True
+    assert data["status_code"] == 200
+    assert data["anomaly_count"] == 1

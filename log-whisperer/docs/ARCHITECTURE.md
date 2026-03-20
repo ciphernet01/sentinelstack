@@ -29,3 +29,16 @@
 - affected_services
 - timeline
 - recommended_fix
+
+## Alert Delivery
+- Endpoint: `POST /api/v1/alerts/send`
+- Source data: latest anomaly buffer + optional crash summary
+- Destination: webhook URL passed in request, or `ALERT_WEBHOOK_URL` / `SLACK_WEBHOOK_URL`
+- Output: delivery status, status code, anomaly count, max score
+
+## Throughput Benchmark
+- Script: `log-whisperer/backend/scripts/benchmark_ingestion.py`
+- Example:
+  - `cd log-whisperer/backend`
+  - `python scripts/benchmark_ingestion.py --lines 50000 --rounds 3`
+- Reports average lines/second for ingestion pipeline baseline.
