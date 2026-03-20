@@ -1,6 +1,7 @@
 """
 Crash Report Generator - Root Cause Analysis Engine
 Generates human-readable crash reports from anomaly windows.
+Enhanced with Phase 2 Causal RCA and Service Dependency Graph.
 """
 
 import uuid
@@ -17,15 +18,23 @@ from app.detect.anomaly import AnomalyDetector
 class CrashReportGenerator:
     """
     Generates root cause analysis (RCA) reports from detected crash patterns.
+    Enhanced with Phase 2 causal inference and service dependency analysis.
     
     Triggers when:
     - Score >= 81 for >= 3 consecutive windows (crash detection)
     - FATAL cascade + heartbeat missing
     - Service down (0 events for 5+ windows)
+    
+    Enhancements:
+    - Uses CausalRCAEngine for Bayesian inference (if available)
+    - Uses ServiceDependencyGraph for cascading failure analysis (if available)
     """
     
-    def __init__(self, detector: AnomalyDetector = None):
+    def __init__(self, detector: AnomalyDetector = None, 
+                 causal_rca=None, service_dependency=None):
         self.detector = detector
+        self.causal_rca = causal_rca  # Optional Phase 2 enhancement
+        self.service_dependency = service_dependency  # Optional Phase 2 enhancement
         self.report_history = deque(maxlen=100)  # Keep last 100 reports
         self.service_dependency_map = {}  # service → [dependents]
     
@@ -155,9 +164,29 @@ class CrashReportGenerator:
     ) -> tuple:
         """
         Analyze anomaly patterns to hypothesize root cause.
+        Enhanced: Uses Phase 2 CausalRCAEngine if available.
         Returns: (root_cause_string, confidence_0_to_1)
         """
         
+        # Try to use Phase 2 Causal RCA if available
+        if self.causal_rca:
+            try:
+                causes = self.causal_rca.infer_causes(
+                    error_rate=window_features.error_rate,
+                    throughput=window_features.throughput_eps,
+                    latency=window_features.latency_p95 or 0,
+                    error_types=list(window_features.level_distribution.keys())
+                )
+                
+                if causes:
+                    primary_cause = causes[0]['cause']
+                    confidence = causes[0]['probability']
+                    return primary_cause, confidence
+            except Exception as e:
+                # Fall back to heuristic analysis
+                pass
+        
+        # Fallback: Heuristic analysis
         confidence = 0.5  # Base confidence
         root_cause_signals = []
         

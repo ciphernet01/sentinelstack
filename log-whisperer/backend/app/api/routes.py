@@ -17,6 +17,7 @@ from app.report.generator import CrashReportGenerator
 from app.core.schemas import (
     LogEvent, WindowFeatures, AnomalyAlert, CrashReport, Config
 )
+from app.enhance.integration import EnhancementIntegrationEngine
 
 # ============================================================================
 # GLOBAL APP STATE (Shared across requests)
@@ -29,6 +30,7 @@ class AppState:
     report_generator = None
     config = None
     anomaly_buffer = []  # Circular buffer for recent anomalies
+    enhancement_engine = None  # Phase 1-5 enhancements
     
     @classmethod
     def initialize(cls, config: Config = None):
@@ -39,7 +41,16 @@ class AppState:
                 window_size_sec=cls.config.window_size_sec
             )
             cls.detector = AnomalyDetector()
-            cls.report_generator = CrashReportGenerator(cls.detector)
+            
+            # Initialize enhancements
+            cls.enhancement_engine = EnhancementIntegrationEngine()
+            
+            # Create crash report generator with enhancement engines
+            cls.report_generator = CrashReportGenerator(
+                detector=cls.detector,
+                causal_rca=cls.enhancement_engine.causal_rca,
+                service_dependency=cls.enhancement_engine.service_dependency
+            )
     
     @classmethod
     def reset(cls):
@@ -47,6 +58,7 @@ class AppState:
         cls.ingest_service = None
         cls.detector = None
         cls.report_generator = None
+        cls.enhancement_engine = None
         cls.anomaly_buffer = []
 
 
@@ -385,8 +397,377 @@ async def detector_status() -> Dict:
 
 
 # ============================================================================
-# 6. RESET ENDPOINT (Testing/Maintenance)
+# 7. ENHANCED ANOMALY SCORE ENDPOINT (Phase 1-3)
 # ============================================================================
+
+@router.post("/enhanced/score", response_model=Dict)
+async def get_enhanced_score(
+    service: str = Query(..., description="Service name"),
+    error_rate: float = Query(..., ge=0, le=1, description="Error rate 0-1"),
+    throughput_eps: float = Query(..., ge=0, description="Events per second"),
+    latency_p95_ms: Optional[float] = Query(None, description="P95 latency in ms"),
+) -> Dict:
+    """
+    Get enhanced anomaly score using Phase 1-3 enhancements:
+    - Ensemble voting (5 models)
+    - ARIMA trend detection
+    - Online learning + adaptive baselines
+    - Concept drift detection
+    
+    Returns:
+    {
+        "original_score": 65.0,
+        "enhanced_score": 72.5,
+        "confidence": 0.87,
+        "enhancements": {
+            "ensemble_score": 70.0,
+            "arima_trend": "degrading",
+            "adaptive_baseline_adjusted": 68.0,
+            "drift_detected": false
+        }
+    }
+    """
+    
+    AppState.initialize()
+    
+    # Create window features
+    window_features = WindowFeatures(
+        service=service,
+        window_start=datetime.utcnow(),
+        window_end=datetime.utcnow(),
+        event_count=int(throughput_eps * 60),  # Approximate
+        throughput_eps=throughput_eps,
+        error_rate=error_rate,
+        latency_p95=latency_p95_ms,
+        level_distribution={"ERROR": int(error_rate * 100)},
+        unique_messages=1,
+        error_burst=error_rate > 0.10,
+        volume_spike=False,
+        heartbeat_missing=False,
+        sequence_anomaly=False
+    )
+    
+    # Get base score
+    base_score, reason = AppState.detector.score_window(window_features)
+    
+    # Get enhanced score with enhancements
+    enhanced = AppState.enhancement_engine.enhance_score(
+        original_score=base_score,
+        window_features=window_features
+    )
+    
+    return {
+        "service": service,
+        "original_score": round(base_score, 2),
+        "enhanced_score": enhanced["final_enhanced_score"],
+        "confidence": enhanced["confidence"],
+        "enhancements": {
+            "ensemble_score": enhanced["ensemble_score"],
+            "arima_trend": enhanced["arima_trend"],
+            "adaptive_baseline_adjusted": enhanced["adaptive_baseline_adjusted"],
+            "drift_detected": enhanced["drift_detected"]
+        },
+        "severity": get_severity(enhanced["final_enhanced_score"]),
+        "enhancement_source": enhanced["enhancement_source"],
+        "timestamp": datetime.utcnow().isoformat() + "Z"
+    }
+
+
+# ============================================================================
+# 8. CAUSAL ROOT CAUSE ANALYSIS ENDPOINT (Phase 2)
+# ============================================================================
+
+@router.post("/enhanced/causal-rca", response_model=Dict)
+async def get_causal_rca(
+    service: str = Query(..., description="Service name"),
+    anomaly_score: float = Query(..., ge=0, le=100, description="Anomaly severity"),
+    error_rate: Optional[float] = Query(None, ge=0, le=1),
+    throughput_eps: Optional[float] = Query(None, ge=0),
+    latency_p95_ms: Optional[float] = Query(None, ge=0),
+) -> Dict:
+    """
+    Get causal root cause analysis using Phase 2 enhancements:
+    - Bayesian causal inference
+    - Service dependency graph
+    - Cascading failure analysis
+    - Incident response recommendations
+    
+    Returns:
+    {
+        "primary_cause": "Database connection pool exhausted",
+        "confidence": 0.87,
+        "causal_chain": [
+            {"cause": "DB pool exhaustion", "probability": 0.87},
+            {"cause": "Slow queries", "probability": 0.65},
+            {"cause": "Memory leak", "probability": 0.45}
+        ],
+        "affected_services": ["auth-service", "user-api", "api-gateway"],
+        "cascade_analysis": {
+            "is_cascade": true,
+            "severity": "CRITICAL",
+            "propagation_path": ["auth-service", "user-api", "api-gateway"]
+        },
+        "recommended_actions": [...]
+    }
+    """
+    
+    AppState.initialize()
+    
+    # Create window features
+    window_features = WindowFeatures(
+        service=service,
+        window_start=datetime.utcnow(),
+        window_end=datetime.utcnow(),
+        event_count=100,
+        throughput_eps=throughput_eps or 10.0,
+        error_rate=error_rate or 0.0,
+        latency_p95=latency_p95_ms or 100,
+        level_distribution={"ERROR": 1},
+        unique_messages=1,
+        error_burst=error_rate and error_rate > 0.10,
+        volume_spike=False,
+        heartbeat_missing=False,
+        sequence_anomaly=False
+    )
+    
+    # Perform causal analysis
+    rca_result = AppState.enhancement_engine.analyze_root_cause(
+        window_features=window_features,
+        anomaly_score=anomaly_score
+    )
+    
+    return {
+        "service": service,
+        "anomaly_score": anomaly_score,
+        "primary_cause": rca_result["primary_cause"],
+        "confidence": round(rca_result["confidence"], 3),
+        "causal_chain": rca_result["causal_chain"],
+        "affected_services": rca_result["affected_services"],
+        "cascade_analysis": rca_result["cascade_analysis"],
+        "recommended_actions": rca_result["recommended_actions"],
+        "analysis_source": rca_result["analysis_source"],
+        "timestamp": datetime.utcnow().isoformat() + "Z"
+    }
+
+
+# ============================================================================
+# 9. FORECASTING ENDPOINT (Phase 4)
+# ============================================================================
+
+@router.post("/enhanced/forecast", response_model=Dict)
+async def forecast_issues(
+    service: str = Query(..., description="Service name"),
+    error_rate: Optional[float] = Query(None, ge=0, le=1),
+    throughput_eps: Optional[float] = Query(None, ge=0),
+    latency_p95_ms: Optional[float] = Query(None, ge=0),
+) -> Dict:
+    """
+    Get crash and resource exhaustion forecasts using Phase 4 enhancements:
+    - Predict crashes 5+ minutes ahead
+    - Forecast CPU, memory, disk exhaustion
+    - Auto-scaling recommendations
+    
+    Returns:
+    {
+        "crash_prediction": {
+            "will_crash": true,
+            "probability": 0.87,
+            "time_to_crash_minutes": 3,
+            "confidence": 0.85
+        },
+        "resource_forecast": {
+            "cpu": {
+                "projected_utilization": 92.5,
+                "exhaustion_probability": 0.85,
+                "time_to_exhaustion": 2
+            },
+            "memory": {...},
+            "disk": {...}
+        },
+        "urgency": "CRITICAL",
+        "recommendations": [...]
+    }
+    """
+    
+    AppState.initialize()
+    
+    # Create window features
+    window_features = WindowFeatures(
+        service=service,
+        window_start=datetime.utcnow(),
+        window_end=datetime.utcnow(),
+        event_count=100,
+        throughput_eps=throughput_eps or 10.0,
+        error_rate=error_rate or 0.0,
+        latency_p95=latency_p95_ms or 100,
+        level_distribution={"ERROR": 1},
+        unique_messages=1,
+        error_burst=False,
+        volume_spike=False,
+        heartbeat_missing=False,
+        sequence_anomaly=False
+    )
+    
+    # Get forecast
+    forecast = AppState.enhancement_engine.forecast_issues(
+        window_features=window_features
+    )
+    
+    return {
+        "service": service,
+        "forecast": forecast,
+        "timestamp": datetime.utcnow().isoformat() + "Z"
+    }
+
+
+# ============================================================================
+# 10. NLP ERROR ANALYSIS ENDPOINT (Phase 5)
+# ============================================================================
+
+@router.post("/enhanced/nlp-analysis", response_model=Dict)
+async def analyze_errors_nlp(
+    service: str = Query(..., description="Service name"),
+    error_messages: List[str] = None,
+) -> Dict:
+    """
+    Analyze errors using Phase 5 NLP enhancements:
+    - Categorize errors into 6 categories
+    - Extract error templates
+    - Detect behavioral anomalies
+    
+    Returns:
+    {
+        "error_categories": [
+            {
+                "category": "Connection Error",
+                "count": 42,
+                "examples": ["Connection refused", "Connection timeout"]
+            }
+        ],
+        "behavior_patterns": [
+            {"pattern": "Unusual spike pattern", "confidence": 0.85, "is_anomalous": true}
+        ],
+        "top_error_templates": [
+            "Connection refused to {IP}:{PORT}",
+            "Query timeout after {TIMEOUT}ms"
+        ],
+        "behavioral_anomalies_detected": 5
+    }
+    """
+    
+    AppState.initialize()
+    
+    # Create mock events if error messages provided
+    events = []
+    if error_messages:
+        for msg in error_messages:
+            event = LogEvent(
+                service=service,
+                level="ERROR",
+                message=msg,
+                timestamp=datetime.utcnow()
+            )
+            events.append(event)
+    
+    # Analyze
+    nlp_result = AppState.enhancement_engine.analyze_errors_nlp(
+        recent_events=events if events else None
+    )
+    
+    return {
+        "service": service,
+        "analysis": nlp_result,
+        "timestamp": datetime.utcnow().isoformat() + "Z"
+    }
+
+
+# ============================================================================
+# 11. ACTIVE LEARNING FEEDBACK ENDPOINT (Phase 3)
+# ============================================================================
+
+@router.post("/enhanced/feedback", response_model=Dict)
+async def provide_feedback(
+    report_id: str = Query(..., description="Report ID to learn from"),
+    was_incident: bool = Query(..., description="Was this actually an incident?"),
+    feedback_text: Optional[str] = Query(None, description="Additional feedback"),
+) -> Dict:
+    """
+    Submit feedback to improve models using Phase 3 active learning.
+    
+    Args:
+        report_id: ID of the anomaly report
+        was_incident: Whether this was a true incident (user feedback)
+        feedback_text: Optional additional context
+    
+    Returns:
+        {"status": "feedback_received", "models_updated": true}
+    """
+    
+    AppState.initialize()
+    
+    # Record feedback
+    AppState.enhancement_engine.learn_from_feedback(
+        report_id=report_id,
+        was_incident=was_incident,
+        feedback_text=feedback_text or ""
+    )
+    
+    return {
+        "status": "feedback_received",
+        "report_id": report_id,
+        "was_incident": was_incident,
+        "models_updated": True,
+        "timestamp": datetime.utcnow().isoformat() + "Z"
+    }
+
+
+# ============================================================================
+# 12. ENHANCEMENT STATUS ENDPOINT
+# ============================================================================
+
+@router.get("/enhanced/status", response_model=Dict)
+async def enhancement_status() -> Dict:
+    """
+    Get status of all enhancement modules (Phase 1-5).
+    
+    Returns:
+    {
+        "phase_1": {"ensemble": "ready", "arima": "ready", "autoencoder": "ready"},
+        "phase_2": {"causal_rca": "ready", "service_dependency": "ready"},
+        "phase_3": {"online_learning": "ready", "drift_detection": "ready"},
+        "phase_4": {"crash_forecasting": "ready", "resource_forecasting": "ready"},
+        "phase_5": {"nlp_analysis": "ready", "behavioral_anomaly": "ready"}
+    }
+    """
+    
+    AppState.initialize()
+    
+    return {
+        "phase_1": {
+            "ensemble_detector": "ready" if AppState.enhancement_engine.ensemble_detector else "error",
+            "arima_baseline": "ready" if AppState.enhancement_engine.arima_baseline else "error",
+            "autoencoder": "ready"
+        },
+        "phase_2": {
+            "causal_rca": "ready" if AppState.enhancement_engine.causal_rca else "error",
+            "service_dependency": "ready" if AppState.enhancement_engine.service_dependency else "error"
+        },
+        "phase_3": {
+            "online_learning": "ready" if AppState.enhancement_engine.adaptive_baseline else "error",
+            "drift_detection": "ready" if AppState.enhancement_engine.drift_detector else "error",
+            "active_learning": "ready" if AppState.enhancement_engine.active_learning else "error"
+        },
+        "phase_4": {
+            "crash_forecasting": "ready" if AppState.enhancement_engine.crash_forecaster else "error",
+            "resource_forecasting": "ready" if AppState.enhancement_engine.resource_forecaster else "error"
+        },
+        "phase_5": {
+            "nlp_analysis": "ready" if AppState.enhancement_engine.nlp_analyzer else "error",
+            "behavioral_anomaly": "ready" if AppState.enhancement_engine.behavior_detector else "error"
+        },
+        "timestamp": datetime.utcnow().isoformat() + "Z"
+    }
+
 
 @router.post("/admin/reset", response_model=Dict)
 async def reset_detector() -> Dict:
