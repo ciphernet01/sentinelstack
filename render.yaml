@@ -1,0 +1,88 @@
+# Render Blueprint for SentinelStack
+# - Creates an API web service from the repo Dockerfile
+# - Creates a Next.js web service from the repo
+#
+# After creating services, set the env vars marked "sync: false" in Render UI.
+# Docs: https://render.com/docs/blueprint-spec
+
+services:
+  - type: web
+    name: sentinelstack-api
+    env: docker
+    plan: free
+    # Uses the root Dockerfile
+    autoDeploy: true
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PROCESS_TYPE
+        value: api
+      - key: RUN_MIGRATIONS_ON_START
+        value: true
+      - key: SCAN_QUEUE_WORKER_ENABLED
+        value: true
+      - key: PORT
+        value: 3001
+      - key: DATABASE_URL
+        sync: false
+      - key: DIRECT_URL
+        sync: false
+      - key: CLIENT_URL
+        sync: false
+      - key: INTERNAL_API_TOKEN
+        sync: false
+      # Firebase Admin (pick one strategy; recommended: env vars)
+      - key: FIREBASE_PROJECT_ID
+        sync: false
+      - key: FIREBASE_CLIENT_EMAIL
+        sync: false
+      - key: FIREBASE_PRIVATE_KEY
+        sync: false
+      # Optional: provide a file path if you mount a secret file (not recommended)
+      - key: FIREBASE_SERVICE_ACCOUNT_PATH
+        sync: false
+      # Email (optional)
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        sync: false
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: EMAIL_FROM
+        sync: false
+      - key: EMAIL_SERVICE
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: EMAIL_FROM_NAME
+        sync: false
+
+  - type: web
+    name: sentinelstack-web
+    env: node
+    plan: free
+    autoDeploy: true
+    buildCommand: npm ci && npm run build:frontend
+    startCommand: npm run start:frontend:render
+    envVars:
+      - key: NODE_ENV
+        value: production
+      # Set this to the full Render URL of sentinelstack-api, e.g. https://sentinelstack-api.onrender.com
+      - key: BACKEND_URL
+        sync: false
+      # Firebase client config (public)
+      - key: NEXT_PUBLIC_FIREBASE_PROJECT_ID
+        sync: false
+      - key: NEXT_PUBLIC_FIREBASE_APP_ID
+        sync: false
+      - key: NEXT_PUBLIC_FIREBASE_API_KEY
+        sync: false
+      - key: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
+        sync: false
+      - key: NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
+        sync: false
+      - key: NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID
+        sync: false

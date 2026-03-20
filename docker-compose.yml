@@ -1,0 +1,32 @@
+services:
+  postgres:
+    image: postgres:13
+    container_name: sentinel-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: sentinelstack
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  backend:
+    build: .
+    container_name: sentinel-backend
+    restart: unless-stopped
+    depends_on:
+      - postgres
+    environment:
+      # Inside the docker network, reach Postgres by container name.
+      DATABASE_URL: postgresql://user:password@sentinel-postgres:5432/sentinelstack?schema=public
+      PORT: 3001
+      CLIENT_URL: http://localhost:3000
+    env_file:
+      - .env.backend
+    ports:
+      - "3001:3001"
+
+volumes:
+  postgres_data:
