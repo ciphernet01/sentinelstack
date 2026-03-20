@@ -168,10 +168,74 @@ async def crash_report() -> dict:
             "affected_services": [],
             "timeline": [],
             "confidence_score": 0,
+            "confidence_explanation": "No incident detected yet.",
+            "confidence_score_explanation": "No incident detected yet.",
+            "causal_chain": [],
+            "cascading_failures": [],
+            "crash_prediction": {},
+            "first_anomaly_highlight": None,
+            "readable": {
+                "headline": "No crash incident available",
+                "timeline": [],
+            },
             "suggested_fix": "",
             "similar_incidents": [],
         }
-    return report.model_dump()
+
+    payload = report.model_dump()
+    first_ts = payload.get("first_anomaly_timestamp")
+
+    def _norm_ts(value: str | None) -> str:
+        if not value:
+            return ""
+        return str(value).replace("Z", "+00:00")
+
+    first_ts_norm = _norm_ts(first_ts)
+    ordered_timeline = sorted(payload.get("timeline", []), key=lambda item: item.get("timestamp", ""))
+
+    readable_timeline = []
+    for index, item in enumerate(ordered_timeline, start=1):
+        item_ts = _norm_ts(item.get("timestamp"))
+        is_first = bool(first_ts_norm and item_ts == first_ts_norm)
+        readable_timeline.append(
+            {
+                "step": index,
+                "timestamp": item.get("timestamp"),
+                "service": item.get("service"),
+                "level": item.get("level"),
+                "event": item.get("message"),
+                "anomaly_score": item.get("anomaly_score", 0),
+                "highlight": "FIRST_ANOMALY" if is_first else "",
+            }
+        )
+
+    payload["confidence_score_explanation"] = payload.get("confidence_explanation", "")
+    first_highlight = next(
+        (item for item in readable_timeline if item.get("highlight") == "FIRST_ANOMALY"),
+        None,
+    )
+    if first_highlight is None:
+        first_highlight = next(
+            (item for item in readable_timeline if float(item.get("anomaly_score") or 0) > 0),
+            None,
+        )
+        if first_highlight is not None:
+            first_highlight["highlight"] = "FIRST_ANOMALY"
+
+    payload["first_anomaly_highlight"] = first_highlight
+    payload["readable"] = {
+        "headline": f"Root Cause: {payload.get('root_cause', 'Unknown')}",
+        "summary": {
+            "first_anomaly_timestamp": payload.get("first_anomaly_timestamp", ""),
+            "crash_probability_score": (payload.get("crash_prediction") or {}).get("probability_score", 0),
+            "confidence_score": payload.get("confidence_score", 0),
+            "confidence_explanation": payload.get("confidence_explanation", ""),
+        },
+        "causal_chain": payload.get("causal_chain", []),
+        "timeline": readable_timeline,
+    }
+
+    return payload
 
 
 @app.post("/similar_incidents")

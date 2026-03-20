@@ -30,6 +30,10 @@ class CrashReport(BaseModel):
     affected_services: list[str]
     timeline: list[dict[str, Any]]
     confidence_score: float = Field(ge=0, le=100)
+    confidence_explanation: str = ""
+    causal_chain: list[str] = Field(default_factory=list)
+    cascading_failures: list[dict[str, Any]] = Field(default_factory=list)
+    crash_prediction: dict[str, Any] = Field(default_factory=dict)
     suggested_fix: str
     similar_incidents: list[dict[str, Any]]
 

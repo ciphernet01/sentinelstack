@@ -23,6 +23,7 @@ class SequenceAnalyzer:
             "service": log.service,
             "level": log.level,
             "message": log.message,
+            "trace_id": log.trace_id,
             "anomaly_score": anomaly.score if anomaly else 0.0,
             "is_anomaly": anomaly is not None,
         }
