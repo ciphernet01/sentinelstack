@@ -16,7 +16,10 @@ type AssessmentPageProps = {
   };
 };
 
-export type AssessmentWithDetails = Assessment & { findings: Finding[] };
+export type AssessmentWithDetails = Assessment & {
+  findings: Finding[];
+  scannerConfig?: unknown;
+};
 
 export default function AssessmentPage({ params }: AssessmentPageProps) {
   const searchParams = useSearchParams();

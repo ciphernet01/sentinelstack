@@ -22,11 +22,34 @@ import {
   isScannerTool,
 } from '@/shared/scannerFindings';
 
+type ScanFindingSummary = {
+  id?: string;
+  toolName: string;
+  title: string;
+  severity: string;
+  description?: string;
+};
+
+type ScanDiffSummary = {
+  baselineAssessmentId: string | null;
+  baselineCompletedAt: string | null;
+  baselineFindingCount: number;
+  currentFindingCount: number;
+  newFindingCount: number;
+  resolvedFindingCount: number;
+  unchangedFindingCount: number;
+  newFindings: ScanFindingSummary[];
+  resolvedFindings: ScanFindingSummary[];
+};
+
 // Some environments may have an older generated Prisma client type.
 // Keep these fields optional here to avoid front-end type breakage.
 type AssessmentWithIntegrity = {
   endedEarly?: boolean;
   endedEarlyReason?: string | null;
+  scannerConfig?: {
+    scanDiff?: ScanDiffSummary | null;
+  } | null;
 };
 
 type AssessmentWithDetails = Assessment & AssessmentWithIntegrity & { findings: Finding[] };
@@ -134,6 +157,7 @@ function summarizeImpact(description: string, maxLen: number = 140) {
 
 export function AssessmentDetails({ assessment, showOnboardingCta }: AssessmentDetailsProps) {
   const { findings, riskScore } = assessment;
+  const scanDiff = assessment.scannerConfig?.scanDiff ?? null;
   const searchParams = useSearchParams();
   const requestedTab = searchParams.get('tab');
   const requestedFindingRaw = searchParams.get('finding');
@@ -222,6 +246,62 @@ export function AssessmentDetails({ assessment, showOnboardingCta }: AssessmentD
             <div className="text-sm text-muted-foreground">Tip: the page auto-refreshes while running.</div>
           </div>
         </div>
+      )}
+      {scanDiff && scanDiff.newFindingCount > 0 && (
+        <Card className="mb-4 border-emerald-500/30 bg-emerald-500/5">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <ShieldCheck className="h-4 w-4 text-emerald-500" />
+              Differential scan: {scanDiff.newFindingCount} new finding{scanDiff.newFindingCount === 1 ? '' : 's'}
+            </CardTitle>
+            <CardDescription>
+              Compared with the previous completed scan{scanDiff.baselineCompletedAt ? ` on ${new Date(scanDiff.baselineCompletedAt).toLocaleString()}` : ''}.
+              {scanDiff.resolvedFindingCount > 0 ? ` ${scanDiff.resolvedFindingCount} finding${scanDiff.resolvedFindingCount === 1 ? '' : 's'} were resolved.` : ''}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div className="rounded-md border bg-background/60 p-3">
+                <div className="text-xs text-muted-foreground">Baseline</div>
+                <div className="mt-1 text-sm font-semibold">{scanDiff.baselineFindingCount} findings</div>
+              </div>
+              <div className="rounded-md border bg-background/60 p-3">
+                <div className="text-xs text-muted-foreground">Current</div>
+                <div className="mt-1 text-sm font-semibold">{scanDiff.currentFindingCount} findings</div>
+              </div>
+              <div className="rounded-md border bg-background/60 p-3">
+                <div className="text-xs text-muted-foreground">Net new</div>
+                <div className="mt-1 text-sm font-semibold text-emerald-600">+{scanDiff.newFindingCount}</div>
+              </div>
+            </div>
+
+            {scanDiff.newFindings.length > 0 && (
+              <div>
+                <div className="mb-2 text-sm font-medium">New findings preview</div>
+                <div className="space-y-2">
+                  {scanDiff.newFindings.slice(0, 3).map((item) => (
+                    <div key={`${item.toolName}:${item.title}:${item.severity}`} className="rounded-md border p-3 text-sm">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Badge variant="secondary">{item.severity}</Badge>
+                        <span className="font-medium">{item.title}</span>
+                        <span className="text-muted-foreground">({item.toolName})</span>
+                      </div>
+                      {item.description ? <div className="mt-1 text-muted-foreground">{item.description}</div> : null}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="flex flex-wrap gap-2">
+              <Button asChild variant="outline" size="sm">
+                <Link href={`/dashboard/assessments/${assessment.id}?tab=findings`}>
+                  View all findings
+                </Link>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       )}
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between w-full">
         <div className="flex-1 min-w-0">

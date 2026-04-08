@@ -162,7 +162,25 @@ class AssessmentController {
       try {
           const assessment = await prisma.assessment.findUnique({
               where: { id },
-              include: { findings: true, report: true }
+              select: {
+                id: true,
+                name: true,
+                targetUrl: true,
+                toolPreset: true,
+                status: true,
+                authorizationConfirmed: true,
+                notes: true,
+                riskScore: true,
+                scannerConfig: true,
+                endedEarly: true,
+                endedEarlyReason: true,
+                organizationId: true,
+                userId: true,
+                createdAt: true,
+                updatedAt: true,
+                findings: true,
+                report: true,
+              }
           });
 
           if (!assessment) {

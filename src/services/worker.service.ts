@@ -6,6 +6,7 @@ import { spawn } from 'child_process';
 import type { Prisma } from '@prisma/client';
 import { getEffectiveScannerConfig, isScannerTimeoutFinding } from './scannerConfig.service';
 import { webhookService } from './webhook.service';
+import { computeScanDiffSummary } from './scanDiff.service';
 
 // A simple in-memory queue to prevent multiple workers on the same assessment.
 const activeWorkers = new Set<string>();
@@ -451,7 +452,13 @@ export const startAssessmentWorker = async (
         // 2. Run the actual security tools via the Python script
         const assessment = await prisma.assessment.findUnique({
             where: { id: assessmentId },
-            select: { authorizationConfirmed: true },
+            select: {
+                authorizationConfirmed: true,
+                organizationId: true,
+                targetUrl: true,
+                toolPreset: true,
+                scannerConfig: true,
+            },
         });
 
         const findings = await runPythonScanner(
@@ -464,6 +471,33 @@ export const startAssessmentWorker = async (
         );
 
         const endedEarlyReason = findings.some(isScannerTimeoutFinding) ? 'TIMEOUT' : null;
+
+        let scanDiff = null;
+        if (assessment?.organizationId) {
+            const previousAssessment = await prisma.assessment.findFirst({
+                where: {
+                    organizationId: assessment.organizationId,
+                    targetUrl: assessment.targetUrl,
+                    toolPreset: assessment.toolPreset,
+                    status: 'COMPLETED',
+                    id: { not: assessmentId },
+                },
+                orderBy: { updatedAt: 'desc' },
+                include: { findings: true },
+            });
+
+            scanDiff = computeScanDiffSummary(
+                findings as any,
+                previousAssessment
+                    ? {
+                        id: previousAssessment.id,
+                        completedAt: previousAssessment.updatedAt,
+                        findings: previousAssessment.findings,
+                      }
+                    : null,
+                10,
+            );
+        }
         
         if (findings.length > 0) {
             // 3. Save the findings from the script to the database
@@ -493,6 +527,10 @@ export const startAssessmentWorker = async (
                 riskScore: riskScore,
                 endedEarly: Boolean(endedEarlyReason),
                 endedEarlyReason,
+                scannerConfig: {
+                    ...(assessment?.scannerConfig && typeof assessment.scannerConfig === 'object' ? assessment.scannerConfig : {}),
+                    ...(scanDiff ? { scanDiff } : {}),
+                } as any,
             },
             include: {
                 organization: { select: { id: true } },
