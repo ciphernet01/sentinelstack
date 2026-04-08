@@ -14,6 +14,7 @@ import { requestIdMiddleware } from './middleware/requestId';
 import { scanQueueService } from './services/scanQueue.service';
 import { apiGlobalLimiter } from './middleware/rateLimit';
 import { prisma } from './config/db';
+import { logShipper } from './logging';
 
 // Initialize Firebase
 initializeFirebaseAdmin();
@@ -88,6 +89,27 @@ morgan.token('id', (req) => {
 });
 app.use(morgan(':id :method :url :status :res[content-length] - :response-time ms', { stream }));
 
+app.use((req, res, next) => {
+  const start = process.hrtime.bigint();
+  res.on('finish', () => {
+    const elapsedNs = process.hrtime.bigint() - start;
+    const responseTimeMs = Number(elapsedNs) / 1_000_000;
+    const status = res.statusCode;
+    const level = status >= 500 ? 'ERROR' : status >= 400 ? 'WARN' : 'INFO';
+
+    logShipper.log(level, 'HTTP request completed', {
+      method: req.method,
+      path: req.originalUrl || req.url,
+      http_status: status,
+      response_time_ms: Number(responseTimeMs.toFixed(3)),
+      request_id: (req as any).requestId,
+      remote_ip: req.ip,
+      user_agent: req.get('user-agent') || null,
+    });
+  });
+  next();
+});
+
 // API Routes
 app.use('/api', apiGlobalLimiter, apiRoutes);
 
@@ -112,11 +134,64 @@ app.get('/health/ready', async (req, res) => {
   }
 });
 
+app.get('/health/log-shipper', (req, res) => {
+  res.status(200).json({
+    enabled: process.env.LOG_WHISPERER_ENABLED !== 'false',
+    ...logShipper.getStats(),
+  });
+});
+
 // Error Handling Middleware
 app.use(errorHandler);
 
-app.listen(port, () => {
+const server = app.listen(port, () => {
   console.log(`🚀 Server running on http://localhost:${port}`);
+});
+
+let isShuttingDown = false;
+
+const gracefulShutdown = async (signal: string, exitCode: number) => {
+  if (isShuttingDown) {
+    return;
+  }
+  isShuttingDown = true;
+
+  logger.warn(`[API] Shutdown initiated by ${signal}`);
+  logShipper.warn('Shutdown initiated', { signal });
+
+  await new Promise<void>((resolve) => {
+    server.close(() => resolve());
+    const hardTimeout = setTimeout(() => resolve(), 5000);
+    hardTimeout.unref?.();
+  });
+
+  await logShipper.shutdown(8000);
+  process.exit(exitCode);
+};
+
+process.once('SIGTERM', () => {
+  void gracefulShutdown('SIGTERM', 0);
+});
+
+process.once('SIGINT', () => {
+  void gracefulShutdown('SIGINT', 0);
+});
+
+process.on('unhandledRejection', (reason) => {
+  const message = reason instanceof Error ? reason.message : String(reason);
+  logShipper.error('Unhandled promise rejection', {
+    reason: message,
+  });
+  logger.error(`[API] Unhandled promise rejection: ${message}`);
+});
+
+process.on('uncaughtException', (error) => {
+  logShipper.fatal('Uncaught exception', {
+    error_message: error.message,
+    stack: error.stack,
+  });
+  logger.error(`[API] Uncaught exception: ${error.stack || error.message}`);
+  void gracefulShutdown('uncaughtException', 1);
 });
 
 export default app;

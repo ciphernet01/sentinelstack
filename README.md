@@ -98,6 +98,74 @@ See [docs/SECURITY_CHECKLIST.md](docs/SECURITY_CHECKLIST.md) for key rotation an
 
 See [docs/RENDER_DEPLOY.md](docs/RENDER_DEPLOY.md).
 
+## 📡 Log-Whisperer Streaming (Render → Sentinel Stack)
+
+The backend includes a non-blocking batched shipper that pushes structured JSON logs to Log-Whisperer.
+
+### Setup
+
+1. Set Log-Whisperer env vars in Render for the backend service.
+2. Redeploy the backend service.
+3. Verify shipper health at `GET /health/log-shipper`.
+
+### Environment Variables
+
+- `LOG_WHISPERER_PUSH_URL` (**required**) full push endpoint, e.g. `http://<LOG_WHISPERER_HOST>/api/v1/logs/push`
+- `LOG_WHISPERER_SERVICE` (default: `sentinel-stack`)
+- `LOG_WHISPERER_BATCH_SIZE` (default: `50`)
+- `LOG_WHISPERER_FLUSH_MS` (default: `2000`)
+- `LOG_WHISPERER_REQUEST_TIMEOUT_MS` (default: `5000`)
+- `LOG_WHISPERER_API_KEY` (optional; sent as `x-api-key` header)
+- `LOG_WHISPERER_ENABLED` (default: `true`)
+
+Additional tuning:
+- `LOG_WHISPERER_MAX_QUEUE` (default: `5000`) max in-memory queue cap; oldest entries are dropped when full
+- `LOG_WHISPERER_REDACT_FIELDS` (optional CSV) field names redacted before shipping, default includes: `password,token,authorization,api_key,apikey,secret,cookie,set-cookie`
+
+### What is shipped
+
+- Request completion logs (`method`, `path`, `status`, `latency`)
+- Unhandled request errors
+- Process-level unhandled errors/exceptions
+
+Each `lines[]` element is a JSON string with schema:
+
+```json
+{
+  "timestamp": "2026-03-21T12:34:56.789Z",
+  "service": "sentinel-stack",
+  "level": "INFO",
+  "message": "HTTP request completed",
+  "metadata": {
+    "http_status": 200,
+    "response_time_ms": 14.2
+  }
+}
+```
+
+### Verify logs are reaching Log-Whisperer
+
+1. Hit backend endpoints to generate traffic.
+2. Check `GET /health/log-shipper` and confirm:
+   - `queuedCount` remains bounded
+   - `totalSent` increases
+   - `totalFailed` and `totalDropped` remain low
+3. Validate ingestion in Log-Whisperer for service `sentinel-stack` and source `render-webapp`.
+
+### Connectivity smoke test (curl)
+
+```bash
+curl -X POST "$LOG_WHISPERER_PUSH_URL" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: $LOG_WHISPERER_API_KEY" \
+  -d '{
+    "source": "render-webapp",
+    "format_hint": "json",
+    "service_override": "sentinel-stack",
+    "lines": ["{\"timestamp\":\"2026-03-21T00:00:00.000Z\",\"service\":\"sentinel-stack\",\"level\":\"INFO\",\"message\":\"connectivity test\",\"metadata\":{\"smoke\":true}}"]
+  }'
+```
+
 ### Scan Worker (recommended)
 
 Scans are processed by a DB-backed queue. In production, run scans in a dedicated worker service so API restarts/traffic don’t interrupt scan execution.
