@@ -3,10 +3,11 @@ from __future__ import annotations
 
 from typing import Any, Dict, List
 from urllib.parse import urlparse
-from urllib.request import Request, urlopen
+from urllib.request import urlopen
 from urllib.error import HTTPError, URLError
 
 from scanners.engine.registry import register_tool
+from scanners.tools.http_client import make_request
 
 
 def _normalize_severity(raw: str) -> str:
@@ -55,7 +56,7 @@ class CorsAnalyzer:
             
             for origin in TEST_ORIGINS:
                 try:
-                    req = Request(url, method="GET", headers={"Origin": origin})
+                    req = make_request(ctx, url, extra_headers={"Origin": origin})
                     with urlopen(req, timeout=5) as resp:
                         headers = {k.lower(): v for k, v in resp.headers.items()}
                         

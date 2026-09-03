@@ -22,6 +22,7 @@ DEFAULT_TOOL_MODULES: List[str] = [
     "scanners.tools.jwt",
     "scanners.tools.admin_exposure",
     "scanners.tools.ai30_header_ssl_analyzer",
+    "scanners.tools.api_spec_exposure",
 ]
 
 # Production presets must include only implemented scanner modules.

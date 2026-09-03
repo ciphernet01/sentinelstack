@@ -6,9 +6,10 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
 from urllib.parse import urlparse
-from urllib.request import Request, urlopen
+from urllib.request import urlopen
 
 from scanners.engine.registry import register_tool
+from scanners.tools.http_client import make_request
 
 
 REQUIRED_HEADERS: Dict[str, str] = {
@@ -50,8 +51,8 @@ def _make_finding(
     }
 
 
-def _fetch_headers(url: str) -> Tuple[int, Dict[str, str]]:
-    req = Request(url, method="GET")
+def _fetch_headers(ctx, url: str) -> Tuple[int, Dict[str, str]]:
+    req = make_request(ctx, url)
     with urlopen(req, timeout=10) as resp:
         status = int(getattr(resp, "status", 0) or 0)
         headers = {k.lower(): v for k, v in resp.headers.items()}
@@ -161,7 +162,7 @@ class AI30HeaderSslAnalyzer:
 
         # Headers
         try:
-            status, headers = _fetch_headers(target)
+            status, headers = _fetch_headers(ctx, target)
             missing: List[Tuple[str, str]] = []
             for h, desc in REQUIRED_HEADERS.items():
                 if h not in headers:

@@ -3,9 +3,10 @@ from __future__ import annotations
 from typing import Any, Dict, List
 from urllib.error import HTTPError, URLError
 from urllib.parse import urljoin
-from urllib.request import Request, urlopen
+from urllib.request import urlopen
 
 from scanners.engine.registry import register_tool
+from scanners.tools.http_client import make_request
 
 
 @register_tool("admin_exposure_finder")
@@ -44,16 +45,11 @@ class AdminExposureFinder:
         findings: List[Dict[str, Any]] = []
 
         timeout = 8
-        headers = {
-            "User-Agent": "SentinelStackScanner/1.0",
-            "Accept": "text/html,application/json;q=0.9,*/*;q=0.8",
-        }
-
         for path in self._CANDIDATE_PATHS:
             url = urljoin(base, path.lstrip("/"))
 
             try:
-                req = Request(url, headers=headers, method="GET")
+                req = make_request(ctx, url)
                 with urlopen(req, timeout=timeout) as resp:
                     status = getattr(resp, "status", None) or 0
                     # If the endpoint is openly accessible, flag it.
