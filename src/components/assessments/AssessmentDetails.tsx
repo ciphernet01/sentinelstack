@@ -49,6 +49,8 @@ type AssessmentWithIntegrity = {
   endedEarlyReason?: string | null;
   scannerConfig?: {
     scanDiff?: ScanDiffSummary | null;
+    assessmentProfile?: Record<string, unknown> | null;
+    scanOptions?: Record<string, unknown> | null;
   } | null;
 };
 
@@ -155,9 +157,18 @@ function summarizeImpact(description: string, maxLen: number = 140) {
   return `${clipped.slice(0, Math.max(0, lastSpace)).trim()}…`;
 }
 
+const humanize = (value: unknown) => String(value || 'Not recorded').replace(/_/g, ' ');
+
 export function AssessmentDetails({ assessment, showOnboardingCta }: AssessmentDetailsProps) {
   const { findings, riskScore } = assessment;
   const scanDiff = assessment.scannerConfig?.scanDiff ?? null;
+  const assessmentProfile = assessment.scannerConfig?.assessmentProfile ?? null;
+  const scannerManifest = findings.find((finding) => finding.toolName === 'scanner' && finding.title === 'Assessment execution manifest');
+  const manifestEvidence = scannerManifest ? coerceEvidenceObject(scannerManifest.evidence) as any : null;
+  const toolRuns = Array.isArray(manifestEvidence?.toolRuns) ? manifestEvidence.toolRuns : [];
+  const toolsSucceeded = Number(manifestEvidence?.toolsSucceeded || 0);
+  const toolsFailed = Number(manifestEvidence?.toolsFailed || 0);
+  const securityFindings = findings.filter((finding) => !(finding.toolName === 'scanner' && finding.title === 'Assessment execution manifest'));
   const searchParams = useSearchParams();
   const requestedTab = searchParams.get('tab');
   const requestedFindingRaw = searchParams.get('finding');
@@ -205,11 +216,11 @@ export function AssessmentDetails({ assessment, showOnboardingCta }: AssessmentD
     return () => window.clearTimeout(t);
   }, [highlightedFindingId]);
 
-  const summary = getSeverityCounts(findings);
+  const summary = getSeverityCounts(securityFindings);
   const isRunning = assessment.status === 'IN_PROGRESS' || assessment.status === 'PENDING';
   const canGenerateReport = assessment.status === 'COMPLETED';
 
-  const topIssues = [...findings]
+  const topIssues = [...securityFindings]
     .filter((f) => f.severity !== 'INFO')
     .sort((a, b) => {
       const bySeverity = severityRank[a.severity] - severityRank[b.severity];
@@ -345,9 +356,86 @@ export function AssessmentDetails({ assessment, showOnboardingCta }: AssessmentD
       <Tabs value={tab} onValueChange={(v) => setTab(v as any)} className="mt-4 w-full">
         <TabsList>
           <TabsTrigger value="summary">Summary</TabsTrigger>
-          <TabsTrigger value="findings">Findings ({findings.length})</TabsTrigger>
+          <TabsTrigger value="findings">Findings ({securityFindings.length})</TabsTrigger>
         </TabsList>
         <TabsContent value="summary" className="mt-4 w-full">
+          {(assessmentProfile || scannerManifest) && (
+            <Card className="mb-4">
+              <CardHeader>
+                <CardTitle>Engagement & Coverage</CardTitle>
+                <CardDescription>
+                  Assessment context and scanner execution evidence captured for auditability.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {assessmentProfile && (
+                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                    <div className="rounded-md border p-3">
+                      <div className="text-xs text-muted-foreground">Environment</div>
+                      <div className="mt-1 text-sm font-semibold">{humanize(assessmentProfile.environment)}</div>
+                    </div>
+                    <div className="rounded-md border p-3">
+                      <div className="text-xs text-muted-foreground">Criticality</div>
+                      <div className="mt-1 text-sm font-semibold">{humanize(assessmentProfile.businessCriticality)}</div>
+                    </div>
+                    <div className="rounded-md border p-3">
+                      <div className="text-xs text-muted-foreground">Data Class</div>
+                      <div className="mt-1 text-sm font-semibold">{humanize(assessmentProfile.dataClassification)}</div>
+                    </div>
+                    <div className="rounded-md border p-3">
+                      <div className="text-xs text-muted-foreground">Traffic Posture</div>
+                      <div className="mt-1 text-sm font-semibold">{humanize(assessmentProfile.rateLimitProfile)}</div>
+                    </div>
+                  </div>
+                )}
+
+                {scannerManifest && (
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    <div className="rounded-md border p-3">
+                      <div className="text-xs text-muted-foreground">Tools Succeeded</div>
+                      <div className="mt-1 text-lg font-semibold text-emerald-600">{toolsSucceeded}</div>
+                    </div>
+                    <div className="rounded-md border p-3">
+                      <div className="text-xs text-muted-foreground">Tools Failed</div>
+                      <div className={`mt-1 text-lg font-semibold ${toolsFailed > 0 ? 'text-red-600' : 'text-muted-foreground'}`}>{toolsFailed}</div>
+                    </div>
+                    <div className="rounded-md border p-3">
+                      <div className="text-xs text-muted-foreground">Runtime</div>
+                      <div className="mt-1 text-lg font-semibold">{Math.round(Number(manifestEvidence?.durationMs || 0) / 1000)}s</div>
+                    </div>
+                  </div>
+                )}
+
+                {toolRuns.length > 0 && (
+                  <div className="overflow-x-auto rounded-md border">
+                    <table className="w-full text-sm">
+                      <thead className="bg-muted/50 text-left">
+                        <tr>
+                          <th className="px-3 py-2 font-medium">Tool</th>
+                          <th className="px-3 py-2 font-medium">Status</th>
+                          <th className="px-3 py-2 font-medium">Findings</th>
+                          <th className="px-3 py-2 font-medium">Duration</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {toolRuns.map((run: any) => (
+                          <tr key={`${run.name}-${run.durationMs}`} className="border-t">
+                            <td className="px-3 py-2 font-mono text-xs">{run.name}</td>
+                            <td className="px-3 py-2">
+                              <Badge variant={run.status === 'ok' ? 'secondary' : 'destructive'}>{run.status}</Badge>
+                            </td>
+                            <td className="px-3 py-2">{run.findings}</td>
+                            <td className="px-3 py-2">{Math.round(Number(run.durationMs || 0) / 1000)}s</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
           <Card className="mb-4">
             <CardHeader>
               <CardTitle>Top 5 Issues</CardTitle>
@@ -453,7 +541,7 @@ export function AssessmentDetails({ assessment, showOnboardingCta }: AssessmentD
                 value={openFindingId}
                 onValueChange={(v) => setOpenFindingId(v || undefined)}
               >
-                {findings.map((finding) => (
+                {securityFindings.map((finding) => (
                   <FindingItem
                     key={finding.id}
                     finding={finding}
