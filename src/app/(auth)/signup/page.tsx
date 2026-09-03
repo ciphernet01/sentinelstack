@@ -263,7 +263,7 @@ export default function SignupPage() {
                 <h4 className="font-semibold mb-3">Platform Access Information</h4>
                 <ul className="space-y-2 text-sm text-muted-foreground list-disc list-inside">
                     <li>Free 14-day trial with full feature access</li>
-                    <li>Pre-loaded demo data for immediate exploration</li>
+                    <li>Production workspaces use customer-owned assessment data</li>
                     <li>Enterprise-grade security and compliance</li>
                     <li>Dedicated support during trial period</li>
                 </ul>

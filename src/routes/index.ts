@@ -14,6 +14,7 @@ import brandingRoutes from './branding.routes';
 import complianceRoutes from './compliance.routes';
 import adminRoutes from './admin.routes';
 import aiRoutes from './ai.routes';
+import cyberRiskRoutes from './cyber-risk.routes';
 
 const router = Router();
 
@@ -32,5 +33,6 @@ router.use('/branding', brandingRoutes);
 router.use('/compliance', complianceRoutes);
 router.use('/admin', adminRoutes);
 router.use('/ai', aiRoutes);
+router.use('/cyber-risk', cyberRiskRoutes);
 
 export default router;

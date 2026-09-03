@@ -1,7 +1,9 @@
 import argparse
+import importlib.util
 import json
 import os
 import sys
+import sysconfig
 import tempfile
 from pathlib import Path
 
@@ -11,6 +13,34 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
+
+
+def _bootstrap_stdlib_email_package() -> None:
+    """Avoid repo-local email.py shadowing Python's stdlib email package."""
+
+    local_email_module = REPO_ROOT / "email.py"
+    stdlib_email_init = Path(sysconfig.get_path("stdlib")) / "email" / "__init__.py"
+    if not local_email_module.exists() or not stdlib_email_init.exists():
+        return
+
+    existing = sys.modules.get("email")
+    existing_file = Path(getattr(existing, "__file__", "") or "") if existing else None
+    if existing_file and existing_file.resolve() != local_email_module.resolve():
+        return
+
+    sys.modules.pop("email", None)
+    spec = importlib.util.spec_from_file_location(
+        "email",
+        stdlib_email_init,
+        submodule_search_locations=[str(stdlib_email_init.parent)],
+    )
+    if spec and spec.loader:
+        module = importlib.util.module_from_spec(spec)
+        sys.modules["email"] = module
+        spec.loader.exec_module(module)
+
+
+_bootstrap_stdlib_email_package()
 
 from scanners.engine import ScanContext, ScanEngine, ToolExecutor, ToolRegistry, dumps_findings
 from scanners.presets import PRESETS, resolve_preset_modules
@@ -173,5 +203,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-
 

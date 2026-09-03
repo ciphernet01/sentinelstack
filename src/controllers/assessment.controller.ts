@@ -5,6 +5,7 @@ import { prisma } from '../config/db';
 import { Prisma } from '@prisma/client';
 import { billingService } from '../services/billing.service';
 import { scanQueueService } from '../services/scanQueue.service';
+import { encryptScanOptions, hasSensitiveScanOptions, redactScanOptions } from '../services/scanSecrets.service';
 import fs from 'fs';
 import path from 'path';
 
@@ -43,12 +44,65 @@ const normalizeToolPreset = (raw: unknown): string => {
   return key;
 };
 
+const allowedValues = <T extends string>(values: readonly T[], fallback: T) => {
+  const allowed = new Set(values);
+  return (raw: unknown): T => {
+    const value = String(raw || fallback).trim().toUpperCase() as T;
+    return allowed.has(value) ? value : fallback;
+  };
+};
+
+const normalizeEnvironment = allowedValues(['PRODUCTION', 'STAGING', 'DEVELOPMENT', 'OTHER'] as const, 'PRODUCTION');
+const normalizeCriticality = allowedValues(['LOW', 'MODERATE', 'HIGH', 'CRITICAL'] as const, 'MODERATE');
+const normalizeClassification = allowedValues(['PUBLIC', 'INTERNAL', 'CONFIDENTIAL', 'REGULATED'] as const, 'INTERNAL');
+const normalizeRateLimitProfile = allowedValues(['CONSERVATIVE', 'STANDARD', 'AGGRESSIVE'] as const, 'STANDARD');
+
+const ALLOWED_FRAMEWORKS = new Set(['SOC2', 'ISO27001', 'PCI_DSS', 'HIPAA', 'GDPR', 'NIST_CSF', 'CIS', 'RBI', 'SEBI']);
+
+const cleanString = (raw: unknown, maxLength: number): string | undefined => {
+  if (typeof raw !== 'string') return undefined;
+  const value = raw.trim();
+  if (!value) return undefined;
+  return value.slice(0, maxLength);
+};
+
+const cleanIsoDate = (raw: unknown): string | undefined => {
+  if (typeof raw !== 'string' || !raw.trim()) return undefined;
+  const date = new Date(raw);
+  return Number.isNaN(date.getTime()) ? undefined : date.toISOString();
+};
+
+const normalizeAssessmentProfile = (raw: unknown) => {
+  const profile = raw && typeof raw === 'object' ? raw as Record<string, unknown> : {};
+  const frameworks = Array.isArray(profile.complianceFrameworks)
+    ? Array.from(new Set(
+        profile.complianceFrameworks
+          .map((value) => String(value || '').trim().toUpperCase())
+          .filter((value) => ALLOWED_FRAMEWORKS.has(value)),
+      ))
+    : [];
+
+  return {
+    environment: normalizeEnvironment(profile.environment),
+    businessCriticality: normalizeCriticality(profile.businessCriticality),
+    dataClassification: normalizeClassification(profile.dataClassification),
+    rateLimitProfile: normalizeRateLimitProfile(profile.rateLimitProfile),
+    complianceFrameworks: frameworks,
+    authorizedBy: cleanString(profile.authorizedBy, 160),
+    authorizationTicket: cleanString(profile.authorizationTicket, 160),
+    emergencyContact: cleanString(profile.emergencyContact, 200),
+    testWindowStart: cleanIsoDate(profile.testWindowStart),
+    testWindowEnd: cleanIsoDate(profile.testWindowEnd),
+    outOfScope: cleanString(profile.outOfScope, 4000),
+  };
+};
+
 class AssessmentController {
   
   async createAssessment(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     // The 'scope' field drives the real assessment engine.
     // The 'toolPreset' field is required by the database schema.
-    const { name, targetUrl, scope, toolPreset, authorizationConfirmed, notes, scanOptions } = req.body;
+    const { name, targetUrl, scope, toolPreset, authorizationConfirmed, notes, scanOptions, assessmentProfile } = req.body;
     const userId = req.user?.id;
     const organizationId = req.user?.organizationId;
 
@@ -72,6 +126,7 @@ class AssessmentController {
       }
 
       const normalizedPreset = normalizeToolPreset(toolPreset);
+      const normalizedProfile = normalizeAssessmentProfile(assessmentProfile);
       
       // Validate and sanitize scan options
       const validatedScanOptions: Record<string, unknown> = {};
@@ -90,6 +145,32 @@ class AssessmentController {
         }
       }
 
+      let encryptedScanOptions: string | undefined;
+      try {
+        encryptedScanOptions = encryptScanOptions(validatedScanOptions);
+      } catch (error) {
+        return res.status(400).json({
+          message: error instanceof Error ? error.message : 'Unable to secure scan credentials.',
+          code: 'SCAN_SECRET_CONFIGURATION_REQUIRED',
+        });
+      }
+
+      const scannerMetadata = {
+        scope,
+        preset: normalizedPreset,
+        scanOptions: redactScanOptions(validatedScanOptions),
+        encryptedScanOptions,
+        assessmentProfile: normalizedProfile,
+        engagement: {
+          authorizationConfirmed: Boolean(authorizationConfirmed),
+          authorizationRecordedAt: new Date().toISOString(),
+          organizationId,
+          requestedByUserId: userId,
+          authenticatedScan: hasSensitiveScanOptions(validatedScanOptions),
+        },
+        capturedAt: new Date().toISOString(),
+      };
+
       const assessment = await prisma.assessment.create({
         data: {
           name,
@@ -99,24 +180,13 @@ class AssessmentController {
           notes,
           organizationId,
           userId,
+          scannerConfig: scannerMetadata as any,
           // Status defaults to PENDING via schema
         },
       });
 
       // Increment scan usage for this organization
       await billingService.incrementScanUsage(organizationId);
-
-      // Persist scan options so the job worker can pick them up.
-      await prisma.assessment.update({
-        where: { id: assessment.id },
-        data: {
-          scannerConfig: {
-            scope,
-            scanOptions: validatedScanOptions,
-            capturedAt: new Date().toISOString(),
-          } as any,
-        },
-      });
 
       // Enqueue scan job (DB-backed) and return immediately.
       await scanQueueService.enqueueForAssessment(assessment.id);

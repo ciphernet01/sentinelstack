@@ -20,9 +20,13 @@ DEFAULT_TOOL_MODULES: List[str] = [
     "scanners.tools.cors",
     "scanners.tools.idor",
     "scanners.tools.jwt",
+    "scanners.tools.admin_exposure",
+    "scanners.tools.ai30_header_ssl_analyzer",
 ]
 
-# "Deep" and "enterprise" can be expanded over time as you integrate new tools.
+# Production presets must include only implemented scanner modules.
+# Keep prototypes/stubs outside PRESETS so client assessments never imply coverage
+# from checks that do not actually run.
 PRESETS: Dict[str, ToolPreset] = {
     "default": ToolPreset(name="default", module_paths=DEFAULT_TOOL_MODULES),
     # Backwards-compatible aliases: older code stored scope into toolPreset.
@@ -34,9 +38,7 @@ PRESETS: Dict[str, ToolPreset] = {
         name="deep",
         module_paths=[
             *DEFAULT_TOOL_MODULES,
-            "scanners.tools.admin_exposure",
             "scanners.tools.ai30_cors_analyzer",
-            "scanners.tools.ai30_header_ssl_analyzer",
             # Deep injection scanners
             "scanners.tools.ai30_sqli",
             "scanners.tools.ai30_xss",
@@ -68,9 +70,7 @@ PRESETS: Dict[str, ToolPreset] = {
         name="enterprise",
         module_paths=[
             *DEFAULT_TOOL_MODULES,
-            "scanners.tools.admin_exposure",
             "scanners.tools.ai30_cors_analyzer",
-            "scanners.tools.ai30_header_ssl_analyzer",
             "scanners.tools.ai30_rateguard",
             "scanners.tools.ai30_tokenscope",
             "scanners.tools.ai30_broken_access_control",
@@ -87,7 +87,6 @@ PRESETS: Dict[str, ToolPreset] = {
             "scanners.tools.ai30_directory_enum",
             "scanners.tools.ai30_authshield",
             "scanners.tools.ai30_logicflaw_sentinel",
-            "scanners.tools.pro_suite",
             # Deep injection & recon tools
             "scanners.tools.ai30_sqli",
             "scanners.tools.ai30_xss",
@@ -98,6 +97,23 @@ PRESETS: Dict[str, ToolPreset] = {
         ],
     ),
 }
+
+
+BLOCKED_PRODUCTION_MODULES = {
+    "scanners.tools.pro_suite",
+}
+
+
+def _assert_no_stub_modules() -> None:
+    for preset in PRESETS.values():
+        blocked = sorted(set(preset.module_paths).intersection(BLOCKED_PRODUCTION_MODULES))
+        if blocked:
+            raise RuntimeError(
+                f"Preset '{preset.name}' includes non-production scanner modules: {', '.join(blocked)}"
+            )
+
+
+_assert_no_stub_modules()
 
 
 def _normalize_preset_key(preset: str | None) -> str:

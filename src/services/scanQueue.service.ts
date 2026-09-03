@@ -1,5 +1,6 @@
 import { prisma } from '../config/db';
 import logger from '../utils/logger';
+import { decryptScanOptions } from './scanSecrets.service';
 import { startAssessmentWorker } from './worker.service';
 
 const envNumber = (name: string, defaultValue: number): number => {
@@ -228,8 +229,9 @@ export class ScanQueueService {
           }
 
           // Scope is stored in scannerConfig today; fall back to 'WEB'.
-          const scope = (assessment.scannerConfig as any)?.scope || 'WEB';
-          const scanOptions = (assessment.scannerConfig as any)?.scanOptions || {};
+          const scannerConfig = (assessment.scannerConfig as any) || {};
+          const scope = scannerConfig.scope || 'WEB';
+          const scanOptions = decryptScanOptions(scannerConfig.encryptedScanOptions);
 
           await startAssessmentWorker(
             assessment.id,

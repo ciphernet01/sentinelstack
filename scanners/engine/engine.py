@@ -34,6 +34,17 @@ def _sort_findings(findings: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
 	)
 
 
+def _safe_metadata(metadata: Dict[str, Any]) -> Dict[str, Any]:
+	return {
+		"authorizationConfirmed": bool(metadata.get("authorizationConfirmed")),
+		"assessmentProfile": metadata.get("assessmentProfile") if isinstance(metadata.get("assessmentProfile"), dict) else {},
+		"engagement": metadata.get("engagement") if isinstance(metadata.get("engagement"), dict) else {},
+		"hasCookies": bool(metadata.get("cookies")),
+		"hasHeaders": bool(metadata.get("headers")),
+		"hasWordlist": bool(metadata.get("wordlist")),
+	}
+
+
 @dataclass(frozen=True, slots=True)
 class ScanEngine:
 	"""Core scan engine orchestrating registered tools."""
@@ -43,6 +54,9 @@ class ScanEngine:
 	on_tool_complete: Optional[Callable[[List[Dict[str, Any]], str], None]] = None
 
 	def run(self, ctx: ScanContext) -> ScanContext:
+		tool_runs: List[Dict[str, Any]] = []
+		started_at = time.time()
+
 		for tool in self.registry.resolve_all():
 			supported = getattr(tool, "supported_scopes", ["FULL"])
 			if ctx.scope != "FULL" and ctx.scope not in supported:
@@ -60,6 +74,15 @@ class ScanEngine:
 				file=sys.stderr,
 				flush=True,
 			)
+			tool_runs.append(
+				{
+					"name": tool_name,
+					"status": status,
+					"findings": len(result.findings),
+					"durationMs": duration_ms,
+					"errorType": result.error_type,
+				}
+			)
 			ctx.findings.extend(result.findings)
 			
 			# Callback to save findings incrementally (for timeout recovery)
@@ -69,6 +92,28 @@ class ScanEngine:
 				except Exception:
 					pass  # Best effort
 
+		total_duration_ms = int((time.time() - started_at) * 1000)
+		ctx.findings.append(
+			{
+				"toolName": "scanner",
+				"title": "Assessment execution manifest",
+				"description": "Scanner execution metadata recording the tools that ran, their status, runtime, and engagement context.",
+				"severity": "INFO",
+				"remediation": "Use this manifest to verify scanner coverage, troubleshoot failed tools, and support report auditability.",
+				"evidence": {
+					"target": ctx.target,
+					"scope": ctx.scope,
+					"assessmentId": ctx.assessment_id,
+					"durationMs": total_duration_ms,
+					"toolsRequested": len(tool_runs),
+					"toolsSucceeded": len([run for run in tool_runs if run["status"] == "ok"]),
+					"toolsFailed": len([run for run in tool_runs if run["status"] != "ok"]),
+					"toolRuns": tool_runs,
+					"metadata": _safe_metadata(ctx.metadata or {}),
+				},
+				"complianceMapping": [],
+			}
+		)
 		ctx.findings = _sort_findings(ctx.findings)
 		return ctx
 

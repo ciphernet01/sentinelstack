@@ -35,7 +35,8 @@
     "hooks:install": "node scripts/husky-install.js",
     "admin:grant-scans": "node scripts/admin/grant-scans.js",
     "test:razorpay:webhook": "node scripts/test-razorpay-webhook.js",
-    "test:log-shipper": "node --test -r ts-node/register src/logging/*.test.ts"
+    "test:log-shipper": "node --test -r ts-node/register src/logging/*.test.ts",
+    "seed:cyber-risk": "node scripts/seed-cyber-risk-digital-twin.js --org-name \"ACME Bank\" --reset-risk-data"
   },
   "keywords": [],
   "author": "",

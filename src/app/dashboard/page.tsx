@@ -9,6 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { useAuth } from '@/context/AuthContext';
 import { Overview } from '@/components/dashboard/Overview';
+import { ExecutiveRiskOverview } from '@/components/dashboard/ExecutiveRiskOverview';
 import withAuth from '@/components/auth/withAuth';
 import type { Assessment, Finding } from '@prisma/client';
 import { useToast } from '@/hooks/use-toast';
@@ -18,6 +19,7 @@ import Link from 'next/link';
 import { usePageTitle } from '@/hooks/use-page-title';
 import { UsageIndicator } from '@/components/billing/UsageIndicator';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useCyberRisk } from '@/hooks/use-cyber-risk';
 
 
 const userAvatar = PlaceHolderImages.find(img => img.id === 'user-avatar-1');
@@ -56,6 +58,7 @@ function DashboardPage() {
 
     const { user } = useAuth();
     const { toast } = useToast();
+    const riskBudgetInr = 10_000_000;
 
     const { data, isLoading, error } = useQuery<DashboardData, Error>({
       queryKey: ['dashboardData'],
@@ -65,6 +68,12 @@ function DashboardPage() {
       },
        retry: false,
     });
+
+    const {
+      data: cyberRisk,
+      isLoading: isCyberRiskLoading,
+      error: cyberRiskError,
+    } = useCyberRisk(riskBudgetInr);
 
         const isPlatformAdmin = user?.role === 'ADMIN';
         const {
@@ -95,8 +104,8 @@ function DashboardPage() {
         <div className="flex flex-col flex-1 min-h-screen w-full max-w-full">
             <div className="flex-1 p-2 sm:p-4 md:p-6 space-y-4 sm:space-y-6 w-full max-w-full">
                 <div>
-                     <h1 className="text-xl sm:text-2xl font-bold font-headline text-primary-foreground">Security Intelligence Dashboard</h1>
-                     <p className="text-muted-foreground text-sm sm:text-base">Real-time risk assessment and security posture analysis</p>
+                     <h1 className="text-xl sm:text-2xl font-bold font-headline text-primary-foreground">Enterprise Cyber Risk</h1>
+                     <p className="text-muted-foreground text-sm sm:text-base">Continuous financial risk quantification and security investment optimization</p>
                 </div>
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center justify-between">
                     <UsageIndicator compact className="order-2 sm:order-1" />
@@ -146,6 +155,30 @@ function DashboardPage() {
                                         </CardContent>
                                     </Card>
                                 )}
+
+                {isCyberRiskLoading && (
+                    <Card>
+                        <CardContent className="flex items-center gap-2 p-5 text-sm text-muted-foreground">
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            Calculating financial cyber exposure...
+                        </CardContent>
+                    </Card>
+                )}
+
+                {cyberRisk && !isCyberRiskLoading && (
+                    <ExecutiveRiskOverview data={cyberRisk} />
+                )}
+
+                {cyberRiskError && !isCyberRiskLoading && (
+                    <Card>
+                        <CardHeader className="pb-2">
+                            <CardTitle className="text-base">Financial Risk Model Not Ready</CardTitle>
+                        </CardHeader>
+                        <CardContent className="text-sm text-muted-foreground">
+                            Ingest enterprise asset telemetry, control coverage, vulnerability data, and threat signals to unlock EAL, VaR, scenarios, and investment optimization.
+                        </CardContent>
+                    </Card>
+                )}
 
                  {isLoading && (
                      <div className="flex h-full w-full items-center justify-center p-8 sm:p-16">

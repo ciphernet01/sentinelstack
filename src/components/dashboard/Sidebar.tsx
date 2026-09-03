@@ -14,6 +14,7 @@ import {
   Calendar,
   Webhook,
   Key,
+  Landmark,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -27,6 +28,7 @@ import { useQueryClient } from '@tanstack/react-query';
 
 const navItems = [
   { href: '/dashboard', icon: LayoutGrid, label: 'Dashboard' },
+  { href: '/dashboard/risk-intelligence', icon: Landmark, label: 'Risk Intelligence' },
   { href: '/dashboard/assessments', icon: ShieldAlert, label: 'Assessments' },
   { href: '/dashboard/schedules', icon: Calendar, label: 'Schedules' },
   { href: '/dashboard/webhooks', icon: Webhook, label: 'Webhooks' },

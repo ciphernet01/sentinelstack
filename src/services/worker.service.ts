@@ -7,6 +7,7 @@ import type { Prisma } from '@prisma/client';
 import { getEffectiveScannerConfig, isScannerTimeoutFinding } from './scannerConfig.service';
 import { webhookService } from './webhook.service';
 import { computeScanDiffSummary } from './scanDiff.service';
+import { redactScanOptions } from './scanSecrets.service';
 
 // A simple in-memory queue to prevent multiple workers on the same assessment.
 const activeWorkers = new Set<string>();
@@ -18,6 +19,8 @@ export interface ScanOptions {
     cookies?: string;      // Cookie string like 'session=abc; token=xyz'
     headers?: Record<string, string>;  // Custom headers like { "Authorization": "Bearer token" }
     wordlist?: string;     // Path to custom wordlist file
+    assessmentProfile?: Record<string, unknown>;
+    engagement?: Record<string, unknown>;
     [key: string]: unknown; // Allow additional options
 }
 
@@ -430,27 +433,7 @@ export const startAssessmentWorker = async (
 
     try {
         const effectiveConfig = getEffectiveScannerConfig(preset, scope);
-
-        // 1. Mark assessment as IN_PROGRESS and persist effective config for auditability.
-        await prisma.assessment.update({
-            where: { id: assessmentId },
-            data: {
-                status: 'IN_PROGRESS',
-                scannerConfig: {
-                    ...effectiveConfig,
-                    scope,
-                    scanOptions: scanOptions, // Store scan options for reference
-                    capturedAt: new Date().toISOString(),
-                } as any,
-                endedEarly: false,
-                endedEarlyReason: null,
-            },
-        });
-
-        logger.info(`Assessment ${assessmentId} marked as IN_PROGRESS.`);
-
-        // 2. Run the actual security tools via the Python script
-        const assessment = await prisma.assessment.findUnique({
+        const existingAssessment = await prisma.assessment.findUnique({
             where: { id: assessmentId },
             select: {
                 authorizationConfirmed: true,
@@ -461,24 +444,69 @@ export const startAssessmentWorker = async (
             },
         });
 
+        const existingScannerConfig =
+            existingAssessment?.scannerConfig && typeof existingAssessment.scannerConfig === 'object'
+                ? existingAssessment.scannerConfig as Record<string, unknown>
+                : {};
+
+        const assessmentProfile =
+            existingScannerConfig.assessmentProfile && typeof existingScannerConfig.assessmentProfile === 'object'
+                ? existingScannerConfig.assessmentProfile as Record<string, unknown>
+                : {};
+
+        const engagement =
+            existingScannerConfig.engagement && typeof existingScannerConfig.engagement === 'object'
+                ? existingScannerConfig.engagement as Record<string, unknown>
+                : {};
+
+        const enrichedScanOptions: ScanOptions = {
+            ...scanOptions,
+            assessmentProfile,
+            engagement,
+        };
+        const redactedScanOptions = redactScanOptions(scanOptions);
+
+        // 1. Mark assessment as IN_PROGRESS and persist effective config for auditability.
+        await prisma.assessment.update({
+            where: { id: assessmentId },
+            data: {
+                status: 'IN_PROGRESS',
+                scannerConfig: {
+                    ...existingScannerConfig,
+                    ...effectiveConfig,
+                    scope,
+                    scanOptions: redactedScanOptions,
+                    assessmentProfile,
+                    engagement,
+                    capturedAt: new Date().toISOString(),
+                    startedAt: new Date().toISOString(),
+                } as any,
+                endedEarly: false,
+                endedEarlyReason: null,
+            },
+        });
+
+        logger.info(`Assessment ${assessmentId} marked as IN_PROGRESS.`);
+
+        // 2. Run the actual security tools via the Python script
         const findings = await runPythonScanner(
             targetUrl,
             scope,
             assessmentId,
             preset,
-            Boolean(assessment?.authorizationConfirmed),
-            scanOptions,
+            Boolean(existingAssessment?.authorizationConfirmed),
+            enrichedScanOptions,
         );
 
         const endedEarlyReason = findings.some(isScannerTimeoutFinding) ? 'TIMEOUT' : null;
 
         let scanDiff = null;
-        if (assessment?.organizationId) {
+        if (existingAssessment?.organizationId) {
             const previousAssessment = await prisma.assessment.findFirst({
                 where: {
-                    organizationId: assessment.organizationId,
-                    targetUrl: assessment.targetUrl,
-                    toolPreset: assessment.toolPreset,
+                    organizationId: existingAssessment.organizationId,
+                    targetUrl: existingAssessment.targetUrl,
+                    toolPreset: existingAssessment.toolPreset,
                     status: 'COMPLETED',
                     id: { not: assessmentId },
                 },
@@ -528,8 +556,14 @@ export const startAssessmentWorker = async (
                 endedEarly: Boolean(endedEarlyReason),
                 endedEarlyReason,
                 scannerConfig: {
-                    ...(assessment?.scannerConfig && typeof assessment.scannerConfig === 'object' ? assessment.scannerConfig : {}),
+                    ...existingScannerConfig,
+                    ...effectiveConfig,
+                    scope,
+                    scanOptions: redactedScanOptions,
+                    assessmentProfile,
+                    engagement,
                     ...(scanDiff ? { scanDiff } : {}),
+                    completedAt: new Date().toISOString(),
                 } as any,
             },
             include: {

@@ -17,7 +17,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, ArrowRight, Loader2, Sparkles, ChevronDown, ChevronUp, Settings2 } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Loader2, Sparkles, ChevronDown, ChevronUp, Settings2, ShieldCheck } from 'lucide-react';
 import { Textarea } from '../ui/textarea';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
@@ -31,6 +31,38 @@ const formSchema = z.object({
   // Advanced scan options for authenticated scanning
   cookies: z.string().optional(),
   customHeaders: z.string().optional(), // JSON string of headers object
+  assessmentProfile: z.object({
+    environment: z.enum(['PRODUCTION', 'STAGING', 'DEVELOPMENT', 'OTHER']),
+    businessCriticality: z.enum(['LOW', 'MODERATE', 'HIGH', 'CRITICAL']),
+    dataClassification: z.enum(['PUBLIC', 'INTERNAL', 'CONFIDENTIAL', 'REGULATED']),
+    rateLimitProfile: z.enum(['CONSERVATIVE', 'STANDARD', 'AGGRESSIVE']),
+    complianceFrameworks: z.array(z.enum(['SOC2', 'ISO27001', 'PCI_DSS', 'HIPAA', 'GDPR', 'NIST_CSF', 'CIS', 'RBI', 'SEBI'])),
+    authorizedBy: z.string().max(160).optional(),
+    authorizationTicket: z.string().max(160).optional(),
+    emergencyContact: z.string().max(200).optional(),
+    testWindowStart: z.string().optional(),
+    testWindowEnd: z.string().optional(),
+    outOfScope: z.string().max(4000).optional(),
+  }),
+}).superRefine((data, ctx) => {
+  if (data.customHeaders?.trim()) {
+    try {
+      const parsed = JSON.parse(data.customHeaders);
+      if (!parsed || Array.isArray(parsed) || typeof parsed !== 'object') {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['customHeaders'], message: 'Headers must be a JSON object.' });
+      }
+    } catch {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['customHeaders'], message: 'Headers must be valid JSON.' });
+    }
+  }
+
+  if (data.assessmentProfile.testWindowStart && data.assessmentProfile.testWindowEnd) {
+    const startsAt = new Date(data.assessmentProfile.testWindowStart).getTime();
+    const endsAt = new Date(data.assessmentProfile.testWindowEnd).getTime();
+    if (Number.isFinite(startsAt) && Number.isFinite(endsAt) && endsAt <= startsAt) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['assessmentProfile', 'testWindowEnd'], message: 'End time must be after start time.' });
+    }
+  }
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -53,6 +85,19 @@ export function NewAssessmentForm() {
       notes: '',
       cookies: '',
       customHeaders: '',
+      assessmentProfile: {
+        environment: 'PRODUCTION',
+        businessCriticality: 'HIGH',
+        dataClassification: 'CONFIDENTIAL',
+        rateLimitProfile: 'CONSERVATIVE',
+        complianceFrameworks: ['SOC2', 'ISO27001'],
+        authorizedBy: '',
+        authorizationTicket: '',
+        emergencyContact: '',
+        testWindowStart: '',
+        testWindowEnd: '',
+        outOfScope: '',
+      },
     },
   });
 
@@ -106,7 +151,7 @@ export function NewAssessmentForm() {
   const mutation = useMutation({
     mutationFn: (newAssessment: FormData) => {
       // Transform form data to API format with scanOptions
-      const { cookies, customHeaders, ...baseData } = newAssessment;
+      const { cookies, customHeaders, assessmentProfile, ...baseData } = newAssessment;
       
       // Build scanOptions object only if values are provided
       const scanOptions: Record<string, unknown> = {};
@@ -123,6 +168,7 @@ export function NewAssessmentForm() {
       
       const payload = {
         ...baseData,
+        assessmentProfile,
         ...(Object.keys(scanOptions).length > 0 && { scanOptions }),
       };
       
@@ -366,11 +412,227 @@ function Step2() {
                     )}
                 />
 
+                <EnterpriseAssessmentProfile control={control} />
+
                 {/* Advanced Options for Authenticated Scanning */}
                 <AdvancedScanOptions control={control} />
             </CardContent>
         </>
     );
+}
+
+const frameworkOptions = [
+  { value: 'SOC2', label: 'SOC 2' },
+  { value: 'ISO27001', label: 'ISO 27001' },
+  { value: 'PCI_DSS', label: 'PCI DSS' },
+  { value: 'HIPAA', label: 'HIPAA' },
+  { value: 'GDPR', label: 'GDPR' },
+  { value: 'NIST_CSF', label: 'NIST CSF' },
+  { value: 'CIS', label: 'CIS Controls' },
+  { value: 'RBI', label: 'RBI' },
+  { value: 'SEBI', label: 'SEBI' },
+] as const;
+
+function EnterpriseAssessmentProfile({ control }: { control: any }) {
+  const [isOpen, setIsOpen] = useState(true);
+  const { setValue, watch } = useFormContext<FormData>();
+  const selectedFrameworks = watch('assessmentProfile.complianceFrameworks') || [];
+
+  const toggleFramework = (value: string, checked: boolean) => {
+    const next = checked
+      ? Array.from(new Set([...selectedFrameworks, value]))
+      : selectedFrameworks.filter((item: string) => item !== value);
+
+    setValue('assessmentProfile.complianceFrameworks', next as any, { shouldDirty: true, shouldTouch: true });
+  };
+
+  return (
+    <Collapsible open={isOpen} onOpenChange={setIsOpen} className="mt-6">
+      <CollapsibleTrigger asChild>
+        <Button variant="outline" type="button" className="w-full justify-between">
+          <span className="flex items-center gap-2">
+            <ShieldCheck className="h-4 w-4" />
+            Enterprise Assessment Profile
+          </span>
+          {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+        </Button>
+      </CollapsibleTrigger>
+      <CollapsibleContent className="mt-4 space-y-5 rounded-md border bg-muted/30 p-4">
+        <div className="grid gap-4 md:grid-cols-2">
+          <FormField
+            control={control}
+            name="assessmentProfile.environment"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Environment</FormLabel>
+                <Select value={field.value} onValueChange={field.onChange}>
+                  <FormControl>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="PRODUCTION">Production</SelectItem>
+                    <SelectItem value="STAGING">Staging</SelectItem>
+                    <SelectItem value="DEVELOPMENT">Development</SelectItem>
+                    <SelectItem value="OTHER">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={control}
+            name="assessmentProfile.businessCriticality"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Business Criticality</FormLabel>
+                <Select value={field.value} onValueChange={field.onChange}>
+                  <FormControl>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="LOW">Low</SelectItem>
+                    <SelectItem value="MODERATE">Moderate</SelectItem>
+                    <SelectItem value="HIGH">High</SelectItem>
+                    <SelectItem value="CRITICAL">Critical</SelectItem>
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={control}
+            name="assessmentProfile.dataClassification"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Data Classification</FormLabel>
+                <Select value={field.value} onValueChange={field.onChange}>
+                  <FormControl>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="PUBLIC">Public</SelectItem>
+                    <SelectItem value="INTERNAL">Internal</SelectItem>
+                    <SelectItem value="CONFIDENTIAL">Confidential</SelectItem>
+                    <SelectItem value="REGULATED">Regulated</SelectItem>
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={control}
+            name="assessmentProfile.rateLimitProfile"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Traffic Posture</FormLabel>
+                <Select value={field.value} onValueChange={field.onChange}>
+                  <FormControl>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="CONSERVATIVE">Conservative</SelectItem>
+                    <SelectItem value="STANDARD">Standard</SelectItem>
+                    <SelectItem value="AGGRESSIVE">Aggressive</SelectItem>
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
+        <div className="space-y-3">
+          <Label>Compliance Mapping</Label>
+          <div className="grid gap-2 sm:grid-cols-2 md:grid-cols-3">
+            {frameworkOptions.map((framework) => (
+              <label key={framework.value} className="flex min-h-10 items-center gap-2 rounded-md border bg-background px-3 py-2 text-sm">
+                <Checkbox
+                  checked={selectedFrameworks.includes(framework.value)}
+                  onCheckedChange={(checked) => toggleFramework(framework.value, checked === true)}
+                />
+                <span>{framework.label}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <FormField
+            control={control}
+            name="assessmentProfile.authorizedBy"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Authorized By</FormLabel>
+                <FormControl><Input placeholder="Security owner or approver" {...field} /></FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={control}
+            name="assessmentProfile.authorizationTicket"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Authorization Ticket</FormLabel>
+                <FormControl><Input placeholder="Jira, GRC, or contract reference" {...field} /></FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={control}
+            name="assessmentProfile.testWindowStart"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Window Start</FormLabel>
+                <FormControl><Input type="datetime-local" {...field} /></FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={control}
+            name="assessmentProfile.testWindowEnd"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Window End</FormLabel>
+                <FormControl><Input type="datetime-local" {...field} /></FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
+        <FormField
+          control={control}
+          name="assessmentProfile.emergencyContact"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Emergency Contact</FormLabel>
+              <FormControl><Input placeholder="Name, email, phone, or escalation channel" {...field} /></FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={control}
+          name="assessmentProfile.outOfScope"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Out-of-Scope Systems</FormLabel>
+              <FormControl>
+                <Textarea placeholder="Domains, paths, APIs, destructive tests, or user roles excluded from this engagement" rows={3} {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      </CollapsibleContent>
+    </Collapsible>
+  );
 }
 
 function AdvancedScanOptions({ control }: { control: any }) {
@@ -457,6 +719,7 @@ function Step3() {
       deep: "Deep",
       enterprise: "Enterprise",
     };
+    const profile = values.assessmentProfile || {};
 
     return (
         <>
@@ -482,6 +745,52 @@ function Step3() {
                       <span className="text-muted-foreground">Tool Preset</span>
                       <span className="font-semibold">{toolPresetMap[values.toolPreset]}</span>
                     </div>
+                    <div className="grid gap-3 border-t pt-3 text-sm sm:grid-cols-2">
+                      <div>
+                        <span className="text-muted-foreground">Environment</span>
+                        <p className="font-semibold">{String(profile.environment || '').replace('_', ' ')}</p>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Business Criticality</span>
+                        <p className="font-semibold">{String(profile.businessCriticality || '').replace('_', ' ')}</p>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Data Classification</span>
+                        <p className="font-semibold">{String(profile.dataClassification || '').replace('_', ' ')}</p>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Traffic Posture</span>
+                        <p className="font-semibold">{String(profile.rateLimitProfile || '').replace('_', ' ')}</p>
+                      </div>
+                    </div>
+                    {profile.complianceFrameworks?.length > 0 && (
+                      <div className="flex flex-col text-sm">
+                        <span className="text-muted-foreground">Compliance Mapping</span>
+                        <p className="mt-1 font-semibold">{profile.complianceFrameworks.join(', ')}</p>
+                      </div>
+                    )}
+                    {(profile.authorizedBy || profile.authorizationTicket || profile.emergencyContact) && (
+                      <div className="grid gap-2 border-t pt-3 text-sm">
+                        {profile.authorizedBy && (
+                          <div className="flex justify-between gap-4">
+                            <span className="text-muted-foreground">Authorized By</span>
+                            <span className="font-semibold text-right">{profile.authorizedBy}</span>
+                          </div>
+                        )}
+                        {profile.authorizationTicket && (
+                          <div className="flex justify-between gap-4">
+                            <span className="text-muted-foreground">Authorization Ticket</span>
+                            <span className="font-semibold text-right">{profile.authorizationTicket}</span>
+                          </div>
+                        )}
+                        {profile.emergencyContact && (
+                          <div className="flex justify-between gap-4">
+                            <span className="text-muted-foreground">Emergency Contact</span>
+                            <span className="font-semibold text-right">{profile.emergencyContact}</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
                     {values.notes && (
                          <div className="flex flex-col text-sm">
                             <span className="text-muted-foreground">Notes</span>
@@ -495,10 +804,10 @@ function Step3() {
                               Advanced Options
                             </span>
                             {values.cookies && (
-                              <p className="mt-1 text-xs text-green-600 dark:text-green-400">✓ Session cookies configured</p>
+                              <p className="mt-1 text-xs text-green-600 dark:text-green-400">Session cookies configured</p>
                             )}
                             {values.customHeaders && (
-                              <p className="mt-1 text-xs text-green-600 dark:text-green-400">✓ Custom headers configured</p>
+                              <p className="mt-1 text-xs text-green-600 dark:text-green-400">Custom headers configured</p>
                             )}
                         </div>
                     )}

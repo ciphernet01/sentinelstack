@@ -96,6 +96,11 @@ model Organization {
   apiKeys          ApiKey[]
   branding         OrganizationBranding?
   complianceBadges ComplianceBadge[]
+  businessUnits    BusinessUnit[]
+  cyberAssets      CyberAsset[]
+  securityControls SecurityControl[]
+  riskSnapshots    RiskSnapshot[]
+  riskScenarios    RiskScenario[]
   createdAt        DateTime                 @default(now())
   updatedAt        DateTime                 @updatedAt
 }
@@ -481,4 +486,256 @@ enum ComplianceType {
   NIST
   CSA_STAR
   CUSTOM
+}
+
+enum BusinessCriticality {
+  LOW
+  MODERATE
+  HIGH
+  CRITICAL
+}
+
+enum AssetEnvironment {
+  INTERNET
+  CORPORATE
+  CLOUD
+  OT
+  THIRD_PARTY
+}
+
+enum ControlCategory {
+  IAM
+  ENDPOINT
+  NETWORK
+  CLOUD
+  DATA_PROTECTION
+  MONITORING
+  RECOVERY
+  GOVERNANCE
+}
+
+enum TelemetrySource {
+  VULNERABILITY_MANAGER
+  SIEM
+  IAM
+  EDR
+  CSPM
+  ASSET_INVENTORY
+  THREAT_INTEL
+}
+
+enum RiskScenarioType {
+  MFA_PRIVILEGED_USERS
+  PATCH_CRITICAL_VULNERABILITIES
+  NETWORK_SEGMENTATION
+  EDR_ROLLOUT
+  CLOUD_HARDENING
+  CUSTOM
+}
+
+model BusinessUnit {
+  id               String              @id @default(cuid())
+  organizationId   String
+  organization     Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  name             String
+  owner            String?
+  annualRevenueInr BigInt              @default(0)
+  criticality      BusinessCriticality @default(MODERATE)
+  services         CyberAsset[]
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+
+  @@unique([organizationId, name])
+  @@index([organizationId, criticality])
+}
+
+model CyberAsset {
+  id                        String               @id @default(cuid())
+  organizationId            String
+  organization              Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  businessUnitId            String?
+  businessUnit              BusinessUnit?        @relation(fields: [businessUnitId], references: [id], onDelete: SetNull)
+  assetId                   String
+  hostname                  String
+  ipAddress                 String?
+  serviceName               String
+  owner                     String?
+  environment               AssetEnvironment     @default(CORPORATE)
+  criticality               BusinessCriticality  @default(MODERATE)
+  internetExposed           Boolean              @default(false)
+  revenueDependencyInr      BigInt               @default(0)
+  downtimeCostPerHourInr    BigInt               @default(0)
+  maxTolerableDowntimeHours Int                  @default(4)
+  dataSensitivity           Int                  @default(3)
+  regulatoryExposureInr     BigInt               @default(0)
+  breachCostInr             BigInt               @default(0)
+  recoveryCostInr           BigInt               @default(0)
+  reputationCostInr         BigInt               @default(0)
+  vulnerabilities           CyberVulnerability[]
+  controls                  AssetControl[]
+  telemetry                 SecurityTelemetry[]
+  dependsOn                 AssetDependency[]    @relation("AssetDependsOn")
+  dependedOnBy              AssetDependency[]    @relation("AssetDependedOnBy")
+  createdAt                 DateTime             @default(now())
+  updatedAt                 DateTime             @updatedAt
+
+  @@unique([organizationId, assetId])
+  @@index([organizationId, criticality])
+  @@index([organizationId, internetExposed])
+  @@index([businessUnitId])
+}
+
+model AssetDependency {
+  id             String              @id @default(cuid())
+  organizationId String
+  sourceAssetId  String
+  sourceAsset    CyberAsset          @relation("AssetDependsOn", fields: [sourceAssetId], references: [id], onDelete: Cascade)
+  targetAssetId  String
+  targetAsset    CyberAsset          @relation("AssetDependedOnBy", fields: [targetAssetId], references: [id], onDelete: Cascade)
+  dependencyType String
+  criticality    BusinessCriticality @default(MODERATE)
+  createdAt      DateTime            @default(now())
+
+  @@unique([sourceAssetId, targetAssetId, dependencyType])
+  @@index([organizationId])
+  @@index([targetAssetId])
+}
+
+model SecurityControl {
+  id             String          @id @default(cuid())
+  organizationId String
+  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  controlId      String
+  name           String
+  category       ControlCategory
+  description    String?
+  baseCostInr    BigInt          @default(0)
+  iso27001       String[]        @default([])
+  nistCsf        String[]        @default([])
+  cisControls    String[]        @default([])
+  rbiFramework   String[]        @default([])
+  sebiFramework  String[]        @default([])
+  assets         AssetControl[]
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  @@unique([organizationId, controlId])
+  @@index([organizationId, category])
+}
+
+model AssetControl {
+  id                   String          @id @default(cuid())
+  organizationId       String
+  assetId              String
+  asset                CyberAsset      @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  controlId            String
+  control              SecurityControl @relation(fields: [controlId], references: [id], onDelete: Cascade)
+  coveragePercent      Int             @default(0)
+  effectivenessPercent Int             @default(0)
+  status               String          @default("PARTIAL")
+  lastObservedAt       DateTime?
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+
+  @@unique([assetId, controlId])
+  @@index([organizationId, effectivenessPercent])
+  @@index([controlId])
+}
+
+model CyberVulnerability {
+  id               String          @id @default(cuid())
+  organizationId   String
+  assetId          String
+  asset            CyberAsset      @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  cve              String?
+  title            String
+  cvss             Float           @default(0)
+  epss             Float           @default(0)
+  exploitAvailable Boolean         @default(false)
+  patchAvailable   Boolean         @default(false)
+  firstSeenAt      DateTime        @default(now())
+  lastSeenAt       DateTime        @default(now())
+  status           String          @default("OPEN")
+  mappedControls   String[]        @default([])
+  source           TelemetrySource @default(VULNERABILITY_MANAGER)
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  @@index([organizationId, status])
+  @@index([assetId, cvss])
+  @@index([cve])
+}
+
+model SecurityTelemetry {
+  id             String          @id @default(cuid())
+  organizationId String
+  assetId        String?
+  asset          CyberAsset?     @relation(fields: [assetId], references: [id], onDelete: SetNull)
+  source         TelemetrySource
+  eventType      String
+  severity       Severity
+  signalScore    Float           @default(0)
+  observedAt     DateTime        @default(now())
+  metadata       Json?
+  createdAt      DateTime        @default(now())
+
+  @@index([organizationId, source, observedAt])
+  @@index([assetId, observedAt])
+}
+
+model ThreatIntelIndicator {
+  id             String   @id @default(cuid())
+  organizationId String
+  indicatorType  String
+  indicatorValue String
+  cve            String?
+  threatActor    String?
+  campaign       String?
+  sector         String?
+  ttp            String?
+  confidence     Int      @default(50)
+  active         Boolean  @default(true)
+  observedAt     DateTime @default(now())
+  createdAt      DateTime @default(now())
+
+  @@index([organizationId, active])
+  @@index([cve])
+}
+
+model RiskSnapshot {
+  id                        String       @id @default(cuid())
+  organizationId            String
+  organization              Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  scope                     String       @default("ENTERPRISE")
+  scopeRefId                String?
+  totalFinancialExposureInr BigInt       @default(0)
+  expectedAnnualLossInr     BigInt       @default(0)
+  valueAtRisk95Inr          BigInt       @default(0)
+  averageLikelihood         Float        @default(0)
+  controlEffectiveness      Float        @default(0)
+  topDrivers                Json
+  assumptions               Json
+  computedAt                DateTime     @default(now())
+
+  @@index([organizationId, computedAt])
+  @@index([organizationId, scope, scopeRefId])
+}
+
+model RiskScenario {
+  id                    String           @id @default(cuid())
+  organizationId        String
+  organization          Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  name                  String
+  type                  RiskScenarioType @default(CUSTOM)
+  budgetInr             BigInt           @default(0)
+  baselineEalInr        BigInt           @default(0)
+  simulatedEalInr       BigInt           @default(0)
+  riskReductionInr      BigInt           @default(0)
+  implementationCostInr BigInt           @default(0)
+  rosi                  Float            @default(0)
+  modeledChanges        Json
+  createdById           String?
+  createdAt             DateTime         @default(now())
+
+  @@index([organizationId, createdAt])
 }
