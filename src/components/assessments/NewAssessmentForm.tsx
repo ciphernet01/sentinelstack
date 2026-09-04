@@ -67,6 +67,23 @@ const formSchema = z.object({
 
 type FormData = z.infer<typeof formSchema>;
 
+const cleanAssessmentProfile = (profile: FormData['assessmentProfile']) => {
+  const cleaned: Record<string, unknown> = {
+    environment: profile.environment,
+    businessCriticality: profile.businessCriticality,
+    dataClassification: profile.dataClassification,
+    rateLimitProfile: profile.rateLimitProfile,
+    complianceFrameworks: profile.complianceFrameworks,
+  };
+
+  for (const key of ['authorizedBy', 'authorizationTicket', 'emergencyContact', 'testWindowStart', 'testWindowEnd', 'outOfScope'] as const) {
+    const value = String(profile[key] || '').trim();
+    if (value) cleaned[key] = value;
+  }
+
+  return cleaned;
+};
+
 export function NewAssessmentForm() {
   const [step, setStep] = useState(1);
   const router = useRouter();
@@ -168,7 +185,7 @@ export function NewAssessmentForm() {
       
       const payload = {
         ...baseData,
-        assessmentProfile,
+        assessmentProfile: cleanAssessmentProfile(assessmentProfile),
         ...(Object.keys(scanOptions).length > 0 && { scanOptions }),
       };
       
