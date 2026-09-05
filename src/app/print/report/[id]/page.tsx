@@ -48,16 +48,18 @@ export default async function PrintReportPage({ params }: PageProps) {
     notFound();
   }
 
-  const json = await res.json();
+    const json = await res.json();
   const assessment = coerceToDates(json);
   const branding = json?.organization?.branding ?? null;
   const organizationName = json?.organization?.name ?? null;
+  const aiSummary = json?.report?.aiSummary ?? null;
 
   return (
     <PrintReport
       assessment={assessment}
       branding={branding}
       organizationName={organizationName}
+      aiSummary={aiSummary}
     />
   );
 }

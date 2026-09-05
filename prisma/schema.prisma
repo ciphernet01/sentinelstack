@@ -257,6 +257,8 @@ model Report {
   assessment   Assessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
   filePath     String
   storageType  String // e.g., 'LOCAL', 'S3'
+  // AI-generated executive summary (JSON: { executiveSummary, remediationExplanations })
+  aiSummary    Json?
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
 }

@@ -5,6 +5,7 @@ import fs from 'fs';
 import path from 'path';
 import logger from '../utils/logger';
 import puppeteer from 'puppeteer';
+import { generateAiExecutiveSummary } from '../services/aiReport.service';
 
 const buildClientUrlForPuppeteer = (): string => {
     const clientUrlRaw = process.env.CLIENT_URL || 'http://localhost:3000';
@@ -107,12 +108,14 @@ const renderAssessmentPdfFromClient = async (assessmentId: string): Promise<Buff
 class ReportController {
   
   async generateReport(req: AuthenticatedRequest, res: Response, next: NextFunction) {
-    const { id } = req.params; // assessmentId
+        const { id } = req.params; // assessmentId
     const user = req.user;
-        const reportUrl = `${buildClientUrlForPuppeteer()}/print/report/${id}`;
 
     try {
-      const assessment = await prisma.assessment.findUnique({ where: { id } });
+          const assessment = await prisma.assessment.findUnique({
+        where: { id },
+        include: { findings: true },
+      });
       if (!assessment) {
         return res.status(404).json({ message: 'Assessment not found.' });
       }
@@ -127,7 +130,26 @@ class ReportController {
                 }
             }
       
-    logger.info(`Generating PDF for assessment ${id} from URL: ${reportUrl}`);
+    logger.info(`Generating PDF for assessment ${id}`);
+
+    // Generate an AI-powered executive summary for this assessment.
+    // This is best-effort - failures are logged but never block report generation.
+    let aiSummary: { executiveSummary: string; remediationExplanations: string } | null = null;
+    try {
+      aiSummary = await generateAiExecutiveSummary(
+        assessment.name,
+        assessment.targetUrl,
+        assessment.riskScore ?? null,
+        assessment.findings,
+      );
+      if (aiSummary) {
+        logger.info(`AI executive summary generated for assessment ${id}`);
+      } else {
+        logger.info(`No AI executive summary for assessment ${id} (no findings or AI unavailable)`);
+      }
+    } catch (aiError) {
+      logger.error(`AI summary generation failed for assessment ${id}:`, aiError);
+    }
 
     const pdfBuffer = await renderAssessmentPdfFromClient(id);
       
@@ -149,11 +171,13 @@ class ReportController {
           update: {
               filePath: filePath,
               storageType: 'LOCAL',
+              aiSummary: aiSummary ?? undefined,
           },
           create: {
               assessmentId: id,
               filePath: filePath,
               storageType: 'LOCAL',
+              aiSummary: aiSummary ?? undefined,
           },
       });
 
@@ -216,3 +240,5 @@ class ReportController {
 }
 
 export const reportController = new ReportController();
+
+

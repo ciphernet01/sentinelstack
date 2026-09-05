@@ -15,10 +15,15 @@ router.get('/assessments/:id/report', internalAuth, async (req, res, next) => {
   const { id } = req.params;
 
   try {
-    const assessment = await prisma.assessment.findUnique({
+        const assessment = await prisma.assessment.findUnique({
       where: { id },
       include: {
         findings: true,
+        report: {
+          select: {
+            aiSummary: true,
+          },
+        },
         // Include organization branding so the PDF renderer can white-label the report.
         organization: {
           select: {

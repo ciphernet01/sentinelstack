@@ -28,6 +28,7 @@ type PrintReportProps = {
   assessment: Assessment & { findings: Finding[]; scannerConfig?: any | null };
   branding?: ReportBrandingInput;
   organizationName?: string | null;
+  aiSummary?: { executiveSummary: string; remediationExplanations?: string } | null;
 };
 
 const summarizeText = (text: string, maxLen: number) => {
@@ -145,7 +146,7 @@ function SeverityBar({
     </div>
   );
 }
-export default function PrintReport({ assessment, branding, organizationName }: PrintReportProps) {
+export default function PrintReport({ assessment, branding, organizationName, aiSummary }: PrintReportProps) {
   const {
     name,
     targetUrl,
@@ -393,6 +394,22 @@ export default function PrintReport({ assessment, branding, organizationName }: 
               failed or skipped tools were not validated in this assessment. See{" "}
               <span className="font-semibold">Assessment Limitations &amp; Scanner Exceptions</span>.
             </p>
+          </div>
+                ) : null}
+
+        {aiSummary?.executiveSummary ? (
+          <div className="mt-6 rounded-xl border border-slate-200 p-6 pdf-avoid-break">
+            <div className="flex items-start gap-3">
+              <span className="mt-0.5 text-xl">🤖</span>
+              <div>
+                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                  AI Executive Summary
+                </div>
+                <div className="mt-2 text-sm leading-relaxed text-slate-700">
+                  {aiSummary.executiveSummary}
+                </div>
+              </div>
+            </div>
           </div>
         ) : null}
 

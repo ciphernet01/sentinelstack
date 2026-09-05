@@ -24,7 +24,7 @@ import {
 } from "@/shared/reportUtils";
 
 type ReportProps = {
-  assessment: Assessment & { findings: Finding[] };
+  assessment: Assessment & { findings: Finding[]; report?: { aiSummary?: unknown } | null };
 };
 
 const summarizeText = (text: string, maxLen: number) => {
@@ -86,6 +86,11 @@ function SeverityBar({ severity, count, maxCount, color }: { severity: string; c
 export default function Report({ assessment }: ReportProps) {
   const { name, targetUrl, createdAt, riskScore, findings, toolPreset, scannerConfig, endedEarly, endedEarlyReason } =
     assessment as any;
+
+  // Extract AI executive summary from the related Report record (if present).
+  const aiSummaryRaw = asRecord((assessment as any)?.report?.aiSummary) ?? {};
+  const aiExecutiveSummary: string = asString(aiSummaryRaw?.executiveSummary).trim() || '';
+  const aiRemediationExplanations: string = asString(aiSummaryRaw?.remediationExplanations).trim() || '';
 
   const cfg = asRecord(scannerConfig) ?? {};
   const effectivePreset = asString(cfg?.preset || toolPreset || "default");
@@ -310,6 +315,22 @@ export default function Report({ assessment }: ReportProps) {
             </p>
           </div>
         )}
+
+        {aiExecutiveSummary ? (
+          <div className="mt-6 rounded-xl border border-slate-200 p-6">
+            <div className="flex items-start gap-3">
+              <span className="mt-0.5 text-xl">🤖</span>
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                  AI Executive Summary
+                </p>
+                <p className="mt-2 text-sm leading-relaxed text-slate-700">
+                  {aiExecutiveSummary}
+                </p>
+              </div>
+            </div>
+          </div>
+        ) : null}
 
         <div className="mt-7 grid grid-cols-3 gap-3">
           <MetricCard label="Total Findings" value={totalFindings} color="#0f172a" bg="#f8fafc" />
