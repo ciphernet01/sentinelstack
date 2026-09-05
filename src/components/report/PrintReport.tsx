@@ -19,10 +19,15 @@ import {
   getPrimaryConcern,
   securityPostureStatement,
   prepareSecurityFindings,
+  resolveBranding,
+  resolveScanDiff,
+  type ReportBrandingInput,
 } from "@/shared/reportUtils";
 
 type PrintReportProps = {
   assessment: Assessment & { findings: Finding[]; scannerConfig?: any | null };
+  branding?: ReportBrandingInput;
+  organizationName?: string | null;
 };
 
 const summarizeText = (text: string, maxLen: number) => {
@@ -140,7 +145,7 @@ function SeverityBar({
     </div>
   );
 }
-export default function PrintReport({ assessment }: PrintReportProps) {
+export default function PrintReport({ assessment, branding, organizationName }: PrintReportProps) {
   const {
     name,
     targetUrl,
@@ -186,6 +191,9 @@ export default function PrintReport({ assessment }: PrintReportProps) {
   const maxCount = Math.max(1, ...SEVERITY_ORDER.map((s) => methodology.counts[s] || 0));
   const hasNotices = coverage.hasIssues || partitioned.timeouts.length > 0 || Boolean(endedEarly);
 
+  const brand = resolveBranding(branding, organizationName);
+  const scanDiff = resolveScanDiff(cfg?.scanDiff);
+
   return (
     <div className="bg-white text-slate-900 font-sans">
       <style>{`
@@ -214,22 +222,33 @@ export default function PrintReport({ assessment }: PrintReportProps) {
       {/* Page 1 — Cover */}
       {/* ------------------------------------------------------------------ */}
       <Page>
+        <div className="mb-6 h-1.5 w-full rounded-full" style={{ background: brand.accentGradient }} />
         <div className="flex items-start justify-between">
           <div>
             <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-              Security Assessment Report
+              {brand.headerText}
             </div>
             <div className="mt-3 text-[38px] leading-tight font-bold text-slate-900">{name}</div>
             <div className="mt-2 text-base text-slate-600">Web Application Security Assessment</div>
             <div className="mt-4 text-sm text-slate-500">
-              Prepared by <span className="font-semibold text-slate-700">Sentinel Stack Platform</span>
+              Prepared by <span className="font-semibold text-slate-700">{brand.preparedBy}</span>
+              {brand.clientName && !brand.hidePoweredBy ? (
+                <span className="text-slate-500"> · Prepared for {brand.clientName}</span>
+              ) : null}
             </div>
           </div>
           <div className="flex flex-col items-end gap-3 pt-1">
             <div className="rounded border border-red-200 bg-red-50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-red-700">
               Confidential
             </div>
-            <SentinelStackLogo width={200} />
+            {brand.logoSrc ? (
+              <img src={brand.logoSrc} alt={brand.clientName || 'Organization logo'} className="max-h-16 max-w-[220px] object-contain" />
+            ) : (
+              <SentinelStackLogo width={200} />
+            )}
+            {brand.clientName ? (
+              <div className="text-xs font-semibold text-slate-500">{brand.clientName}</div>
+            ) : null}
           </div>
         </div>
 
@@ -577,6 +596,75 @@ export default function PrintReport({ assessment }: PrintReportProps) {
           ))}
         </div>
       </Page>
+      {/* ------------------------------------------------------------------ */}
+      {/* Changes since previous assessment */}
+      {/* ------------------------------------------------------------------ */}
+      {scanDiff && scanDiff.hasChanges ? (
+        <Page>
+          <SectionHeading eyebrow="Trend" title="Changes Since Previous Assessment" />
+
+          <p className="mt-4 text-sm leading-relaxed text-slate-700">
+            Comparison against the previous completed assessment
+            {scanDiff.baselineCompletedAt ? ` on ${formatReportDate(scanDiff.baselineCompletedAt)}` : ''}.
+            New findings should be triaged with the roadmap below; resolved findings confirm that earlier remediation
+            has taken effect.
+          </p>
+
+          <div className="mt-6 grid grid-cols-5 gap-3">
+            <MetricCard label="Baseline" value={scanDiff.baselineFindingCount} color="#0f172a" bg="#f8fafc" />
+            <MetricCard label="Current" value={scanDiff.currentFindingCount} color="#0f172a" bg="#f8fafc" />
+            <MetricCard label="New" value={scanDiff.newFindingCount} color={SEVERITY_COLORS.HIGH} bg={SEVERITY_BG_COLORS.HIGH} />
+            <MetricCard label="Resolved" value={scanDiff.resolvedFindingCount} color="#15803d" bg="#dcfce7" />
+            <MetricCard label="Unchanged" value={scanDiff.unchangedFindingCount} color={SEVERITY_COLORS.INFO} bg={SEVERITY_BG_COLORS.INFO} />
+          </div>
+
+          <div className="mt-6 grid grid-cols-2 gap-6">
+            <div className="pdf-avoid-break rounded-xl border border-slate-200 p-5">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                New findings ({scanDiff.newFindings.length})
+              </div>
+              <ul className="mt-3 space-y-2 text-[12px] leading-relaxed">
+                {scanDiff.newFindings.slice(0, 6).map((f, i) => (
+                  <li key={`new-${i}`} className="flex items-start gap-2">
+                    <SeverityChip severity={f.severity} />
+                    <span className="text-slate-700">
+                      <span className="font-semibold text-slate-900">{f.title}</span>
+                      {f.toolName ? <span className="text-slate-400"> · {humanizeLabel(f.toolName)}</span> : null}
+                    </span>
+                  </li>
+                ))}
+                {scanDiff.newFindings.length === 0 && <li className="text-slate-500">No new findings.</li>}
+              </ul>
+              {scanDiff.newFindings.length > 6 ? (
+                <div className="mt-2 text-[11px] text-slate-400">
+                  +{scanDiff.newFindings.length - 6} more (see Findings section)
+                </div>
+              ) : null}
+            </div>
+
+            <div className="pdf-avoid-break rounded-xl border border-slate-200 p-5">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                Resolved findings ({scanDiff.resolvedFindings.length})
+              </div>
+              <ul className="mt-3 space-y-2 text-[12px] leading-relaxed">
+                {scanDiff.resolvedFindings.slice(0, 6).map((f, i) => (
+                  <li key={`resolved-${i}`} className="flex items-start gap-2">
+                    <SeverityChip severity={f.severity} />
+                    <span className="text-slate-700">
+                      <span className="font-semibold text-slate-900">{f.title}</span>
+                      {f.toolName ? <span className="text-slate-400"> · {humanizeLabel(f.toolName)}</span> : null}
+                    </span>
+                  </li>
+                ))}
+                {scanDiff.resolvedFindings.length === 0 && <li className="text-slate-500">No resolved findings.</li>}
+              </ul>
+              {scanDiff.resolvedFindings.length > 6 ? (
+                <div className="mt-2 text-[11px] text-slate-400">+{scanDiff.resolvedFindings.length - 6} more</div>
+              ) : null}
+            </div>
+          </div>
+        </Page>
+      ) : null}
 {/* ------------------------------------------------------------------ */}
       {/* Remediation Roadmap */}
       {/* ------------------------------------------------------------------ */}
@@ -956,9 +1044,14 @@ export default function PrintReport({ assessment }: PrintReportProps) {
             <div className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-400">
               End of Assessment Report
             </div>
-            <div className="mt-3 text-lg font-bold">Sentinel Stack Security Assessment</div>
+            <div className="mt-3 text-lg font-bold">
+              {brand.hidePoweredBy ? brand.headerText : 'Sentinel Stack Security Assessment'}
+            </div>
             <div className="mt-2 text-sm text-slate-300">{name}</div>
             <div className="mt-6 text-[11px] leading-relaxed text-slate-400">
+              {brand.footerText}
+            </div>
+            <div className="mt-3 text-[11px] leading-relaxed text-slate-400">
               This report is confidential and intended solely for the designated recipient(s). It contains the results
               of an automated security assessment and reflects the state of the target at the time of execution.
               Findings, evidence and remediation guidance should be validated by the recipient before action is taken.

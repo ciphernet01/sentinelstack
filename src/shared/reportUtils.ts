@@ -501,3 +501,145 @@ export function securityPostureStatement(counts: Record<SeverityKey, number>): s
   }
   return `${counts.HIGH || 0} High severity findings were identified. Prioritize remediation in the short term.`;
 }
+// ---------------------------------------------------------------------------
+// White-label branding
+// ---------------------------------------------------------------------------
+
+export type ReportBrandingInput = {
+  companyName?: string | null;
+  logoUrl?: string | null;
+  reportLogoUrl?: string | null;
+  reportHeaderText?: string | null;
+  reportFooterText?: string | null;
+  primaryColor?: string | null;
+  secondaryColor?: string | null;
+  hidePoweredBy?: boolean | null;
+} | null | undefined;
+
+export type ResolvedBranding = {
+  clientName: string | null;
+  logoSrc: string | null;
+  headerText: string;
+  footerText: string;
+  accent: string;
+  accentSoft: string;
+  accentGradient: string;
+  preparedBy: string;
+  hidePoweredBy: boolean;
+};
+
+const HEX_COLOR_RE = /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/;
+
+function normalizeHex(hex: string): string {
+  const raw = hex.trim();
+  if (raw.length === 4) {
+    return `#${raw[1]}${raw[1]}${raw[2]}${raw[2]}${raw[3]}${raw[3]}`.toLowerCase();
+  }
+  return raw.toLowerCase();
+}
+
+/** Darkens a hex color by the given factor (0-1). */
+export function shadeHex(hex: string, factor: number): string {
+  if (!HEX_COLOR_RE.test(hex)) return hex;
+  const normalized = normalizeHex(hex).slice(1);
+  const num = parseInt(normalized, 16);
+  const r = Math.max(0, Math.min(255, Math.round(((num >> 16) & 0xff) * factor)));
+  const g = Math.max(0, Math.min(255, Math.round(((num >> 8) & 0xff) * factor)));
+  const b = Math.max(0, Math.min(255, Math.round((num & 0xff) * factor)));
+  return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, '0')}`;
+}
+
+export function resolveBranding(
+  branding: ReportBrandingInput,
+  organizationName?: string | null,
+): ResolvedBranding {
+  const b = branding ?? {};
+  const accent =
+    typeof b.primaryColor === 'string' && HEX_COLOR_RE.test(b.primaryColor)
+      ? normalizeHex(b.primaryColor)
+      : '#4f46e5';
+  const logoSrc = asString(b.reportLogoUrl || b.logoUrl).trim() || null;
+  const clientName = asString(b.companyName || organizationName).trim() || null;
+  const hidePoweredBy = b.hidePoweredBy === true;
+  const headerText = asString(b.reportHeaderText).trim() || 'Security Assessment Report';
+  const footerText =
+    asString(b.reportFooterText).trim() ||
+    (hidePoweredBy
+      ? `Prepared by ${clientName || 'the assessment team'}`
+      : 'Sentinel Stack Security Report • Confidential');
+  const preparedBy = hidePoweredBy ? clientName || 'the assessment team' : 'Sentinel Stack Platform';
+
+  return {
+    clientName,
+    logoSrc,
+    headerText,
+    footerText,
+    accent,
+    accentSoft: `${accent}14`,
+    accentGradient: `linear-gradient(135deg, ${accent}, ${shadeHex(accent, 0.55)})`,
+    preparedBy,
+    hidePoweredBy,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Scan diff (changes since previous assessment)
+// ---------------------------------------------------------------------------
+
+export type ScanDiffFindingSummary = {
+  toolName: string;
+  title: string;
+  severity: SeverityKey;
+  description?: string;
+};
+
+export type ResolvedScanDiff = {
+  baselineCompletedAt: string | null;
+  baselineFindingCount: number;
+  currentFindingCount: number;
+  newFindingCount: number;
+  resolvedFindingCount: number;
+  unchangedFindingCount: number;
+  newFindings: ScanDiffFindingSummary[];
+  resolvedFindings: ScanDiffFindingSummary[];
+  hasChanges: boolean;
+};
+
+function coerceScanDiffList(value: unknown): ScanDiffFindingSummary[] {
+  const arr = asArray(value);
+  if (!arr) return [];
+  return arr
+    .map((item) => {
+      const rec = asRecord(item);
+      if (!rec) return null;
+      const severity = asString(rec.severity).trim().toUpperCase();
+      return {
+        toolName: asString(rec.toolName),
+        title: asString(rec.title),
+        severity: (SEVERITY_ORDER.includes(severity as SeverityKey) ? severity : 'INFO') as SeverityKey,
+        description: asString(rec.description) || undefined,
+      } as ScanDiffFindingSummary;
+    })
+    .filter((x): x is ScanDiffFindingSummary => x !== null);
+}
+
+export function resolveScanDiff(raw: unknown): ResolvedScanDiff | null {
+  const rec = asRecord(raw);
+  if (!rec) return null;
+  const num = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : Number(v) || 0);
+  const newFindings = coerceScanDiffList(rec.newFindings);
+  const resolvedFindings = coerceScanDiffList(rec.resolvedFindings);
+  const newCount = num(rec.newFindingCount);
+  const resolvedCount = num(rec.resolvedFindingCount);
+  return {
+    baselineCompletedAt: asString(rec.baselineCompletedAt).trim() || null,
+    baselineFindingCount: num(rec.baselineFindingCount),
+    currentFindingCount: num(rec.currentFindingCount),
+    newFindingCount: newCount,
+    resolvedFindingCount: resolvedCount,
+    unchangedFindingCount: num(rec.unchangedFindingCount),
+    newFindings,
+    resolvedFindings,
+    hasChanges: newCount > 0 || resolvedCount > 0,
+  };
+}

@@ -21,6 +21,7 @@ import {
   isScannerTimeoutTitle,
   isScannerTool,
 } from '@/shared/scannerFindings';
+import { getToolLimitations, humanizeLabel, partitionFindings } from '@/shared/reportUtils';
 
 type ScanFindingSummary = {
   id?: string;
@@ -168,7 +169,12 @@ export function AssessmentDetails({ assessment, showOnboardingCta }: AssessmentD
   const toolRuns = Array.isArray(manifestEvidence?.toolRuns) ? manifestEvidence.toolRuns : [];
   const toolsSucceeded = Number(manifestEvidence?.toolsSucceeded || 0);
   const toolsFailed = Number(manifestEvidence?.toolsFailed || 0);
-  const securityFindings = findings.filter((finding) => !(finding.toolName === 'scanner' && finding.title === 'Assessment execution manifest'));
+  // Align with the report classification: the execution manifest and scanner
+  // engine exceptions are operational records, not security findings.
+  const partitionedFindings = partitionFindings(findings);
+  const securityFindings = partitionedFindings.security;
+  const scannerExceptions = partitionedFindings.exceptions;
+  const toolLimitations = getToolLimitations(findings);
   const searchParams = useSearchParams();
   const requestedTab = searchParams.get('tab');
   const requestedFindingRaw = searchParams.get('finding');
@@ -430,6 +436,48 @@ export function AssessmentDetails({ assessment, showOnboardingCta }: AssessmentD
                         ))}
                       </tbody>
                     </table>
+                  </div>
+                )}
+
+                {(toolLimitations.length > 0 || scannerExceptions.length > 0) && (
+                  <div>
+                    <div className="mb-2 text-sm font-medium">Assessment limitations &amp; scanner exceptions</div>
+                    <p className="mb-2 text-xs text-muted-foreground">
+                      Operational/tooling records — not security findings. These narrow the coverage of this
+                      assessment and are excluded from the findings list and risk score.
+                    </p>
+                    <div className="space-y-2">
+                      {toolLimitations.map((lim) => (
+                        <div
+                          key={`${lim.tool}-${lim.status}`}
+                          className="flex items-start justify-between gap-3 rounded-md border p-3 text-sm"
+                        >
+                          <div>
+                            <div className="font-medium">
+                              {lim.tool}
+                              {lim.errorType ? (
+                                <span className="ml-1.5 text-xs text-muted-foreground">({lim.errorType})</span>
+                              ) : null}
+                            </div>
+                            <div className="mt-0.5 text-xs text-muted-foreground">{lim.impact}</div>
+                          </div>
+                          <Badge variant={lim.status === 'Skipped' ? 'secondary' : 'destructive'}>{lim.status}</Badge>
+                        </div>
+                      ))}
+                      {scannerExceptions
+                        .filter((f) => !toolLimitations.some((l) => l.tool === humanizeLabel(f.toolName)))
+                        .map((f) => (
+                          <div key={f.id} className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm">
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="font-medium">{f.title}</div>
+                              <Badge variant="destructive">Exception</Badge>
+                            </div>
+                            <div className="mt-0.5 text-xs text-muted-foreground">
+                              {f.description || 'The tool raised an exception during execution.'}
+                            </div>
+                          </div>
+                        ))}
+                    </div>
                   </div>
                 )}
               </CardContent>

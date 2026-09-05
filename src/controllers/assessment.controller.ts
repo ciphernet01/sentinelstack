@@ -250,6 +250,25 @@ class AssessmentController {
                 updatedAt: true,
                 findings: true,
                 report: true,
+                // Branding is used by the report preview to white-label the deliverable.
+                organization: {
+                  select: {
+                    id: true,
+                    name: true,
+                    branding: {
+                      select: {
+                        companyName: true,
+                        logoUrl: true,
+                        reportLogoUrl: true,
+                        reportHeaderText: true,
+                        reportFooterText: true,
+                        primaryColor: true,
+                        secondaryColor: true,
+                        hidePoweredBy: true,
+                      },
+                    },
+                  },
+                },
               }
           });
 

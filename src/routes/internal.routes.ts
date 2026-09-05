@@ -17,7 +17,28 @@ router.get('/assessments/:id/report', internalAuth, async (req, res, next) => {
   try {
     const assessment = await prisma.assessment.findUnique({
       where: { id },
-      include: { findings: true },
+      include: {
+        findings: true,
+        // Include organization branding so the PDF renderer can white-label the report.
+        organization: {
+          select: {
+            id: true,
+            name: true,
+            branding: {
+              select: {
+                companyName: true,
+                logoUrl: true,
+                reportLogoUrl: true,
+                reportHeaderText: true,
+                reportFooterText: true,
+                primaryColor: true,
+                secondaryColor: true,
+                hidePoweredBy: true,
+              },
+            },
+          },
+        },
+      },
     });
 
     if (!assessment) {

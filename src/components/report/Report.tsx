@@ -19,6 +19,8 @@ import {
   getPrimaryConcern,
   securityPostureStatement,
   prepareSecurityFindings,
+  resolveBranding,
+  resolveScanDiff,
 } from "@/shared/reportUtils";
 
 type ReportProps = {
@@ -118,6 +120,13 @@ export default function Report({ assessment }: ReportProps) {
   const maxCount = Math.max(1, ...SEVERITY_ORDER.map((s) => methodology.counts[s] || 0));
   const hasNotices = coverage.hasIssues || partitioned.timeouts.length > 0 || Boolean(endedEarly);
 
+  const orgContext = asRecord((assessment as any)?.organization);
+  const brand = resolveBranding(
+    (asRecord(orgContext?.branding) ?? null) as any,
+    asString(orgContext?.name) || null,
+  );
+  const scanDiff = resolveScanDiff(cfg?.scanDiff);
+
   return (
     <div className="bg-white text-slate-900 font-sans">
       <style>{`
@@ -129,19 +138,27 @@ export default function Report({ assessment }: ReportProps) {
       `}</style>
 {/* Cover */}
       <section className="px-10 py-12 pdf-break-after">
-        <div className="-mx-10 -mt-12 bg-gradient-to-r from-blue-700 to-indigo-900 px-10 py-10 text-white">
+        <div className="-mx-10 -mt-12 px-10 py-10 text-white" style={{ background: brand.accentGradient }}>
           <div className="flex items-start justify-between">
             <div className="max-w-xl">
-              <p className="text-xs tracking-widest uppercase opacity-90">Security Assessment Report</p>
+              <p className="text-xs tracking-widest uppercase opacity-90">{brand.headerText}</p>
               <h1 className="mt-2 text-4xl font-bold">{name}</h1>
               <p className="mt-2 text-sm opacity-90">Web Application Security Assessment</p>
-              <p className="mt-3 text-xs opacity-75">Prepared by Sentinel Stack Platform</p>
+              <p className="mt-3 text-xs opacity-75">Prepared by {brand.preparedBy}</p>
             </div>
             <div className="flex flex-col items-end gap-3 pt-1">
               <div className="rounded border border-red-300 bg-red-500/20 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-red-100">
                 Confidential
               </div>
-              <SentinelStackLogo width={200} />
+              {brand.logoSrc ? (
+                <img
+                  src={brand.logoSrc}
+                  alt={brand.clientName || 'Organization logo'}
+                  className="max-h-14 max-w-[200px] rounded bg-white/95 object-contain p-1.5"
+                />
+              ) : (
+                <SentinelStackLogo width={200} />
+              )}
             </div>
           </div>
         </div>
@@ -458,6 +475,65 @@ export default function Report({ assessment }: ReportProps) {
           ))}
         </div>
       </section>
+      {/* Changes since previous assessment */}
+      {scanDiff && scanDiff.hasChanges ? (
+        <section className="px-10 py-10 pdf-break-before">
+          <SectionTitle eyebrow="Trend" title="Changes Since Previous Assessment" />
+
+          <p className="mt-4 text-sm leading-relaxed text-slate-700">
+            Comparison against the previous completed assessment
+            {scanDiff.baselineCompletedAt ? ` on ${formatReportDate(scanDiff.baselineCompletedAt)}` : ''}. New
+            findings should be triaged with the roadmap; resolved findings confirm earlier remediation has taken
+            effect.
+          </p>
+
+          <div className="mt-6 grid grid-cols-5 gap-3">
+            <MetricCard label="Baseline" value={scanDiff.baselineFindingCount} color="#0f172a" bg="#f8fafc" />
+            <MetricCard label="Current" value={scanDiff.currentFindingCount} color="#0f172a" bg="#f8fafc" />
+            <MetricCard label="New" value={scanDiff.newFindingCount} color={SEVERITY_COLORS.HIGH} bg={SEVERITY_BG_COLORS.HIGH} />
+            <MetricCard label="Resolved" value={scanDiff.resolvedFindingCount} color="#15803d" bg="#dcfce7" />
+            <MetricCard label="Unchanged" value={scanDiff.unchangedFindingCount} color={SEVERITY_COLORS.INFO} bg={SEVERITY_BG_COLORS.INFO} />
+          </div>
+
+          <div className="mt-6 grid grid-cols-2 gap-6">
+            <div className="pdf-avoid-break rounded-xl border border-slate-200 p-5">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                New findings ({scanDiff.newFindings.length})
+              </p>
+              <ul className="mt-3 space-y-2 text-[12px] leading-relaxed">
+                {scanDiff.newFindings.slice(0, 6).map((f, i) => (
+                  <li key={`new-${i}`} className="flex items-start gap-2">
+                    <SeverityChip severity={f.severity} />
+                    <span className="text-slate-700">
+                      <span className="font-semibold text-slate-900">{f.title}</span>
+                      {f.toolName ? <span className="text-slate-400"> · {humanizeLabel(f.toolName)}</span> : null}
+                    </span>
+                  </li>
+                ))}
+                {scanDiff.newFindings.length === 0 && <li className="text-slate-500">No new findings.</li>}
+              </ul>
+            </div>
+
+            <div className="pdf-avoid-break rounded-xl border border-slate-200 p-5">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                Resolved findings ({scanDiff.resolvedFindings.length})
+              </p>
+              <ul className="mt-3 space-y-2 text-[12px] leading-relaxed">
+                {scanDiff.resolvedFindings.slice(0, 6).map((f, i) => (
+                  <li key={`resolved-${i}`} className="flex items-start gap-2">
+                    <SeverityChip severity={f.severity} />
+                    <span className="text-slate-700">
+                      <span className="font-semibold text-slate-900">{f.title}</span>
+                      {f.toolName ? <span className="text-slate-400"> · {humanizeLabel(f.toolName)}</span> : null}
+                    </span>
+                  </li>
+                ))}
+                {scanDiff.resolvedFindings.length === 0 && <li className="text-slate-500">No resolved findings.</li>}
+              </ul>
+            </div>
+          </div>
+        </section>
+      ) : null}
 {/* Assessment Limitations & Scanner Exceptions */}
       <section className="px-10 py-10 pdf-break-before">
         <SectionTitle eyebrow="Coverage" title="Assessment Limitations & Scanner Exceptions" />

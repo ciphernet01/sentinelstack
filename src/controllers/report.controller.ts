@@ -93,8 +93,8 @@ const renderAssessmentPdfFromClient = async (assessmentId: string): Promise<Buff
                 `,
             footerTemplate: `
                     <div style="width:100%; padding: 0 20px; font-size: 9px; color: #6b7280; display:flex; justify-content:space-between; align-items:center; border-top: 1px solid #e5e7eb;">
-                        <span>Confidential</span>
-                        <span><span class="pageNumber"></span> / <span class="totalPages"></span></span>
+                        <span>Confidential — uncontrolled when printed</span>
+                        <span>Page <span class="pageNumber"></span> of <span class="totalPages"></span></span>
                     </div>
                 `,
             margin: { top: '16mm', right: '14mm', bottom: '16mm', left: '14mm' },
