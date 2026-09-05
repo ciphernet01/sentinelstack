@@ -102,14 +102,26 @@ class AI30TokenLifecycle:
                 score = int(item.get("score") or 0)
                 severity = _normalize_severity(item.get("severity") or "INFO")
 
-                # Keep medium+ only.
-                if score < 40:
-                    continue
-
                 vulns = item.get("vulnerabilities") or []
                 recs = item.get("recommendations") or []
 
-                title = "Token lifecycle weakness"
+                # Only report when a concrete token-lifecycle signal was observed.
+                # A high score alone, without a specific detected issue, produced
+                # generic "weakness" findings with no supporting evidence.
+                specific_flags = any(
+                    item.get(flag)
+                    for flag in (
+                        "excessive_lifetime",
+                        "refresh_token_reuse",
+                        "token_valid_after_logout",
+                        "weak_algorithm",
+                        "missing_claims",
+                    )
+                )
+                if score < 40 or not (specific_flags or vulns):
+                    continue
+
+                title = "Token lifecycle: token handling concern"
                 if item.get("excessive_lifetime"):
                     title = "Token lifecycle: excessive token lifetime"
                 elif item.get("refresh_token_reuse"):

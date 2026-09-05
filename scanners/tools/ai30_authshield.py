@@ -84,13 +84,12 @@ class AI30AuthShield:
             # Process findings
             findings: List[Dict[str, Any]] = []
             for f in raw_findings:
+                if not isinstance(f, dict):
+                    continue
+
                 score = int(f.get("score") or 0)
                 severity_raw = str(f.get("severity") or "INFO")
                 severity = _normalize_severity(severity_raw)
-
-                # Filter low-signal findings
-                if score < 10:
-                    continue
 
                 url = f.get("url")
                 config_issues = f.get("configuration_issues") or []
@@ -99,13 +98,38 @@ class AI30AuthShield:
                 cookie_attrs = f.get("cookie_attributes") or {}
                 missing_headers = f.get("security_headers_missing") or []
 
+                # Only report findings with at least one concrete observation.
+                # Emitting a generic "configuration issue" when nothing was
+                # actually detected produced findings whose evidence contradicted
+                # the description.
+                has_observation = bool(
+                    score >= 10
+                    and (config_issues or best_practice_violations or missing_headers or cookie_attrs)
+                )
+                if not has_observation:
+                    continue
+
+                observed: List[str] = []
+                if config_issues:
+                    observed.append(f"{len(config_issues)} configuration issue(s)")
+                if best_practice_violations:
+                    observed.append(f"{len(best_practice_violations)} best-practice violation(s)")
+                if missing_headers:
+                    observed.append(
+                        "missing headers (" + ", ".join(str(h) for h in missing_headers[:5]) + ")"
+                    )
+                if cookie_attrs:
+                    observed.append("session cookie attribute concerns")
+
+                description = (
+                    "AuthShield analysis observed " + "; ".join(observed) + ". "
+                    "Review cookie attributes, security headers, and session management practices."
+                )
+
                 findings.append(
                     _finding(
                         title=f"Authentication configuration issue detected ({severity})",
-                        description=(
-                            "AuthShield analysis identified authentication or session security configuration weaknesses. "
-                            "Review cookie attributes, security headers, and session management practices."
-                        ),
+                        description=description,
                         severity=severity,
                         remediation=(
                             "Enable HttpOnly/Secure/SameSite flags on session cookies; "
