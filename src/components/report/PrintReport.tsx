@@ -223,37 +223,43 @@ export default function PrintReport({ assessment, branding, organizationName, ai
       {/* Page 1 — Cover */}
       {/* ------------------------------------------------------------------ */}
       <Page>
-        <div className="mb-6 h-1.5 w-full rounded-full" style={{ background: brand.accentGradient }} />
-        <div className="flex items-start justify-between">
-          <div>
-            <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-              {brand.headerText}
+        {/* Violet gradient header (matches dashboard report view and gives
+            light-colored logos a surface to sit on). Bleeds to page edges by
+            countering the .pdf-page padding. */}
+        <div
+          className="-mx-11 -mt-10 px-11 pt-10 pb-10 text-white"
+          style={{ background: brand.accentGradient }}
+        >
+          <div className="flex items-start justify-between gap-6">
+            <div className="min-w-0 max-w-xl">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.22em] opacity-90">
+                {brand.headerText}
+              </div>
+              <h1 className="mt-3 text-[34px] leading-tight font-bold">{name}</h1>
+              <p className="mt-2 text-base opacity-90">Web Application Security Assessment</p>
+              <p className="mt-3 text-sm opacity-75">
+                Prepared by <span className="font-semibold">{brand.preparedBy}</span>
+                {brand.clientName && !brand.hidePoweredBy ? (
+                  <span> · Prepared for {brand.clientName}</span>
+                ) : null}
+              </p>
             </div>
-            <div className="mt-3 text-[38px] leading-tight font-bold text-slate-900">{name}</div>
-            <div className="mt-2 text-base text-slate-600">Web Application Security Assessment</div>
-            <div className="mt-4 text-sm text-slate-500">
-              Prepared by <span className="font-semibold text-slate-700">{brand.preparedBy}</span>
-              {brand.clientName && !brand.hidePoweredBy ? (
-                <span className="text-slate-500"> · Prepared for {brand.clientName}</span>
-              ) : null}
+            <div className="flex shrink-0 flex-col items-end gap-3 pt-1">
+              <div className="rounded border border-red-300 bg-red-500/20 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-red-100">
+                Confidential
+              </div>
+              {brand.logoSrc ? (
+                <img
+                  src={brand.logoSrc}
+                  alt={brand.clientName || 'Organization logo'}
+                  className="max-h-14 max-w-[200px] rounded bg-white/95 object-contain p-1.5"
+                />
+              ) : (
+                <SentinelStackLogo width={200} />
+              )}
             </div>
-          </div>
-          <div className="flex flex-col items-end gap-3 pt-1">
-            <div className="rounded border border-red-200 bg-red-50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-red-700">
-              Confidential
-            </div>
-            {brand.logoSrc ? (
-              <img src={brand.logoSrc} alt={brand.clientName || 'Organization logo'} className="max-h-16 max-w-[220px] object-contain" />
-            ) : (
-              <SentinelStackLogo width={200} />
-            )}
-            {brand.clientName ? (
-              <div className="text-xs font-semibold text-slate-500">{brand.clientName}</div>
-            ) : null}
           </div>
         </div>
-
-        <div className="mt-8 h-px w-full bg-slate-200" />
 
         <div className="mt-8 grid grid-cols-2 gap-8">
           <div className="pdf-avoid-break">
@@ -295,19 +301,25 @@ export default function PrintReport({ assessment, branding, organizationName, ai
           </div>
 
           <div className="pdf-avoid-break">
-            <div className="rounded-xl border border-slate-200 bg-slate-50 p-6">
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-5">
               <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                 Overall Risk
               </div>
               <RiskGauge score={riskScore ?? null} tier={riskTier} />
 
-              <div className="mt-6 grid grid-cols-5 gap-2 text-center">
+              <div className="mt-5 flex flex-wrap gap-2">
                 {SEVERITY_ORDER.map((sev) => (
-                  <div key={sev} className="rounded-md bg-white p-2 shadow-sm">
-                    <div className="text-[10px] font-semibold" style={{ color: SEVERITY_COLORS[sev] }}>
+                  <div
+                    key={sev}
+                    className="flex-1 min-w-[56px] rounded-md border border-slate-200 bg-white px-1 py-2 text-center"
+                  >
+                    <div
+                      className="text-[9px] font-bold uppercase tracking-tight"
+                      style={{ color: SEVERITY_COLORS[sev] }}
+                    >
                       {sev}
                     </div>
-                    <div className="mt-0.5 text-lg font-bold text-slate-900">
+                    <div className="mt-1 text-base font-bold text-slate-900">
                       {methodology.counts[sev] || 0}
                     </div>
                   </div>
