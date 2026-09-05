@@ -4,6 +4,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, List, Optional
 
+import json
 import sys
 import time
 
@@ -32,6 +33,36 @@ def _sort_findings(findings: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
 			str(f.get("title", "")).lower(),
 		),
 	)
+
+
+def _dedupe_findings(findings: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+	"""Drop exact-duplicate findings (same tool, title, severity and evidence).
+
+	Tools that scan overlapping endpoints can emit identical records; the
+	report and risk score should not count the same observation twice.
+	"""
+	seen: set[str] = set()
+	deduped: List[Dict[str, Any]] = []
+	for finding in findings:
+		try:
+			key = json.dumps(
+				[
+					finding.get("toolName"),
+					finding.get("title"),
+					finding.get("severity"),
+					finding.get("evidence"),
+				],
+				sort_keys=True,
+				default=str,
+			)[:2000]
+		except Exception:
+			key = repr(finding)[:2000]
+		if key in seen:
+			continue
+		seen.add(key)
+		deduped.append(finding)
+	return deduped
+
 
 
 def _safe_metadata(metadata: Dict[str, Any]) -> Dict[str, Any]:
@@ -108,12 +139,17 @@ class ScanEngine:
 					"toolsRequested": len(tool_runs),
 					"toolsSucceeded": len([run for run in tool_runs if run["status"] == "ok"]),
 					"toolsFailed": len([run for run in tool_runs if run["status"] != "ok"]),
+				"deduplicatedFindings": deduplicated_count,
 					"toolRuns": tool_runs,
 					"metadata": _safe_metadata(ctx.metadata or {}),
 				},
 				"complianceMapping": [],
 			}
 		)
+		deduped = _dedupe_findings(ctx.findings)
+		deduplicated_count = max(0, len(ctx.findings) - len(deduped))
+		ctx.findings = deduped
+
 		ctx.findings = _sort_findings(ctx.findings)
 		return ctx
 

@@ -6,7 +6,7 @@ from contextlib import redirect_stderr, redirect_stdout
 from typing import Any, Dict, List
 
 from scanners.engine.registry import register_tool
-from scanners.tools._safe_import import safe_import_ai30_script
+from scanners.tools._safe_import import coerce_tool_results, safe_import_ai30_script
 
 
 def _normalize_severity(raw: str) -> str:
@@ -49,9 +49,11 @@ class SecretScannerTool:
             module = safe_import_ai30_script("secret_scanner_pro.py")
             with redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
                 scanner = module.SecretScanner(target)
-                results = scanner.run()
+                results = coerce_tool_results(scanner.run(), list_key="secrets_found")
             
             for secret in results.get("secrets_found", []):
+                if not isinstance(secret, dict):
+                    continue
                 secret_type = secret.get("type", "unknown").replace("_", " ").title()
                 severity = "CRITICAL"
                 if secret.get("type") in ["jwt", "base64_data"]:
@@ -73,6 +75,8 @@ class SecretScannerTool:
                 ))
             
             for path in results.get("sensitive_paths", []):
+                if not isinstance(path, dict):
+                    continue
                 findings.append(_finding(
                     title=f"Sensitive Path Accessible: {path.get('path')}",
                     description="A sensitive file or path is publicly accessible.",

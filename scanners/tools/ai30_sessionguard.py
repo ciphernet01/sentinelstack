@@ -106,6 +106,7 @@ class AI30SessionGuard:
 
                 vulns = item.get("vulnerabilities") or []
                 missing_headers = item.get("security_headers_missing") or []
+                best_practice_violations = item.get("best_practice_violations") or []
 
                 title_bits: List[str] = []
                 if item.get("session_fixation_detected"):
@@ -116,10 +117,43 @@ class AI30SessionGuard:
                     title_bits.append("missing security headers")
                 if not title_bits and vulns:
                     title_bits.append("session hardening gaps")
-                if not title_bits:
-                    title_bits.append("session security observations")
+
+                # Only report items with at least one concrete observation.
+                # Previously a fallback title ("session security observations")
+                # covered items where nothing was actually detected, producing
+                # findings whose evidence contradicted the description.
+                has_concrete_observation = bool(
+                    title_bits
+                    or vulns
+                    or missing_headers
+                    or best_practice_violations
+                    or item.get("session_fixation_detected")
+                    or item.get("session_reuse_after_logout")
+                )
+                if not has_concrete_observation:
+                    continue
 
                 title = f"SessionGuard Pro: {', '.join(title_bits)}"
+
+                observed: List[str] = []
+                if item.get("session_fixation_detected"):
+                    observed.append("session fixation signal")
+                if item.get("session_reuse_after_logout"):
+                    observed.append("session persisted after logout")
+                if missing_headers:
+                    observed.append(
+                        "missing security headers (" + ", ".join(str(h) for h in missing_headers[:5]) + ")"
+                    )
+                if vulns:
+                    observed.append(f"{len(vulns)} session vulnerability signal(s)")
+                if best_practice_violations:
+                    observed.append(f"{len(best_practice_violations)} best-practice violation(s)")
+
+                description = (
+                    "Automated session analysis observed: "
+                    + "; ".join(observed)
+                    + ". Review the evidence for the specific endpoint and detected issues."
+                )
 
                 remediation_lines: List[str] = [
                     "- Set session cookies with HttpOnly, Secure, and SameSite=strict/lax (as appropriate).",
@@ -131,10 +165,7 @@ class AI30SessionGuard:
                 findings.append(
                     _finding(
                         title=title,
-                        description=(
-                            "Automated analysis of session cookies, session flows, and security headers indicates potential session management weaknesses. "
-                            "Review evidence for specific endpoints and detected issues."
-                        ),
+                        description=description,
                         severity=severity,
                         remediation="\n".join(remediation_lines),
                         evidence={
@@ -150,7 +181,7 @@ class AI30SessionGuard:
                             "concurrentSessionsAllowed": bool(item.get("concurrent_sessions_allowed")),
                             "securityHeadersMissing": missing_headers,
                             "vulnerabilities": vulns,
-                            "bestPracticeViolations": item.get("best_practice_violations") or [],
+                            "bestPracticeViolations": best_practice_violations,
                         },
                     )
                 )

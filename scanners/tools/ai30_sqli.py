@@ -6,7 +6,7 @@ from contextlib import redirect_stderr, redirect_stdout
 from typing import Any, Dict, List
 
 from scanners.engine.registry import register_tool
-from scanners.tools._safe_import import safe_import_ai30_script
+from scanners.tools._safe_import import coerce_tool_results, safe_import_ai30_script
 
 
 def _normalize_severity(raw: str) -> str:
@@ -66,9 +66,11 @@ class SQLiScannerTool:
             
             with redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
                 scanner = scanner_cls(target)
-                results = scanner.run()
+                results = coerce_tool_results(scanner.run(), list_key="vulnerabilities")
             
             for vuln in results.get("vulnerabilities", []):
+                if not isinstance(vuln, dict):
+                    continue
                 # Validate the finding has actual evidence
                 if not vuln.get("parameter") and not vuln.get("payload"):
                     continue  # Skip findings without proof

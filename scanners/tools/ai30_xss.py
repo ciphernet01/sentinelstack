@@ -6,7 +6,7 @@ from contextlib import redirect_stderr, redirect_stdout
 from typing import Any, Dict, List
 
 from scanners.engine.registry import register_tool
-from scanners.tools._safe_import import safe_import_ai30_script
+from scanners.tools._safe_import import coerce_tool_results, safe_import_ai30_script
 
 
 def _normalize_severity(raw: str) -> str:
@@ -61,9 +61,11 @@ class XSSScannerTool:
             module = safe_import_ai30_script("xss_scanner_pro.py")
             with redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
                 scanner = module.XSSScanner(target)
-                results = scanner.run()
+                results = coerce_tool_results(scanner.run(), list_key="vulnerabilities")
             
             for vuln in results.get("vulnerabilities", []):
+                if not isinstance(vuln, dict):
+                    continue
                 xss_type = vuln.get("xss_type", "generic").replace("_", " ").title()
                 severity = "HIGH" if vuln.get("xss_type") in ["reflected", "dom_based"] else "MEDIUM"
                 
@@ -81,6 +83,8 @@ class XSSScannerTool:
                 ))
             
             for sink in results.get("dom_sinks", []):
+                if not isinstance(sink, dict):
+                    continue
                 findings.append(_finding(
                     title=f"Potential DOM XSS Sink: {sink.get('sink')}",
                     description="Dangerous DOM sink detected that could lead to XSS.",

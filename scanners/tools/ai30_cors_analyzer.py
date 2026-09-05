@@ -153,11 +153,13 @@ def _stdlib_probe_cors(base_url: str, endpoints: List[str], origins: List[str]) 
     # De-dup by (title,url,origin)
     dedup: Dict[str, Dict[str, Any]] = {}
     for f in findings:
+        evidence = f.get("evidence")
+        evidence = evidence if isinstance(evidence, dict) else {}
         key = json.dumps(
             {
                 "t": f.get("title"),
-                "u": f.get("evidence", {}).get("url"),
-                "o": f.get("evidence", {}).get("originTested"),
+                "u": evidence.get("url"),
+                "o": evidence.get("originTested"),
             },
             sort_keys=True,
         )

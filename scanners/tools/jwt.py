@@ -31,13 +31,19 @@ def _finding(*, title: str, description: str, severity: str, remediation: str, e
 
 
 def _decode_jwt_part(part: str) -> dict:
-    """Decode a JWT part (header or payload) without verification"""
+    """Decode a JWT part (header or payload) without verification.
+
+    Only dict payloads are useful for analysis; a token whose header/payload
+    decodes to a list or scalar is malformed for our purposes (and previously
+    crashed callers with ``'list' object has no attribute 'get'``).
+    """
     try:
         padding = 4 - len(part) % 4
         if padding != 4:
             part += "=" * padding
         decoded = base64.urlsafe_b64decode(part)
-        return json.loads(decoded)
+        parsed = json.loads(decoded)
+        return parsed if isinstance(parsed, dict) else {}
     except Exception:
         return {}
 

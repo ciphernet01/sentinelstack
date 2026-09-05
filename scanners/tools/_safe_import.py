@@ -18,7 +18,7 @@ import os
 import sys
 from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
-from typing import Any
+from typing import Any, Dict
 
 
 def _repo_root() -> Path:
@@ -28,6 +28,28 @@ def _repo_root() -> Path:
 # Capture the *real* stdout/stderr before any colorama munging.
 _REAL_STDOUT = sys.__stdout__ or sys.stdout
 _REAL_STDERR = sys.__stderr__ or sys.stderr
+
+
+def coerce_tool_results(value: Any, list_key: str = "items") -> Dict[str, Any]:
+    """Normalize legacy AI30 scanner outputs to a dict.
+
+    Several legacy scripts return a bare list of findings (or ``None``)
+    instead of the documented dict shape. Tool wrappers called
+    ``results.get(...)`` on the result, which crashed with
+    ``'list' object has no attribute 'get'`` and failed the whole tool.
+
+    - dict  -> returned unchanged
+    - list  -> ``{list_key: value}`` so wrappers can iterate their expected key
+    - None  -> empty dict
+    - other -> ``{"value": value}``
+    """
+    if isinstance(value, dict):
+        return value
+    if isinstance(value, list):
+        return {list_key: value}
+    if value is None:
+        return {}
+    return {"value": value}
 
 
 def safe_import_ai30_script(script_filename: str) -> Any:
