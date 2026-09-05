@@ -171,9 +171,14 @@ class AI30LogicFlawSentinel:
                 if isinstance(classification, str):
                     classification = [classification]
 
+                # Only report findings with a concrete classification. A bare
+                # score without a classified flaw produced generic "weakness"
+                # findings with no specific supporting observation.
+                if not classification:
+                    continue
+
                 title_bits = ["Business logic weakness"]
-                if classification:
-                    title_bits.append("/".join(str(x) for x in classification[:3]))
+                title_bits.append("/".join(str(x) for x in classification[:3]))
                 title_bits.append(f"{exec_sev} ({business_score})")
 
                 findings.append(

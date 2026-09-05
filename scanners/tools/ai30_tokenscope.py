@@ -118,6 +118,11 @@ class AI30TokenScope:
                 if not title_bits:
                     title_bits.append("Token security issues")
 
+                # Only report when a concrete signal was observed (violations or
+                # replay). A high score alone produced generic findings.
+                if not (violations or replay):
+                    continue
+
                 title = f"TokenScope Pro: {', '.join(title_bits)}"
 
                 findings.append(
