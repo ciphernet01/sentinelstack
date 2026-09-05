@@ -47,6 +47,18 @@ Remediation Explanations:
  * action flow, to avoid 'use server' / path-alias resolution issues in the
  * compiled backend.
  */
+
+const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+const isTransientError = (error: unknown): boolean => {
+  const status = (error as { code?: number | string })?.code;
+  const source = (error as { status?: number | string })?.status;
+  const s = String(status ?? source ?? '').toUpperCase();
+  // 429 rate-limit, 5xx server-side overload (e.g. Google Gemini 503 during
+  // high demand), and UNAVAILABLE (gRPC-style) are safe to retry.
+  return s === '429' || s === '500' || s === '502' || s === '503' || s === '504' || s.includes('UNAVAILABLE');
+};
+
 export async function generateAiExecutiveSummary(
   assessmentName: string,
   targetUrl: string,
@@ -74,32 +86,54 @@ export async function generateAiExecutiveSummary(
     return null;
   }
 
-  try {
-    const technicalFindings = JSON.stringify(
-      {
-        assessmentName,
-        targetUrl,
-        riskScore,
-        totalFindings: findings.length,
-        findings,
-      },
-      null,
-      2,
-    );
+  const technicalFindings = JSON.stringify(
+    {
+      assessmentName,
+      targetUrl,
+      riskScore,
+      totalFindings: findings.length,
+      findings,
+    },
+    null,
+    2,
+  );
 
-    const result = await reportSummaryPrompt({ technicalFindings });
+  // Retry transient provider errors (503/429/5xx) with exponential backoff so
+  // a temporary Google Gemini spike doesn't drop the AI summary from a report.
+  const maxAttempts = Math.max(1, Number(process.env.AI_SUMMARY_RETRY_ATTEMPTS) || 3);
+  const baseDelayMs = Math.max(500, Number(process.env.AI_SUMMARY_RETRY_BASE_MS) || 1500);
 
-    if (!result?.output?.executiveSummary) {
-      return null;
+  let lastError: unknown = null;
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      const result = await reportSummaryPrompt({ technicalFindings });
+
+      if (!result?.output?.executiveSummary) {
+        console.error('[AI Summary] No executiveSummary in AI response');
+        return null;
+      }
+
+      return {
+        executiveSummary: result.output.executiveSummary,
+        remediationExplanations: result.output.remediationExplanations || '',
+      };
+    } catch (error) {
+      lastError = error;
+      const retriable = isTransientError(error);
+      if (!retriable || attempt >= maxAttempts) {
+        break;
+      }
+      // Exponential backoff with jitter (1.5s, 3s, 6s, ...) — retry up to 3x.
+      const delay = Math.min(baseDelayMs * 2 ** (attempt - 1), 30000) + Math.random() * 400;
+      console.warn(
+        `[AI Summary] Attempt ${attempt}/${maxAttempts} failed (${retriable ? 'transient' : 'fatal'}) — ` +
+          `retrying in ${Math.round(delay)}ms. Error code: ${(error as { code?: string })?.code ?? 'unknown'}`,
+      );
+      await sleep(delay);
     }
-
-    return {
-      executiveSummary: result.output.executiveSummary,
-      remediationExplanations: result.output.remediationExplanations || '',
-    };
-  } catch (error) {
-    // Never let AI failure block report generation. Log and continue.
-    console.error('[AI Summary] Failed to generate executive summary:', error);
-    return null;
   }
+
+  // Never let AI failure block report generation. Log and continue.
+  console.error('[AI Summary] Failed to generate executive summary after retries:', lastError);
+  return null;
 }
