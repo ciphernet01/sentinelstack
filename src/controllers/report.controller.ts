@@ -60,7 +60,10 @@ const renderAssessmentPdfFromClient = async (assessmentId: string): Promise<Buff
         await page.setViewport({ width: 794, height: 1123 });
         await page.setExtraHTTPHeaders({ 'x-internal-secret': pdfRenderSecret });
 
-        const response = await page.goto(reportUrl, { waitUntil: 'networkidle0' });
+        const response = await page.goto(reportUrl, {
+          waitUntil: 'networkidle2',
+          timeout: 60000,
+        });
         const status = response?.status();
         if (!status || status >= 400) {
             throw new Error(`Failed to render report page (status=${status ?? 'unknown'}): ${reportUrl}`);
@@ -132,26 +135,30 @@ class ReportController {
       
     logger.info(`Generating PDF for assessment ${id}`);
 
-    // Generate an AI-powered executive summary for this assessment.
-    // This is best-effort - failures are logged but never block report generation.
-    let aiSummary: { executiveSummary: string; remediationExplanations: string } | null = null;
-    try {
-      aiSummary = await generateAiExecutiveSummary(
-        assessment.name,
-        assessment.targetUrl,
-        assessment.riskScore ?? null,
-        assessment.findings,
-      );
-      if (aiSummary) {
-        logger.info(`AI executive summary generated for assessment ${id}`);
-      } else {
-        logger.info(`No AI executive summary for assessment ${id} (no findings or AI unavailable)`);
-      }
-    } catch (aiError) {
-      logger.error(`AI summary generation failed for assessment ${id}:`, aiError);
-    }
+    // Generate the AI executive summary and render the PDF in parallel so a
+    // slow AI provider (or its retries) never adds to the total request time.
+    const aiPromise = generateAiExecutiveSummary(
+      assessment.name,
+      assessment.targetUrl,
+      assessment.riskScore ?? null,
+      assessment.findings,
+    )
+      .catch((aiError) => {
+        // Best-effort: never let AI failure block report generation.
+        logger.error(`AI summary generation failed for assessment ${id}:`, aiError);
+        return null;
+      });
 
-    const pdfBuffer = await renderAssessmentPdfFromClient(id);
+    const [pdfBuffer, aiSummary] = await Promise.all([
+      renderAssessmentPdfFromClient(id),
+      aiPromise,
+    ]);
+
+    if (aiSummary) {
+      logger.info(`AI executive summary generated for assessment ${id}`);
+    } else {
+      logger.info(`No AI executive summary for assessment ${id} (no findings or AI unavailable)`);
+    }
       
       const reportsDir = path.join(process.cwd(), 'reports');
       if (!fs.existsSync(reportsDir)){

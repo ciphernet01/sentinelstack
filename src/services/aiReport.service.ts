@@ -100,8 +100,12 @@ export async function generateAiExecutiveSummary(
 
   // Retry transient provider errors (503/429/5xx) with exponential backoff so
   // a temporary Google Gemini spike doesn't drop the AI summary from a report.
+  // A hard deadline bounds the total time so AI latency can never push the
+  // overall report-generate request past front-end/proxy timeouts.
   const maxAttempts = Math.max(1, Number(process.env.AI_SUMMARY_RETRY_ATTEMPTS) || 3);
   const baseDelayMs = Math.max(500, Number(process.env.AI_SUMMARY_RETRY_BASE_MS) || 1500);
+  const deadlineMs = Math.max(1000, Number(process.env.AI_SUMMARY_RETRY_DEADLINE_MS) || 8000);
+  const startedAt = Date.now();
 
   let lastError: unknown = null;
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
@@ -123,8 +127,14 @@ export async function generateAiExecutiveSummary(
       if (!retriable || attempt >= maxAttempts) {
         break;
       }
+      // Stop retrying if we'd exceed the overall AI time budget.
+      const elapsed = Date.now() - startedAt;
+      if (elapsed >= deadlineMs) {
+        console.warn(`[AI Summary] Reached retry deadline (${deadlineMs}ms) after attempt ${attempt}/${maxAttempts} — skipping remaining retries`);
+        break;
+      }
       // Exponential backoff with jitter (1.5s, 3s, 6s, ...) — retry up to 3x.
-      const delay = Math.min(baseDelayMs * 2 ** (attempt - 1), 30000) + Math.random() * 400;
+      const delay = Math.min(baseDelayMs * 2 ** (attempt - 1), deadlineMs / 2) + Math.random() * 400;
       console.warn(
         `[AI Summary] Attempt ${attempt}/${maxAttempts} failed (${retriable ? 'transient' : 'fatal'}) — ` +
           `retrying in ${Math.round(delay)}ms. Error code: ${(error as { code?: string })?.code ?? 'unknown'}`,

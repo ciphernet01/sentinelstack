@@ -45,11 +45,28 @@ export default function ReportPage({ params }: AssessmentPageProps) {
       // Invalidate the query to refetch the assessment with the new report data
       queryClient.invalidateQueries({ queryKey: ['assessmentForReport', params.id] });
     },
-    onError: (error) => {
+    onError: async (error, assessmentId) => {
+      // The backend may have finished generating even though the connection
+      // was interrupted (long render + AI summary). Verify by re-fetching the
+      // assessment once before showing a hard error.
+      let recovered = false;
+      try {
+        const check = await api.get(`/assessments/${assessmentId}`);
+        const latestReport = check?.data?.report;
+        if (latestReport?.id && latestReport.filePath) {
+          recovered = true;
+          queryClient.invalidateQueries({ queryKey: ['assessmentForReport', assessmentId] });
+        }
+      } catch {
+        // Secondary fetch failed too — fall through to the error toast.
+      }
+
       toast({
-        variant: 'destructive',
-        title: 'Error Generating Report',
-        description: 'Could not generate the PDF on the server.',
+        variant: recovered ? undefined : 'destructive',
+        title: recovered ? 'Report Ready' : 'Error Generating Report',
+        description: recovered
+          ? 'Your PDF was generated — the connection was interrupted, but the report is ready to download.'
+          : 'Could not generate the PDF on the server.',
       });
     },
   });
