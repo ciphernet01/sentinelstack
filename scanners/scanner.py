@@ -191,7 +191,25 @@ def main():
         file=sys.stderr,
     )
 
-    engine.run(ctx)
+    try:
+        engine.run(ctx)
+    except Exception as exc:  # noqa: BLE001
+        # Never let an engine error kill the scan: record it as a finding so
+        # the worker gets valid JSON + exit 0 (otherwise the assessment would
+        # be REJECTED just because one tool misbehaved).
+        import traceback as _tb
+        ctx.findings.append({
+            "toolName": "engine",
+            "title": "Scan engine error",
+            "description": str(exc) or "The scan engine raised an unexpected error.",
+            "severity": "INFO",
+            "remediation": "Review scanner logs; retry the assessment.",
+            "evidence": {
+                "errorType": type(exc).__name__,
+                "traceback": _tb.format_exc().splitlines()[-5:],
+            },
+            "complianceMapping": [],
+        })
 
     # Write findings via the raw OS file descriptor (fd 1 = stdout).
     # This bypasses ALL sys.stdout wrappers — colorama, redirect_stdout, etc. —

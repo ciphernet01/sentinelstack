@@ -124,6 +124,10 @@ class ScanEngine:
 					pass  # Best effort
 
 		total_duration_ms = int((time.time() - started_at) * 1000)
+		before_dedupe = len(ctx.findings)
+		deduped = _dedupe_findings(ctx.findings)
+		deduplicated_count = max(0, before_dedupe - len(deduped))
+		ctx.findings = _sort_findings(deduped)
 		ctx.findings.append(
 			{
 				"toolName": "scanner",
@@ -139,18 +143,14 @@ class ScanEngine:
 					"toolsRequested": len(tool_runs),
 					"toolsSucceeded": len([run for run in tool_runs if run["status"] == "ok"]),
 					"toolsFailed": len([run for run in tool_runs if run["status"] != "ok"]),
-				"deduplicatedFindings": deduplicated_count,
+					"deduplicatedFindings": deduplicated_count,
 					"toolRuns": tool_runs,
 					"metadata": _safe_metadata(ctx.metadata or {}),
 				},
 				"complianceMapping": [],
 			}
 		)
-		deduped = _dedupe_findings(ctx.findings)
-		deduplicated_count = max(0, len(ctx.findings) - len(deduped))
-		ctx.findings = deduped
 
-		ctx.findings = _sort_findings(ctx.findings)
 		return ctx
 
 
