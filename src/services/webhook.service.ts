@@ -215,33 +215,56 @@ class WebhookService {
     let responseBody: string | null = null;
     let success = false;
     let error: string | null = null;
-    
-    try {
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'User-Agent': 'SentinelStack-Webhook/1.0',
-          'X-Webhook-Event': payload.event,
-          'X-Webhook-Timestamp': payload.timestamp,
-          ...(signature && { 'X-Webhook-Signature': `sha256=${signature}` }),
-        },
-        body: payloadJson,
-        signal: AbortSignal.timeout(10000), // 10 second timeout
-      });
-      
-      statusCode = response.status;
-      responseBody = await response.text().catch(() => null);
-      success = response.ok;
-      
-      if (!success) {
-        error = `HTTP ${statusCode}`;
+
+    // Enterprise-style at-least-once delivery: retry transient failures with
+    // exponential backoff. Configurable via env.
+    const maxAttempts = Math.max(1, Number(process.env.WEBHOOK_MAX_ATTEMPTS || 3));
+    const baseDelayMs = Math.max(100, Number(process.env.WEBHOOK_RETRY_BASE_MS || 1000));
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      responseBody = null;
+      error = null;
+
+      try {
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'User-Agent': 'SentinelStack-Webhook/1.0',
+            'X-Webhook-Event': payload.event,
+            'X-Webhook-Timestamp': payload.timestamp,
+            'X-Webhook-Attempt': String(attempt),
+            ...(signature && { 'X-Webhook-Signature': `sha256=${signature}` }),
+          },
+          body: payloadJson,
+          signal: AbortSignal.timeout(10000), // 10 second timeout
+        });
+
+        statusCode = response.status;
+        responseBody = await response.text().catch(() => null);
+        success = response.ok;
+
+        if (!success) {
+          error = `HTTP ${statusCode}`;
+        }
+      } catch (err: any) {
+        error = err.message || 'Unknown error';
       }
-    } catch (err: any) {
-      error = err.message || 'Unknown error';
+
+      if (success || attempt >= maxAttempts) {
+        break;
+      }
+
+      // Exponential backoff between attempts (1s, 2s, 4s, ...) for transient failures.
+      const delayMs = baseDelayMs * 2 ** (attempt - 1);
+      logger.warn(`Webhook delivery attempt ${attempt}/${maxAttempts} for ${webhookId} failed (${error}); retrying in ${delayMs}ms`);
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
+
+    if (!success) {
       logger.error(`Webhook delivery failed for ${webhookId}: ${error}`);
     }
-    
+
     const responseTime = Date.now() - startTime;
     
     // Record delivery

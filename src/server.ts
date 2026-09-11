@@ -6,7 +6,7 @@ import helmet from 'helmet';
 
 import { initializeFirebaseAdmin } from './config/firebase';
 import apiRoutes from './routes';
-import { errorHandler } from './middleware/errorHandler';
+import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 import { stream } from './utils/logger';
 import logger from './utils/logger';
 import { recoverOrphanedInProgressAssessments } from './services/assessmentRecovery.service';
@@ -33,7 +33,6 @@ scanQueueService.startWorkerLoop();
 
 const app = express();
 const port = process.env.PORT || 3001;
-const clientUrl = process.env.CLIENT_URL;
 
 // Required for correct req.ip when behind Render/NGINX proxies
 app.set('trust proxy', 1);
@@ -56,17 +55,39 @@ app.use(helmet({
   crossOriginEmbedderPolicy: false, // Disable for Next.js compatibility
 }));
 app.use(requestIdMiddleware);
+
+// CORS: restrict to an explicit allow-list. If CLIENT_URL is unset, requests
+// from browsers (which send an Origin header) are rejected; server-to-server
+// calls without an Origin header continue to work. Never reflect arbitrary
+// origins in production.
+const allowedOrigins = (process.env.CLIENT_URL || '')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
+if (allowedOrigins.length === 0) {
+  logger.warn('[API] CLIENT_URL is not set; browser cross-origin requests will be rejected.');
+}
+
 app.use(
   cors({
-    origin: clientUrl,
+    origin: (origin, callback) => {
+      // Allow non-browser clients (curl, Node services, health checks) that
+      // do not send an Origin header.
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.length === 0 || !allowedOrigins.includes(origin)) {
+        return callback(null, false);
+      }
+      return callback(null, true);
+    },
     optionsSuccessStatus: 200,
   })
 );
 
 // IMPORTANT: Webhook signature verification requires the raw body.
 // If express.json() runs first, it consumes the stream and breaks signature checks.
-const jsonParser = express.json();
-const urlencodedParser = express.urlencoded({ extended: true });
+const jsonParser = express.json({ limit: '2mb' });
+const urlencodedParser = express.urlencoded({ extended: true, limit: '2mb' });
 app.use((req, res, next) => {
   const url = String((req as any).originalUrl || req.url || '');
   if (url.startsWith('/api/billing/webhook')) {
@@ -129,8 +150,9 @@ app.get('/health/ready', async (req, res) => {
     ]);
 
     res.status(200).json({ ok: true });
-  } catch (e: any) {
-    res.status(503).json({ ok: false, error: e?.message || 'not ready' });
+  } catch {
+    // Never leak DB connection details; just report not ready.
+    res.status(503).json({ ok: false, error: 'not ready' });
   }
 });
 
@@ -140,6 +162,9 @@ app.get('/health/log-shipper', (req, res) => {
     ...logShipper.getStats(),
   });
 });
+
+// JSON 404 for unmatched routes (before the error handler)
+app.use(notFoundHandler);
 
 // Error Handling Middleware
 app.use(errorHandler);

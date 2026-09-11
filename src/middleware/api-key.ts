@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { apiKeyService } from '../services/api-key.service';
 import { ApiScope } from '@prisma/client';
+import logger from '../utils/logger';
 
 export interface ApiKeyRequest extends Request {
   apiKey?: {
@@ -56,7 +57,7 @@ export function apiKeyAuth(req: ApiKeyRequest, res: Response, next: NextFunction
       next();
     })
     .catch(err => {
-      console.error('API key validation error:', err);
+      logger.error(`API key validation error: ${err instanceof Error ? err.message : String(err)}`);
       return res.status(500).json({ 
         error: 'Internal Server Error',
         message: 'Failed to validate API key'

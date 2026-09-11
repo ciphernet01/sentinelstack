@@ -1,6 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
 import * as admin from 'firebase-admin';
 import { prisma } from '../config/db';
+import logger from '../utils/logger';
+import { logShipper } from '../logging';
 
 // Extend Express Request type to include user
 export interface AuthenticatedRequest extends Request {
@@ -66,7 +68,14 @@ export const firebaseAuth = async (req: AuthenticatedRequest, res: Response, nex
     
     next();
   } catch (error) {
-    return res.status(401).json({ message: 'Invalid or expired token.', error });
+    // Log the underlying cause server-side for observability, but NEVER echo
+    // the raw error to the client (it can leak Firebase/Prisma internals).
+    logger.warn(`Firebase token verification failed for uid token request: ${error instanceof Error ? error.message : String(error)}`);
+    logShipper.warn('Firebase token verification failed', {
+      reason: error instanceof Error ? error.message : String(error),
+      request_id: (req as any).requestId,
+    });
+    return res.status(401).json({ message: 'Invalid or expired token.' });
   }
 };
 
