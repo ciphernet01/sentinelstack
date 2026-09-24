@@ -36,6 +36,8 @@ Important:
 - Do not commit `.env`, `.env.local`, `.env.host` (they contain secrets).
 - Only `.env.example` (and other `*.example` files) should be tracked.
 
+If a teammate cannot receive verification email during local development, set `ENABLE_DEV_EMAIL_BYPASS=true` in the backend env file so the account is auto-verified only on non-production machines.
+
 Now, fill out the env files with your specific configuration:
 
 - `.env.backend`: backend container env (includes Firebase Admin + email credentials)

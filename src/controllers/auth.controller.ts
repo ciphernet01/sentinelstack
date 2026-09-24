@@ -32,6 +32,10 @@ const MAX_FAILED_ATTEMPTS = 5;
 const LOCKOUT_DURATION_MINUTES = 30;
 const PASSWORD_HISTORY_LIMIT = 5;
 
+const shouldBypassEmailVerification = (): boolean => {
+  return process.env.NODE_ENV !== 'production' && process.env.ENABLE_DEV_EMAIL_BYPASS === 'true';
+};
+
 class AuthController {
 
   async login(req: Request, res: Response, next: NextFunction) {
@@ -49,7 +53,7 @@ class AuthController {
       const firebaseId = decodedToken.uid;
 
       // 2. Find the user in our database
-      const user = await prisma.user.findUnique({
+      let user = await prisma.user.findUnique({
         where: { firebaseId },
         include: {
           memberships: {
@@ -81,11 +85,22 @@ class AuthController {
 
       // 4. Check if email is verified
       if (!user.emailVerified) {
-        return res.status(403).json({
-          success: false,
-          message: 'Please verify your email address before logging in.',
-          errorCode: 'EMAIL_NOT_VERIFIED',
-        });
+        if (shouldBypassEmailVerification()) {
+          user = await prisma.user.update({
+            where: { id: user.id },
+            data: {
+              emailVerified: true,
+              emailVerificationToken: null,
+              emailVerificationExpiry: null,
+            },
+          });
+        } else {
+          return res.status(403).json({
+            success: false,
+            message: 'Please verify your email address before logging in.',
+            errorCode: 'EMAIL_NOT_VERIFIED',
+          });
+        }
       }
 
       // 5. Reset failed attempts on successful login
@@ -244,11 +259,22 @@ class AuthController {
 
         // Check if email is verified before returning user
         if (!user.emailVerified) {
-          return res.status(403).json({
-            success: false,
-            message: 'Please verify your email address before accessing the platform.',
-            errorCode: 'EMAIL_NOT_VERIFIED',
-          });
+          if (shouldBypassEmailVerification()) {
+            user = await prisma.user.update({
+              where: { id: user.id },
+              data: {
+                emailVerified: true,
+                emailVerificationToken: null,
+                emailVerificationExpiry: null,
+              },
+            });
+          } else {
+            return res.status(403).json({
+              success: false,
+              message: 'Please verify your email address before accessing the platform.',
+              errorCode: 'EMAIL_NOT_VERIFIED',
+            });
+          }
         }
         return res.status(200).json({ message: 'User already initialized.', user });
       }
@@ -308,11 +334,22 @@ class AuthController {
               data: { firebaseId },
             });
           }
-          return res.status(403).json({
-            success: false,
-            message: 'Please verify your email address before accessing the platform.',
-            errorCode: 'EMAIL_NOT_VERIFIED',
-          });
+          if (shouldBypassEmailVerification()) {
+            user = await prisma.user.update({
+              where: { id: user.id },
+              data: {
+                emailVerified: true,
+                emailVerificationToken: null,
+                emailVerificationExpiry: null,
+              },
+            });
+          } else {
+            return res.status(403).json({
+              success: false,
+              message: 'Please verify your email address before accessing the platform.',
+              errorCode: 'EMAIL_NOT_VERIFIED',
+            });
+          }
         }
         if (user.firebaseId !== firebaseId) {
           user = await prisma.user.update({
@@ -430,11 +467,22 @@ class AuthController {
             }
 
             if (!user.emailVerified) {
-              return res.status(403).json({
-                success: false,
-                message: 'Please verify your email address before accessing the platform.',
-                errorCode: 'EMAIL_NOT_VERIFIED',
-              });
+              if (shouldBypassEmailVerification()) {
+                user = await prisma.user.update({
+                  where: { id: user.id },
+                  data: {
+                    emailVerified: true,
+                    emailVerificationToken: null,
+                    emailVerificationExpiry: null,
+                  },
+                });
+              } else {
+                return res.status(403).json({
+                  success: false,
+                  message: 'Please verify your email address before accessing the platform.',
+                  errorCode: 'EMAIL_NOT_VERIFIED',
+                });
+              }
             }
 
             return res.status(200).json({ message: 'User already initialized.', user });
@@ -446,10 +494,25 @@ class AuthController {
 
       // Send verification email
       const emailer = emailService;
-      await emailer.sendVerificationEmail(user.email, token);
+      if (shouldBypassEmailVerification()) {
+        user = await prisma.user.update({
+          where: { id: user.id },
+          data: {
+            emailVerified: true,
+            emailVerificationToken: null,
+            emailVerificationExpiry: null,
+          },
+        });
+      } else {
+        await emailer.sendVerificationEmail(user.email, token);
+      }
 
       // IMPORTANT: Do NOT treat a newly-created unverified user as authenticated.
       // Keep behavior consistent with the existing-user path above.
+      if (shouldBypassEmailVerification()) {
+        return res.status(200).json({ message: 'User initialized successfully.', user });
+      }
+
       return res.status(403).json({
         success: false,
         message: 'Please verify your email address before accessing the platform.',
