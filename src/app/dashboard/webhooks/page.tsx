@@ -280,8 +280,8 @@ export default function WebhooksPage() {
                   <div className={`h-10 w-10 rounded-full flex items-center justify-center ${
                     webhook.enabled 
                       ? webhook.failureCount > 0 
-                        ? 'bg-yellow-100 text-yellow-700'
-                        : 'bg-green-100 text-green-700'
+                        ? 'bg-amber-300/10 text-amber-200'
+                        : 'bg-emerald-300/10 text-emerald-200'
                       : 'bg-muted text-muted-foreground'
                   }`}>
                     {webhook.failureCount >= 5 ? (

@@ -106,8 +106,8 @@ export default function ReportPage({ params }: AssessmentPageProps) {
 
   if (isLoading) {
     return (
-      <div className="flex h-screen w-full items-center justify-center bg-white">
-        <Loader2 className="h-8 w-8 animate-spin text-gray-800" />
+      <div className="flex h-screen w-full items-center justify-center bg-[#02080b]">
+        <Loader2 className="h-8 w-8 animate-spin text-cyan-200" />
       </div>
     );
   }
