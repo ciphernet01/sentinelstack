@@ -407,7 +407,7 @@ export default function BrandingPage() {
                   <p className="text-sm text-amber-700 dark:text-amber-300">
                     Add the following DNS TXT record to verify ownership of your domain:
                   </p>
-                  <div className="bg-white dark:bg-slate-800 p-3 rounded border space-y-2">
+                  <div className="bg-[#071317] p-3 rounded border space-y-2">
                     <div className="flex justify-between items-center">
                       <span className="text-sm font-medium">Record Type:</span>
                       <code className="bg-muted px-2 py-1 rounded text-sm">{domainInfo.instructions.recordType}</code>

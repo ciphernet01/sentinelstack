@@ -448,21 +448,21 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="p-4 sm:p-6 flex-1 space-y-6">
+    <div className="flex-1 space-y-6 bg-[#02080b] p-4 text-slate-100 sm:p-6">
       <div>
         <h1 className="text-lg font-semibold md:text-2xl font-headline">Settings</h1>
         <p className="text-muted-foreground">Manage your account and workspace preferences.</p>
       </div>
 
       <Tabs defaultValue="account" className="space-y-4">
-        <TabsList className="w-full justify-start flex-wrap gap-2">
+        <TabsList className="w-full flex-wrap justify-start gap-1 border border-cyan-200/[0.06] bg-[#071317] p-1">
           <TabsTrigger value="account">Account</TabsTrigger>
           <TabsTrigger value="notifications">Notifications</TabsTrigger>
           <TabsTrigger value="workspace">Workspace</TabsTrigger>
         </TabsList>
 
         <TabsContent value="account" className="space-y-6">
-          <Card className="sm:max-w-xl mx-auto">
+          <Card className="mx-auto w-full max-w-3xl border-cyan-200/[0.07] bg-[#071317] shadow-[0_16px_50px_rgba(0,0,0,0.16)]">
             <CardHeader>
               <CardTitle>Profile</CardTitle>
               <CardDescription>Your personal account details.</CardDescription>
@@ -496,7 +496,7 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
 
-          <Card className="sm:max-w-xl mx-auto">
+          <Card className="mx-auto w-full max-w-3xl border-cyan-200/[0.07] bg-[#071317] shadow-[0_16px_50px_rgba(0,0,0,0.16)]">
             <CardHeader>
               <CardTitle>Security</CardTitle>
               <CardDescription>Password and sign-in settings.</CardDescription>
@@ -510,7 +510,7 @@ export default function SettingsPage() {
         </TabsContent>
 
         <TabsContent value="notifications" className="space-y-6">
-          <Card className="sm:max-w-xl mx-auto">
+          <Card className="mx-auto w-full max-w-3xl border-cyan-200/[0.07] bg-[#071317] shadow-[0_16px_50px_rgba(0,0,0,0.16)]">
             <CardHeader>
               <CardTitle>Notifications</CardTitle>
               <CardDescription>Choose what you want to be notified about.</CardDescription>
@@ -543,7 +543,7 @@ export default function SettingsPage() {
           {/* Quick Links */}
           <div className="grid gap-4 md:grid-cols-4">
             <Link href="/dashboard/settings/branding" className="block">
-              <Card className="h-full hover:bg-accent/50 transition-colors cursor-pointer">
+              <Card className="h-full border-cyan-200/[0.07] bg-[#071317] transition-[background-color,border-color,transform,box-shadow] duration-200 hover:-translate-y-0.5 hover:border-cyan-200/[0.12] hover:bg-cyan-300/[0.025] hover:shadow-[0_14px_34px_rgba(0,0,0,0.16)]">
                 <CardHeader>
                   <CardTitle className="flex items-start gap-2 text-base leading-tight">
                     <Palette className="h-4 w-4 shrink-0 mt-0.5" />
@@ -556,7 +556,7 @@ export default function SettingsPage() {
               </Card>
             </Link>
             <Link href="/dashboard/settings/compliance" className="block">
-              <Card className="h-full hover:bg-accent/50 transition-colors cursor-pointer">
+              <Card className="h-full border-cyan-200/[0.07] bg-[#071317] transition-[background-color,border-color,transform,box-shadow] duration-200 hover:-translate-y-0.5 hover:border-cyan-200/[0.12] hover:bg-cyan-300/[0.025] hover:shadow-[0_14px_34px_rgba(0,0,0,0.16)]">
                 <CardHeader>
                   <CardTitle className="flex items-start gap-2 text-base leading-tight">
                     <Shield className="h-4 w-4 shrink-0 mt-0.5" />
@@ -569,7 +569,7 @@ export default function SettingsPage() {
               </Card>
             </Link>
             <Link href="/dashboard/settings/billing" className="block">
-              <Card className="h-full hover:bg-accent/50 transition-colors cursor-pointer">
+              <Card className="h-full border-cyan-200/[0.07] bg-[#071317] transition-[background-color,border-color,transform,box-shadow] duration-200 hover:-translate-y-0.5 hover:border-cyan-200/[0.12] hover:bg-cyan-300/[0.025] hover:shadow-[0_14px_34px_rgba(0,0,0,0.16)]">
                 <CardHeader>
                   <CardTitle className="flex items-start gap-2 text-base leading-tight">
                     <CreditCard className="h-4 w-4 shrink-0 mt-0.5" />
@@ -582,7 +582,7 @@ export default function SettingsPage() {
               </Card>
             </Link>
             <Link href="/dashboard/api-keys" className="block">
-              <Card className="h-full hover:bg-accent/50 transition-colors cursor-pointer">
+              <Card className="h-full border-cyan-200/[0.07] bg-[#071317] transition-[background-color,border-color,transform,box-shadow] duration-200 hover:-translate-y-0.5 hover:border-cyan-200/[0.12] hover:bg-cyan-300/[0.025] hover:shadow-[0_14px_34px_rgba(0,0,0,0.16)]">
                 <CardHeader>
                   <CardTitle className="flex items-start gap-2 text-base leading-tight">
                     <Key className="h-4 w-4 shrink-0 mt-0.5" />
@@ -596,7 +596,7 @@ export default function SettingsPage() {
             </Link>
           </div>
           
-          <Card className="w-full">
+          <Card className="w-full border-cyan-200/[0.07] bg-[#071317] shadow-[0_16px_50px_rgba(0,0,0,0.16)]">
             <CardHeader>
               <div className="flex items-start justify-between gap-4">
                 <div>

@@ -1,0 +1,2 @@
+uniform vec3 uColor;
+void main(){vec2 uv=gl_PointCoord-vec2(0.5);float d=length(uv);if(d>0.5)discard;float core=smoothstep(0.32,0.02,d);float halo=smoothstep(0.5,0.18,d);gl_FragColor=vec4(uColor,core*0.95+halo*0.22);}

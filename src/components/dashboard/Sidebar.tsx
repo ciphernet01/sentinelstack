@@ -1,35 +1,35 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import {
-  LayoutGrid,
-  ShieldAlert,
-  File,
-  Settings,
-  LogOut,
-  FileText,
-  LineChart,
-  Users,
+  Activity,
   Calendar,
-  Webhook,
+  ChevronRight,
+  File,
   Key,
   Landmark,
+  LayoutGrid,
+  LineChart,
+  LogOut,
+  RotateCcw,
+  Settings,
+  ShieldAlert,
+  Users,
+  Webhook,
+  X,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
-import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { SentinelStackLogo } from '@/lib/icons';
-import { Badge } from '../ui/badge';
 import api from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
-import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 
 const navItems = [
   { href: '/dashboard', icon: LayoutGrid, label: 'Dashboard' },
   { href: '/dashboard/risk-intelligence', icon: Landmark, label: 'Risk Intelligence' },
   { href: '/dashboard/assessments', icon: ShieldAlert, label: 'Assessments' },
+  { href: '/dashboard/analytics', icon: LineChart, label: 'Risk Analytics' },
   { href: '/dashboard/schedules', icon: Calendar, label: 'Schedules' },
   { href: '/dashboard/webhooks', icon: Webhook, label: 'Webhooks' },
   { href: '/dashboard/api-keys', icon: Key, label: 'API Keys' },
@@ -38,9 +38,9 @@ const navItems = [
   { href: '/dashboard/settings', icon: Settings, label: 'Settings' },
 ];
 
-export function Sidebar() {
+export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
   const pathname = usePathname();
-  const { user, logout } = useAuth();
+  const { logout } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -52,13 +52,11 @@ export function Sidebar() {
     try {
       const res = await api.post('/assessments/reset');
       const deleted = res.data?.deletedAssessments ?? 0;
-      toast({
-        title: 'Reset complete',
-        description: `Deleted ${deleted} assessment(s).`,
-      });
+      toast({ title: 'Reset complete', description: `Deleted ${deleted} assessment(s).` });
       queryClient.invalidateQueries({ queryKey: ['assessments'] });
       queryClient.invalidateQueries({ queryKey: ['dashboardData'] });
       router.push('/dashboard/onboarding');
+      onClose();
     } catch (e: any) {
       toast({
         variant: 'destructive',
@@ -68,125 +66,90 @@ export function Sidebar() {
     }
   };
 
-  // Correctly identify the active link. The dashboard link should only be active
-  // when the path is exactly '/dashboard'. Other links are active if the path
-  // starts with their href.
   const getIsActive = (href: string) => {
-    if (href === '/dashboard') {
-      return pathname === href;
-    }
+    if (href === '/dashboard') return pathname === href;
     return pathname.startsWith(href);
   };
 
   return (
-    <div className="hidden md:flex flex-col w-64 bg-card border-r border-border shrink-0">
-      <div className="flex flex-col h-full p-4 space-y-6">
-        {/* Logo */}
-        <div className="flex items-center px-2">
-          <SentinelStackLogo width={200} />
-        </div>
-
-        {/* User Info */}
-        {user && (
-          <div className="px-2 space-y-2">
-            <p className="text-sm font-semibold truncate" title={user.name || undefined}>
-              {user.name}
-            </p>
-            <p className="text-xs text-muted-foreground truncate" title={user.email}>
-              {user.email}
-            </p>
-            <div className="flex flex-col items-start gap-2">
-              {user.role && (
-                <Badge variant="secondary" className="bg-blue-900/50 text-blue-300 border-none capitalize text-xs">
-                  {user.role.toLowerCase()}
-                </Badge>
-              )}
-              {user.organization && (
-                <Badge variant="secondary" className="bg-green-900/50 text-green-300 border-none text-xs">
-                  {user.organization}
-                </Badge>
-              )}
-            </div>
+    <aside
+      aria-label="Primary navigation"
+      className={cn(
+        'absolute inset-y-0 left-0 z-40 w-[252px] overflow-hidden border-r border-cyan-200/[0.06] bg-[#02080b] shadow-[18px_0_45px_rgba(0,0,0,.22)] transition-transform duration-[180ms] ease-[cubic-bezier(.22,1,.36,1)]',
+        open ? 'translate-x-0' : '-translate-x-full',
+      )}
+    >
+      <div className={cn(
+        'flex h-full w-[252px] flex-col bg-[#02080b] transition-opacity duration-150',
+        open ? 'opacity-100' : 'pointer-events-none opacity-0',
+      )}>
+        <div className="flex h-14 shrink-0 items-center justify-between border-b border-white/[0.045] px-4">
+          <div className="flex items-center gap-2">
+            <div className="h-1.5 w-1.5 rounded-full bg-cyan-300 shadow-[0_0_10px_rgba(33,212,253,.7)]" />
+            <span className="font-mono text-[9px] font-semibold uppercase tracking-[0.2em] text-slate-500">Navigation</span>
           </div>
-        )}
-
-        {/* Quick Actions */}
-        <div className="space-y-3">
-          <p className="px-2 text-xs font-semibold tracking-wider text-muted-foreground uppercase">
-            Quick Actions
-          </p>
-          <Button
-            asChild
-            className="w-full h-auto justify-center bg-gradient-to-r from-purple-500 to-pink-500 text-sm font-semibold whitespace-normal hover:opacity-90 transition-opacity py-2"
+          <button
+            type="button"
+            onClick={onClose}
+            className="inline-flex h-7 w-7 items-center justify-center rounded-md text-slate-600 transition-colors duration-150 hover:bg-white/[0.04] hover:text-slate-200"
+            aria-label="Collapse navigation"
           >
-            <Link href="/dashboard/reports">
-              <span className="flex w-full items-center justify-center gap-1">
-                <FileText className="h-4 w-4" />
-                <span className="text-center leading-tight whitespace-normal">Generate Executive Report</span>
-              </span>
-            </Link>
-          </Button>
-          <Button
-            asChild
-            className="w-full h-auto justify-center bg-gradient-to-r from-emerald-500 to-green-500 text-sm font-semibold whitespace-normal hover:opacity-90 transition-opacity py-2"
-          >
-            <Link href="/dashboard/analytics">
-              <span className="flex w-full items-center justify-center gap-1">
-                <LineChart className="h-4 w-4" />
-                <span className="text-center leading-tight whitespace-normal">View Risk Analytics</span>
-              </span>
-            </Link>
-          </Button>
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
 
-          {canReset && (
-            <Button
+        <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
+          {navItems.map((item) => {
+            const isActive = getIsActive(item.href);
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                onClick={onClose}
+                className={cn(
+                  'group relative flex h-10 items-center gap-3 rounded-lg px-3 text-[11px] font-medium transition-[background-color,color,transform] duration-150',
+                  isActive
+                    ? 'bg-cyan-300/[0.075] text-cyan-100'
+                    : 'text-slate-500 hover:bg-cyan-300/[0.045] hover:text-slate-200',
+                )}
+              >
+                <span className={cn(
+                  'absolute left-0 h-5 w-px transition-all duration-200',
+                  isActive ? 'bg-cyan-200 shadow-[0_0_12px_rgba(34,211,238,.85)]' : 'bg-transparent',
+                )} />
+                <item.icon className={cn('h-4 w-4 shrink-0 transition-transform duration-150 group-hover:scale-105', isActive && 'text-cyan-200')} />
+                <span className="truncate">{item.label}</span>
+                <ChevronRight className={cn('ml-auto h-3 w-3 opacity-0 transition-[opacity,transform] duration-150 group-hover:translate-x-0.5 group-hover:opacity-50', isActive && 'opacity-40')} />
+              </Link>
+            );
+          })}
+        </nav>
+
+        <div className="shrink-0 space-y-1 border-t border-white/[0.045] px-3 py-3">
+          {canReset ? (
+            <button
               type="button"
-              variant="outline"
-              className="w-full h-auto justify-center text-sm font-semibold whitespace-normal py-2"
               onClick={resetAssessments}
+              className="flex h-9 w-full items-center gap-3 rounded-lg px-3 text-[10px] text-slate-700 transition-[background-color,color] duration-150 hover:bg-rose-300/[0.045] hover:text-rose-200"
             >
-              Reset Assessments (Dev)
-            </Button>
-          )}
-        </div>
-
-        {/* Navigation */}
-        <div className="flex-1 space-y-2">
-          <p className="px-2 pt-4 text-xs font-semibold tracking-wider text-muted-foreground uppercase">
-            Navigation
-          </p>
-          <nav className="grid items-start text-sm font-medium">
-            {navItems.map(item => {
-              const isActive = getIsActive(item.href);
-              return (
-                <Link
-                  key={item.label}
-                  href={item.href}
-                  className={cn(
-                    'flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary-foreground hover:bg-secondary',
-                    isActive && 'bg-secondary text-primary-foreground'
-                  )}
-                >
-                  <item.icon className="h-4 w-4" />
-                  {item.label}
-                </Link>
-              );
-            })}
-          </nav>
-        </div>
-
-        {/* Logout */}
-        <div className="mt-auto">
-          <Button
+              <RotateCcw className="h-3.5 w-3.5" />
+              Reset assessments (dev)
+            </button>
+          ) : null}
+          <button
+            type="button"
             onClick={() => logout()}
-            variant="ghost"
-            className="w-full justify-start text-muted-foreground hover:bg-secondary hover:text-primary-foreground"
+            className="flex h-9 w-full items-center gap-3 rounded-lg px-3 text-[10px] text-slate-600 transition-[background-color,color] duration-150 hover:bg-rose-300/[0.045] hover:text-rose-200"
           >
-            <LogOut className="mr-2 h-4 w-4" />
-            <span>Logout</span>
-          </Button>
+            <LogOut className="h-3.5 w-3.5" />
+            Log out
+          </button>
+          <div className="flex items-center gap-2 px-3 pt-2 text-[8px] uppercase tracking-[0.16em] text-slate-700">
+            <Activity className="h-3 w-3 text-emerald-300/60" />
+            System active
+          </div>
         </div>
       </div>
-    </div>
+    </aside>
   );
 }
