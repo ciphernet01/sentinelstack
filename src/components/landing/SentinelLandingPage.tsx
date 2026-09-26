@@ -162,10 +162,10 @@ export default function SentinelLandingPage() {
       <main>
         <section className={styles.hero}>
           <div className={styles.heroCopy}>
-            <div className={styles.eyebrow}><span /> Security compliance for startups</div>
+            <div className={styles.eyebrow}><span /> Enterprise security command center</div>
             <h1>Audit-ready security <em>in weeks,</em> not quarters.</h1>
             <p className={styles.heroLead}>
-              SentinelStack helps SaaS teams run continuous security assessments, map findings to common frameworks (OWASP, ISO 27001, SOC 2), and ship reports customers and auditors can trust.
+              SentinelStack helps teams run continuous security assessments, visualize posture across the stack, and produce audit-ready reports from a unified command center.
             </p>
             <div className={styles.heroActions}>
               <Link href="/signup" className={styles.primaryCta}>Get Started Free <ArrowRight size={18} /></Link>
@@ -201,8 +201,8 @@ export default function SentinelLandingPage() {
         <section id="features" className={styles.section}>
           <div className={styles.sectionIntro}>
             <span className={styles.sectionKicker}>THE PLATFORM</span>
-            <h2>Everything you need to <em>secure your stack.</em></h2>
-            <p>From automated scanning to AI-augmented reporting, SentinelStack provides a complete solution for modern security teams and consultants.</p>
+            <h2>Everything you need to <em>run secure operations.</em></h2>
+            <p>From automated scanning to AI-augmented reporting, SentinelStack gives teams a shared view of posture, risk, and remediation.</p>
           </div>
           <div className={styles.featureGrid}>
             {features.map(({ icon: Icon, title, body }) => (
