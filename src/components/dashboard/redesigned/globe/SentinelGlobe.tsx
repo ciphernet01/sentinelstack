@@ -18,6 +18,9 @@ import { latLngToVector3 } from './utils/latLngToVector3';
 import worldData from '../../../../../public/data/world-countries.json';
 
 const CYAN = new THREE.Color('#21d4fd');
+const LIGHT_MAP = new THREE.Color('#52789d');
+const LIGHT_MAP_HIGHLIGHT = new THREE.Color('#c8def0');
+const LIGHT_NETWORK = new THREE.Color('#86abc9');
 const LAND_RADIUS = 1.78;
 const BORDER_RADIUS = 1.792;
 const INTERACTION_RADIUS = 1.805;
@@ -127,7 +130,7 @@ function countMappedNodes(country: Country) {
   return NETWORK_NODES.reduce((count, node) => count + (countryContains(country, node.lng, node.lat) ? 1 : 0), 0);
 }
 
-function EarthPointCloud({ onReady, onError }: { onReady?: () => void; onError?: () => void }) {
+function EarthPointCloud({ onReady, onError, sampleStep = 2, lightTheme = false }: { onReady?: () => void; onError?: () => void; sampleStep?: number; lightTheme?: boolean }) {
   const [texture, setTexture] = useState<THREE.Texture | null>(null);
   const [failed, setFailed] = useState(false);
 
@@ -149,7 +152,7 @@ function EarthPointCloud({ onReady, onError }: { onReady?: () => void; onError?:
     return () => { mounted = false; };
   }, [onReady, onError]);
 
-  const points = useMemo(() => texture?.image ? createEarthPoints(texture.image, LAND_RADIUS, 2) : null, [texture]);
+  const points = useMemo(() => texture?.image ? createEarthPoints(texture.image, LAND_RADIUS, sampleStep) : null, [texture, sampleStep]);
   const geometry = useMemo(() => {
     if (!points || points.count === 0) return null;
     const geometry = new THREE.BufferGeometry();
@@ -157,7 +160,7 @@ function EarthPointCloud({ onReady, onError }: { onReady?: () => void; onError?:
     geometry.setAttribute('aSize', new THREE.BufferAttribute(points.sizes, 1));
     geometry.setAttribute('aSeed', new THREE.BufferAttribute(points.seeds, 1));
     return geometry;
-  }, [points]);
+  }, [points, lightTheme]);
   const material = useMemo(() => {
     if (!points) return null;
     return new THREE.ShaderMaterial({
@@ -167,9 +170,14 @@ function EarthPointCloud({ onReady, onError }: { onReady?: () => void; onError?:
       blending: THREE.AdditiveBlending,
       depthTest: true,
       depthWrite: false,
-      uniforms: { uTime: { value: 0 }, uPixelRatio: { value: Math.min(window.devicePixelRatio, 2) } },
+      uniforms: {
+        uTime: { value: 0 },
+        uPixelRatio: { value: Math.min(window.devicePixelRatio, lightTheme ? 1.5 : 2) },
+        uBaseColor: { value: lightTheme ? LIGHT_MAP : CYAN },
+        uHighlightColor: { value: lightTheme ? LIGHT_MAP_HIGHLIGHT : new THREE.Color('#9afaff') },
+      },
     });
-  }, [points]);
+  }, [points, lightTheme]);
 
   useFrame((state) => { if (material) material.uniforms.uTime.value = state.clock.elapsedTime; });
   useEffect(() => () => { geometry?.dispose(); material?.dispose(); texture?.dispose(); }, [geometry, material, texture]);
@@ -177,11 +185,12 @@ function EarthPointCloud({ onReady, onError }: { onReady?: () => void; onError?:
   return <points geometry={geometry} material={material} frustumCulled={false} />;
 }
 
-function EarthBaseSphere() {
-  return <mesh><sphereGeometry args={[1.765, 96, 64]} /><meshBasicMaterial color="#01070a" /></mesh>;
+function EarthBaseSphere({ transparent }: { transparent: boolean }) {
+  if (transparent) return null;
+  return <mesh><sphereGeometry args={[1.765, transparent ? 64 : 96, transparent ? 48 : 64]} /><meshBasicMaterial color="#01070a" /></mesh>;
 }
 
-function Atmosphere() {
+function Atmosphere({ lightTheme = false }: { lightTheme?: boolean }) {
   const materialRef = useRef<THREE.ShaderMaterial>(null);
   const material = useMemo(() => new THREE.ShaderMaterial({
     vertexShader: atmosphereVertexShader,
@@ -190,7 +199,7 @@ function Atmosphere() {
     side: THREE.BackSide,
     depthWrite: false,
     blending: THREE.AdditiveBlending,
-    uniforms: { uCameraPosition: { value: new THREE.Vector3() }, uColor: { value: new THREE.Color('#16d9ff') }, uIntensity: { value: 0.72 } },
+    uniforms: { uCameraPosition: { value: new THREE.Vector3() }, uColor: { value: lightTheme ? new THREE.Color('#a8c9e3') : new THREE.Color('#16d9ff') }, uIntensity: { value: lightTheme ? 0.22 : 0.72 } },
   }), []);
   useFrame(({ camera }) => materialRef.current?.uniforms.uCameraPosition.value.copy(camera.position));
   useEffect(() => () => material.dispose(), [material]);
@@ -217,7 +226,7 @@ function buildBorderGeometry() {
   return geometry;
 }
 
-function CountryBorders({ hovered }: { hovered: Country | null }) {
+function CountryBorders({ hovered, lightTheme = false }: { hovered: Country | null; lightTheme?: boolean }) {
   const geometry = useMemo(buildBorderGeometry, []);
   const highlightGeometry = useMemo(() => {
     if (!hovered) return null;
@@ -239,18 +248,18 @@ function CountryBorders({ hovered }: { hovered: Country | null }) {
   return (
     <group>
       <lineSegments geometry={geometry} frustumCulled={false}>
-        <lineBasicMaterial color="#1aaec1" transparent opacity={0.38} depthWrite={false} blending={THREE.AdditiveBlending} />
+        <lineBasicMaterial color={lightTheme ? '#5d7f9f' : '#1aaec1'} transparent opacity={lightTheme ? 0.48 : 0.38} depthWrite={false} blending={THREE.AdditiveBlending} />
       </lineSegments>
       {highlightGeometry ? (
         <lineSegments geometry={highlightGeometry} frustumCulled={false}>
-          <lineBasicMaterial color="#b8fbff" transparent opacity={1} depthWrite={false} blending={THREE.AdditiveBlending} />
+          <lineBasicMaterial color={lightTheme ? '#d7e9f6' : '#b8fbff'} transparent opacity={1} depthWrite={false} blending={THREE.AdditiveBlending} />
         </lineSegments>
       ) : null}
     </group>
   );
 }
 
-function NetworkNodes() {
+function NetworkNodes({ lightTheme = false }: { lightTheme?: boolean }) {
   const geometry = useMemo(() => {
     const positions = NETWORK_NODES.flatMap((node) => { const v = latLngToVector3(node.lat, node.lng, 1.815 + (node.lift ?? 0)); return [v.x, v.y, v.z]; });
     const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3)); return g;
@@ -259,7 +268,7 @@ function NetworkNodes() {
     vertexShader: `uniform float uPixelRatio; void main(){vec4 mvPosition=modelViewMatrix*vec4(position,1.0);gl_PointSize=8.5*uPixelRatio*clamp(1.4/max(0.7,-mvPosition.z),0.6,1.7);gl_Position=projectionMatrix*mvPosition;}`,
     fragmentShader: nodeFragmentShader,
     transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
-    uniforms: { uColor: { value: CYAN }, uPixelRatio: { value: Math.min(window.devicePixelRatio, 2) } },
+    uniforms: { uColor: { value: lightTheme ? LIGHT_NETWORK : CYAN }, uPixelRatio: { value: Math.min(window.devicePixelRatio, lightTheme ? 1.5 : 2) } },
   }), []);
   useEffect(() => () => { geometry.dispose(); material.dispose(); }, [geometry, material]);
   return <points geometry={geometry} material={material} />;
@@ -274,45 +283,48 @@ function curveForArc(arc: ArcSpec) {
   return new THREE.QuadraticBezierCurve3(start, midpoint, end);
 }
 
-function NetworkParticle({ curve, offset }: { curve: THREE.QuadraticBezierCurve3; offset: number }) {
+function NetworkParticle({ curve, offset, lightTheme = false }: { curve: THREE.QuadraticBezierCurve3; offset: number; lightTheme?: boolean }) {
   const ref = useRef<THREE.Mesh>(null);
   useFrame((state) => { if (ref.current) ref.current.position.copy(curve.getPointAt((state.clock.elapsedTime * 0.045 + offset) % 1)); });
-  return <mesh ref={ref}><sphereGeometry args={[0.022, 10, 10]} /><meshBasicMaterial color="#b8fbff" transparent opacity={0.95} blending={THREE.AdditiveBlending} /></mesh>;
+  return <mesh ref={ref}><sphereGeometry args={[0.022, 10, 10]} /><meshBasicMaterial color={lightTheme ? '#d7e8f4' : '#b8fbff'} transparent opacity={0.95} blending={THREE.AdditiveBlending} /></mesh>;
 }
 
-function NetworkArcs() {
+function NetworkArcs({ lightTheme = false, landingMode = false }: { lightTheme?: boolean; landingMode?: boolean }) {
   const curves = useMemo(() => NETWORK_ARCS.map(curveForArc), []);
   return (
     <group>
       {curves.map((curve, index) => (
         <group key={`arc-${index}`}>
-          <Line points={curve.getPoints(40)} color="#22dff0" transparent opacity={0.20} lineWidth={3.8} />
-          <Line points={curve.getPoints(40)} color={index % 4 === 0 ? '#9afaff' : '#27cbd9'} transparent opacity={index % 4 === 0 ? 0.98 : 0.78} lineWidth={index % 4 === 0 ? 1.8 : 1.35} />
+          <Line points={curve.getPoints(landingMode ? 24 : 40)} color={lightTheme ? '#7ea8c7' : '#22dff0'} transparent opacity={lightTheme ? 0.12 : 0.20} lineWidth={landingMode ? 1.6 : 3.8} />
+          <Line points={curve.getPoints(landingMode ? 24 : 40)} color={lightTheme ? (index % 4 === 0 ? '#c4dbea' : '#8eafc8') : (index % 4 === 0 ? '#9afaff' : '#27cbd9')} transparent opacity={lightTheme ? (index % 4 === 0 ? 0.66 : 0.42) : (index % 4 === 0 ? 0.98 : 0.78)} lineWidth={lightTheme ? 1 : (index % 4 === 0 ? 1.8 : 1.35)} />
         </group>
       ))}
-      {curves.slice(0, 12).map((curve, index) => <NetworkParticle key={`particle-${index}`} curve={curve} offset={(index * 0.083) % 1} />)}
+      {curves.slice(0, landingMode ? 5 : 12).map((curve, index) => <NetworkParticle key={`particle-${index}`} curve={curve} offset={(index * 0.083) % 1} lightTheme={lightTheme} />)}
     </group>
   );
 }
 
-function StarField() {
+function StarField({ lightTheme = false }: { lightTheme?: boolean }) {
   const geometry = useMemo(() => {
-    const count = 950; const positions = new Float32Array(count * 3); let seed = 17;
+    const count = lightTheme ? 180 : 950; const positions = new Float32Array(count * 3); let seed = 17;
     const random = () => { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; };
     for (let i = 0; i < count; i += 1) { const radius = 4.2 + random() * 2.8; const theta = random() * Math.PI * 2; const phi = Math.acos(2 * random() - 1); positions[i * 3] = radius * Math.sin(phi) * Math.cos(theta); positions[i * 3 + 1] = radius * Math.cos(phi); positions[i * 3 + 2] = radius * Math.sin(phi) * Math.sin(theta); }
     const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(positions, 3)); return g;
-  }, []);
-  const material = useMemo(() => new THREE.PointsMaterial({ color: '#78d8df', size: 0.018, transparent: true, opacity: 0.24, depthWrite: false, blending: THREE.AdditiveBlending }), []);
+  }, [lightTheme]);
+  const material = useMemo(() => new THREE.PointsMaterial({ color: lightTheme ? '#9bbbd4' : '#78d8df', size: 0.018, transparent: true, opacity: 0.24, depthWrite: false, blending: THREE.AdditiveBlending }), []);
   useEffect(() => () => { geometry.dispose(); material.dispose(); }, [geometry, material]);
   return <points geometry={geometry} material={material} />;
 }
 
-function GlobeController({ onEarthReady, onEarthError, onCountryHover, onCountryLeave, onCursorMove }: {
+function GlobeController({ onEarthReady, onEarthError, onCountryHover, onCountryLeave, onCursorMove, transparentBackground = false, lightTheme = false, landingMode = false }: {
   onEarthReady: () => void;
   onEarthError: () => void;
   onCountryHover: (country: Country) => void;
   onCountryLeave: () => void;
   onCursorMove: (x: number, y: number) => void;
+  transparentBackground?: boolean;
+  lightTheme?: boolean;
+  landingMode?: boolean;
 })  {
   const globeRef = useRef<THREE.Group>(null);
   const dragging = useRef(false);
@@ -385,14 +397,14 @@ function GlobeController({ onEarthReady, onEarthError, onCountryHover, onCountry
 
   return (
     <>
-      <color attach="background" args={['#02080b']} />
+      {!transparentBackground ? <color attach="background" args={['#02080b']} /> : null}
       <group ref={globeRef} rotation={[0.04, -0.42, 0]}>
-        <EarthBaseSphere />
-        <EarthPointCloud onReady={onEarthReady} onError={onEarthError} />
-        <CountryBorders hovered={hoveredCountry} />
-        <Atmosphere />
-        <NetworkArcs />
-        <NetworkNodes />
+        <EarthBaseSphere transparent={transparentBackground} />
+        <EarthPointCloud onReady={onEarthReady} onError={onEarthError} sampleStep={landingMode ? 4 : 3} lightTheme={lightTheme} />
+        <CountryBorders hovered={hoveredCountry} lightTheme={lightTheme} />
+        <Atmosphere lightTheme={lightTheme} />
+        <NetworkArcs lightTheme={lightTheme} landingMode={landingMode} />
+        <NetworkNodes lightTheme={lightTheme} />
         <mesh
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
@@ -404,12 +416,26 @@ function GlobeController({ onEarthReady, onEarthError, onCountryHover, onCountry
           <meshBasicMaterial transparent opacity={0.001} depthWrite={false} color="#21d4fd" />
         </mesh>
       </group>
-      <StarField />
+      {!landingMode ? <StarField lightTheme={lightTheme} /> : null}
     </>
   );
 }
 
-export function SentinelGlobe({ className }: { className?: string }) {
+export function SentinelGlobe({
+  className,
+  transparentBackground = false,
+  lightTheme = false,
+  landingMode = false,
+  showTooltip = true,
+  showStatusOverlay = true,
+}: {
+  className?: string;
+  transparentBackground?: boolean;
+  lightTheme?: boolean;
+  landingMode?: boolean;
+  showTooltip?: boolean;
+  showStatusOverlay?: boolean;
+}) {
   const [webglAvailable, setWebglAvailable] = useState(true);
   const [earthReady, setEarthReady] = useState(false);
   const [earthError, setEarthError] = useState(false);
@@ -462,14 +488,15 @@ export function SentinelGlobe({ className }: { className?: string }) {
       aria-label="SentinelStack digital Earth"
     >
       <Canvas
-        dpr={[1, 1.5]}
+        dpr={landingMode ? [0.8, 1.15] : [1, 1.5]}
         camera={{ position: [0, 0.2, 5.55], fov: 39, near: 0.1, far: 20 }}
-        gl={{ antialias: true, alpha: true, powerPreference: 'high-performance' }}
+        gl={{ antialias: !landingMode, alpha: true, powerPreference: 'high-performance', preserveDrawingBuffer: false }}
         frameloop="always"
+        onCreated={({ gl }) => { gl.setClearColor(0x000000, transparentBackground ? 0 : 1); }}
       >
-        <GlobeController onEarthReady={markEarthReady} onEarthError={markEarthError} onCountryHover={handleCountryHover} onCountryLeave={handleCountryLeave} onCursorMove={handleCursorMove} />
+        <GlobeController transparentBackground={transparentBackground} lightTheme={lightTheme} landingMode={landingMode} onEarthReady={markEarthReady} onEarthError={markEarthError} onCountryHover={handleCountryHover} onCountryLeave={handleCountryLeave} onCursorMove={handleCursorMove} />
       </Canvas>
-      {hoveredCountry && typeof document !== 'undefined' ? createPortal(
+      {showTooltip && hoveredCountry && typeof document !== 'undefined' ? createPortal(
         <div
           className="pointer-events-none fixed z-[2147483647] min-w-[220px] max-w-[260px] rounded-lg border border-cyan-200/15 bg-[#071317]/95 px-3 py-2.5 text-left shadow-[0_16px_40px_rgba(0,0,0,.45)] backdrop-blur-md"
           style={{
@@ -495,8 +522,8 @@ export function SentinelGlobe({ className }: { className?: string }) {
         </div>,
         document.body,
       ) : null}
-      {!earthReady && !earthError ? <div className="sentinel-globe__loading" aria-live="polite"><span className="sentinel-globe__loading-dot" /><span>Rendering infrastructure surface</span></div> : null}
-      {earthError ? <div className="sentinel-globe__asset-error" role="status"><span>Digital Earth asset unavailable</span></div> : null}
+      {showStatusOverlay && !earthReady && !earthError ? <div className="sentinel-globe__loading" aria-live="polite"><span className="sentinel-globe__loading-dot" /><span>Rendering infrastructure surface</span></div> : null}
+      {showStatusOverlay && earthError ? <div className="sentinel-globe__asset-error" role="status"><span>Digital Earth asset unavailable</span></div> : null}
     </div>
   );
 }

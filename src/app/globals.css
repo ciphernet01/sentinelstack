@@ -37,14 +37,16 @@
   }
 
   html {
-    background: #02080b;
+    background: #f7fbff;
+    overscroll-behavior-y: none;
   }
 
   body {
     @apply bg-background text-foreground;
     min-width: 320px;
-    background: #02080b;
-    color: #f3f7f8;
+    margin: 0;
+    background: #f7fbff;
+    color: #0c1522;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   }
 }

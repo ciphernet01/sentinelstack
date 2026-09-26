@@ -1,25 +1,28 @@
 import React from 'react';
 import Link from 'next/link';
-import { SentinelStackLogo } from '@/lib/icons';
+import styles from '@/components/auth/AuthPage.module.css';
 
-export default function AuthLayout({
-    children,
-}: {
-    children: React.ReactNode;
-}) {
-    return (
-        <div className="flex min-h-screen flex-col items-center justify-center bg-background p-4 py-12">
-            <div className="absolute top-8 left-8">
-                 <Link href="/" className="flex items-center">
-                    <SentinelStackLogo width={200}/>
-                </Link>
-            </div>
-            <div className="w-full max-w-2xl">
-              {children}
-            </div>
-             <div className="mt-8 text-center text-sm text-muted-foreground">
-                Enterprise Inquiries? <a href="mailto:sales@sentinelstack.com" className="text-primary underline">Contact sales@sentinelstack.com</a>
-            </div>
-        </div>
-    );
+export default function AuthLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <main className={styles.shell} data-auth-shell>
+      <div className={styles.orb} />
+      <div className={styles.orbTwo} />
+
+      <header className={styles.topbar}>
+        <nav className={styles.nav} aria-label="Authentication navigation">
+          <Link href="/" className={styles.logo} aria-label="SentinelStack home">
+            <img src="/branding/sentinelstack-logo-dark.png" alt="SentinelStack" width={172} height={47} />
+          </Link>
+          <Link href="/" className={styles.homeLink}>Back to website →</Link>
+        </nav>
+      </header>
+
+      <section className={styles.content}>{children}</section>
+
+      <footer className={styles.footer}>
+        Enterprise inquiries?{' '}
+        <a href="mailto:sales@sentinelstack.com">Contact sales@sentinelstack.com</a>
+      </footer>
+    </main>
+  );
 }
