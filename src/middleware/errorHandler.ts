@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import logger from '../utils/logger';
 import { logShipper } from '../logging';
+import { isRiskDomainError } from '../services/risk/errors';
 
 /**
  * Detects whether an error originated from the body parser.
@@ -43,6 +44,18 @@ export const errorHandler = (err: Error, req: Request, res: Response, next: Next
     return res.status(bodyIssue.statusCode).json({
       success: false,
       message: bodyIssue.message,
+      requestId,
+    });
+  }
+
+  // Risk-domain failures carry their own status and stable code. Without this
+  // branch a "driver not found" or a cross-tenant refusal would surface as an
+  // opaque 500 and look like a server fault rather than a deliberate answer.
+  if (isRiskDomainError(err)) {
+    return res.status(err.statusCode).json({
+      success: false,
+      code: err.code,
+      message: err.message,
       requestId,
     });
   }
