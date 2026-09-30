@@ -274,61 +274,15 @@
 
 .heroVisual {
   position: relative;
+  min-height: 590px;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-/* Globe off: the visual column collapses so the copy column keeps the
-   full width of the hero instead of leaving an empty half-screen. */
-.heroVisualIdle {
-  min-height: 0;
-}
-
-/* Globe on: reserve only as much room as the smaller globe needs. */
-.heroVisualActive {
-  min-height: 380px;
-}
-
-.globeToggle {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 9px;
-  min-height: 50px;
-  padding: 0 19px;
-  border-radius: 999px;
-  border: 1px solid rgba(33, 212, 253, 0.16);
-  background: rgba(4, 16, 19, 0.6);
-  color: #cfe9ec;
-  font-size: 13px;
-  font-weight: 700;
-  cursor: pointer;
-  backdrop-filter: blur(12px);
-  transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease,
-    border-color 0.2s ease, color 0.2s ease;
-}
-
-.globeToggle:hover {
-  transform: translateY(-2px);
-  border-color: rgba(33, 212, 253, 0.34);
-  color: #eff7f8;
-}
-
-.globeToggle:focus-visible {
-  outline: 2px solid rgba(33, 212, 253, 0.65);
-  outline-offset: 3px;
-}
-
-.globeToggleOn {
-  background: linear-gradient(135deg, rgba(33, 212, 253, 0.16), rgba(99, 179, 255, 0.22));
-  border-color: rgba(33, 212, 253, 0.32);
-  color: #eff7f8;
-}
-
 .globeStage {
   position: relative;
-  width: min(360px, 30vw);
+  width: min(690px, 50vw);
   aspect-ratio: 1;
   display: grid;
   place-items: center;
@@ -432,13 +386,13 @@
   left: 50%;
   transform: translateX(-50%);
   white-space: nowrap;
-  padding: 6px 11px;
+  padding: 9px 14px;
   border: 1px solid rgba(33, 212, 253, 0.12);
   background: rgba(3, 12, 15, 0.76);
   backdrop-filter: blur(18px);
   border-radius: 999px;
   color: rgba(235, 244, 245, 0.78);
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 700;
   box-shadow: 0 12px 30px rgba(0, 0, 0, 0.22);
 }
@@ -1089,8 +1043,7 @@
     padding-right: 4vw;
   }
   .hero h1 { font-size: clamp(54px, 7vw, 80px); }
-  .globeStage { width: min(320px, 30vw); }
-  .heroVisualActive { min-height: 340px; }
+  .globeStage { width: min(580px, 52vw); }
   .proofRow { margin-left: 24px; margin-right: 24px; }
   .section { padding-left: 28px; padding-right: 28px; }
   .domainGrid { grid-template-columns: repeat(2, 1fr); }
@@ -1128,8 +1081,8 @@
   .heroLead { font-size: 16px; }
   .heroActions,
   .microProof { justify-content: center; }
-  .heroVisualActive { min-height: 300px; }
-  .globeStage { width: min(300px, 72vw); }
+  .heroVisual { min-height: 500px; }
+  .globeStage { width: min(640px, 94vw); }
   .floatingCardTop { right: 4%; }
   .floatingCardBottom { left: 2%; }
   .proofRow { grid-template-columns: 1fr 1fr; }
@@ -1154,7 +1107,7 @@
 @media (max-width: 520px) {
   .hero { padding-left: 20px; padding-right: 20px; }
   .hero h1 { font-size: 52px; }
-  .globeStage { width: min(260px, 68vw); }
+  .globeStage { width: 110vw; transform: translateX(-5vw); }
   .floatingCardTop { right: 0; transform: scale(0.9); }
   .floatingCardBottom { left: 0; transform: scale(0.9); }
   .globeCaption { font-size: 9px; }

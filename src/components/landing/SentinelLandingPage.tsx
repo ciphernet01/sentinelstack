@@ -6,7 +6,6 @@ import {
   ArrowRight,
   Bot,
   Check,
-  EyeOff,
   FileText,
   Globe2,
   LayoutGrid,
@@ -112,7 +111,6 @@ function GlassCard({ children, className = '' }: { children: React.ReactNode; cl
 
 export default function SentinelLandingPage() {
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [globeVisible, setGlobeVisible] = useState(false);
 
   const closeMenu = () => setMobileOpen(false);
 
@@ -172,16 +170,6 @@ export default function SentinelLandingPage() {
             <div className={styles.heroActions}>
               <Link href="/signup" className={styles.primaryCta}>Get Started Free <ArrowRight size={18} /></Link>
               <Link href="/login" className={styles.secondaryCta}>Request a Demo</Link>
-              <button
-                type="button"
-                className={`${styles.globeToggle} ${globeVisible ? styles.globeToggleOn : ''}`}
-                onClick={() => setGlobeVisible(v => !v)}
-                aria-pressed={globeVisible}
-                aria-label={globeVisible ? 'Hide interactive globe' : 'Show interactive globe'}
-              >
-                {globeVisible ? <EyeOff size={18} /> : <Globe2 size={18} />}
-                {globeVisible ? 'Hide Globe' : 'Show Globe'}
-              </button>
             </div>
             <div className={styles.microProof}>
               <span><Sparkles size={15} /> No credit card required</span>
@@ -190,20 +178,16 @@ export default function SentinelLandingPage() {
             </div>
           </div>
 
-          <div className={`${styles.heroVisual} ${globeVisible ? styles.heroVisualActive : styles.heroVisualIdle}`}>
-            {globeVisible && (
-              <>
-                <SpatialGlobe />
-                <GlassCard className={styles.floatingCardTop}>
-                  <span className={styles.cardIcon}><Zap size={16} /></span>
-                  <div><strong>30+</strong><small>Security Tools</small></div>
-                </GlassCard>
-                <GlassCard className={styles.floatingCardBottom}>
-                  <div className={styles.signal}><i /><i /><i /><i /></div>
-                  <div><strong>Continuous assessment</strong><small>Audit-ready security posture</small></div>
-                </GlassCard>
-              </>
-            )}
+          <div className={styles.heroVisual}>
+            <SpatialGlobe />
+            <GlassCard className={styles.floatingCardTop}>
+              <span className={styles.cardIcon}><Zap size={16} /></span>
+              <div><strong>30+</strong><small>Security Tools</small></div>
+            </GlassCard>
+            <GlassCard className={styles.floatingCardBottom}>
+              <div className={styles.signal}><i /><i /><i /><i /></div>
+              <div><strong>Continuous assessment</strong><small>Audit-ready security posture</small></div>
+            </GlassCard>
           </div>
         </section>
 
