@@ -103,6 +103,8 @@ model Organization {
   riskScenarios    RiskScenario[]
   riskRuns         RiskRun[]
   riskAssessments  RiskAssessment[]
+  riskDrivers      RiskDriver[]
+  evidenceRecords  EvidenceRecord[]
   createdAt        DateTime                 @default(now())
   updatedAt        DateTime                 @updatedAt
 }
@@ -784,6 +786,7 @@ model RiskRun {
 
   assessments             RiskAssessment[]
   auditEvents             RiskAuditEvent[]
+  drivers                 RiskDriver[]
 
   @@index([organizationId, status])
   @@index([organizationId, createdAt])
@@ -822,9 +825,214 @@ model RiskAssessment {
 
   createdAt DateTime @default(now())
 
+  // P1/P2 stored drivers as a JSON blob on this row. P3 adds the normalized
+  // `attributions` relation; the JSON column is retained for compatibility.
+  attributions RiskDriver[]
+
   @@index([organizationId, createdAt])
   @@index([riskRunId])
   @@index([organizationId, scopeType, scopeId, computedAt])
+}
+
+// ─── PS 26105 P3 — Risk Driver Attribution & Evidence ────────────────────────
+//
+// Normalized, evidence-linked drivers. P1/P2 stored drivers as JSON on
+// RiskAssessment, which is useful but not queryable, not filterable by type, and
+// not able to link a driver back to the source records that produced it. P3
+// makes the driver a first-class record.
+//
+// Design rules enforced by these models:
+//   • Every driver belongs to exactly one RiskAssessment, which belongs to one
+//     RiskRun. A driver can therefore never float free of a calculation.
+//   • Contributions are stored per-metric (EAL / VaR95 / VaR99 / RiskScore) so a
+//     rupee amount and a 0-100 index contribution are never conflated.
+//   • Evidence is many-to-many, and a driver may legitimately have zero
+//     evidence — that is recorded as LOW confidence rather than hidden.
+//   • Human review state is stored alongside model output and never overwrites
+//     it. Confidence (model certainty) and review status (human governance) are
+//     separate fields, deliberately.
+
+enum RiskDriverType {
+  VULNERABILITY
+  EXPOSURE
+  THREAT
+  CONTROL
+  DEPENDENCY
+  BUSINESS_IMPACT
+  ASSET_CRITICALITY
+  SERVICE_CRITICALITY
+  TELEMETRY_SIGNAL
+  MODEL_SIGNAL
+  DATA_COVERAGE
+  OTHER
+}
+
+enum RiskDriverAttributionMethod {
+  MODEL
+  COUNTERFACTUAL
+  HIERARCHICAL
+  EVIDENCE_RANKING
+}
+
+enum RiskDriverDirection {
+  INCREASES_RISK
+  REDUCES_RISK
+  LIMITS_CONFIDENCE
+}
+
+enum RiskDriverConfidence {
+  HIGH
+  MEDIUM
+  LOW
+  INSUFFICIENT
+}
+
+/// Human governance state. NOT a confidence score (P3 spec §29).
+enum RiskDriverReviewStatus {
+  UNREVIEWED
+  REVIEWED
+  DISPUTED
+  ACCEPTED
+  REJECTED
+}
+
+enum EvidenceSourceType {
+  VULNERABILITY
+  SIEM
+  IAM
+  EDR
+  CSPM
+  ASSET_INVENTORY
+  THREAT_INTEL
+  BUSINESS_CONTEXT
+  MODEL
+  CALCULATION
+}
+
+enum EvidenceReliability {
+  HIGH
+  MEDIUM
+  LOW
+}
+
+enum EvidenceQuality {
+  HIGH
+  MEDIUM
+  LOW
+  UNAVAILABLE
+}
+
+enum DriverEvidenceRelationship {
+  PRIMARY_SUPPORT
+  SECONDARY_SUPPORT
+  CONTEXT
+  MODEL_INPUT
+}
+
+model RiskDriver {
+  id                 String          @id @default(cuid())
+  organizationId     String
+  organization       Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  riskAssessmentId   String
+  riskAssessment     RiskAssessment @relation(fields: [riskAssessmentId], references: [id], onDelete: Cascade)
+  riskRunId          String
+  riskRun            RiskRun         @relation(fields: [riskRunId], references: [id], onDelete: Cascade)
+
+  // Stable identity across runs, used for change comparison (P3 spec §21.2).
+  // Two runs describing the same underlying factor share a driverKey.
+  driverKey          String
+  driverKeyVersion   String          @default("driver-key-v1")
+
+  type               RiskDriverType
+  entityType         String          // ASSET | SERVICE | BUSINESS_UNIT | ORGANIZATION | CONTROL_CATEGORY | EDGE
+  entityId           String
+
+  name               String
+  description        String?
+
+  attributionMethod  RiskDriverAttributionMethod
+  attributionVersion String
+
+  // Contributions are per-metric and nullable. NULL means "this method does not
+  // support that metric" — it never means zero.
+  contributionToEal      Float?
+  contributionToVar95     Float?
+  contributionToVar99     Float?
+  contributionToRiskScore Float?
+
+  direction      RiskDriverDirection
+  confidence     RiskDriverConfidence
+  rank           Int  @default(0)
+
+  // Governance layer — annotates the model output above, never overwrites it.
+  reviewStatus    RiskDriverReviewStatus @default(UNREVIEWED)
+  reviewedById    String?
+  reviewedAt      DateTime?
+  reviewRationale String?
+
+  // Self-hash over identity + versions + contributions + evidence (P3 spec §39).
+  attributionHash String?
+
+  metadata        Json?
+  createdAt       DateTime             @default(now())
+
+  evidenceLinks   RiskDriverEvidence[]
+
+  @@unique([riskAssessmentId, driverKey])
+  @@index([organizationId, riskAssessmentId])
+  @@index([organizationId, type])
+  @@index([riskRunId])
+  @@index([entityType, entityId])
+  @@index([organizationId, driverKey])
+  @@index([organizationId, reviewStatus])
+}
+
+/// Immutable source-of-truth reference for a piece of supporting evidence.
+/// Deduplicated per (organization, sourceType, sourceRecordId) so a source
+/// record linked to many drivers is stored once.
+model EvidenceRecord {
+  id                  String          @id @default(cuid())
+  organizationId      String
+  organization        Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  sourceType          EvidenceSourceType
+  sourceRecordId      String
+  canonicalEntityType String?
+  canonicalEntityId   String?
+
+  // Freshness chain (P3 spec §20). observedAt is what the source reported;
+  // ingestedAt is when we stored it. Age is computed against RiskRun.asOf.
+  observedAt          DateTime?
+  collectedAt         DateTime?
+  ingestedAt          DateTime        @default(now())
+
+  sourceVersion       String?
+  evidenceHash        String?
+
+  reliability         EvidenceReliability @default(MEDIUM)
+  quality             EvidenceQuality     @default(MEDIUM)
+  metadata            Json?
+
+  createdAt           DateTime        @default(now())
+
+  driverLinks         RiskDriverEvidence[]
+
+  @@unique([organizationId, sourceType, sourceRecordId])
+  @@index([organizationId, sourceType])
+  @@index([organizationId, quality])
+  @@index([canonicalEntityType, canonicalEntityId])
+}
+
+model RiskDriverEvidence {
+  riskDriverId      String
+  riskDriver        RiskDriver                 @relation(fields: [riskDriverId], references: [id], onDelete: Cascade)
+  evidenceRecordId  String
+  evidenceRecord    EvidenceRecord             @relation(fields: [evidenceRecordId], references: [id], onDelete: Cascade)
+  relationshipType  DriverEvidenceRelationship @default(PRIMARY_SUPPORT)
+  createdAt         DateTime                   @default(now())
+
+  @@id([riskDriverId, evidenceRecordId])
+  @@index([evidenceRecordId])
 }
 
 /// Append-only audit ledger for material risk operations.

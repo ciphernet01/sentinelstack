@@ -22,6 +22,8 @@ import { buildEvidenceContext } from "./evidenceContext.service";
 import { computeCalculationHashForRun } from "./calculationHash.service";
 import { buildProvenanceEnvelope } from "./provenanceEnvelope";
 import { buildRiskCalculationContext } from "./riskContext.builder";
+import { attributeDriversForAssessment } from "./riskAttribution.service";
+import { persistAttribution } from "./driverStore.service";
 import {
   RISK_ENGINE_VERSION_V2,
   canonicalResultPayload,
@@ -152,6 +154,7 @@ export class RiskAssessmentService {
 
       // ⑤ Authoritative numbers: Monte Carlo Risk Engine v2 (v1 = legacy path).
       let engineResult: RiskEngineResult | null = null;
+      let engineContext: Awaited<ReturnType<typeof buildRiskCalculationContext>> | null = null;
       if (useMonteCarlo) {
         const context = await buildRiskCalculationContext({
           organizationId,
@@ -165,6 +168,7 @@ export class RiskAssessmentService {
           },
         });
         engineResult = await calculateRisk(context);
+        engineContext = context;
       }
 
       const totals = {
@@ -230,6 +234,41 @@ export class RiskAssessmentService {
           : legacyResult.assumptions,
       });
 
+      // ⑧ P3 — normalize drivers and link their evidence.
+      //     Runs after the assessment exists because a driver can never float
+      //     free of a calculation. Failure here is contained: the financial
+      //     result is already committed and must not be discarded because
+      //     attribution could not be written.
+      let attribution: Awaited<ReturnType<typeof persistAttribution>> | null = null;
+      if (engineResult && engineContext) {
+        try {
+          const attributionResult = attributeDriversForAssessment({
+            organizationId,
+            riskRunId: riskRun.id,
+            riskAssessmentId: assessment.id,
+            context: engineContext,
+            result: engineResult,
+          });
+
+          attribution = await persistAttribution({
+            organizationId,
+            attribution: attributionResult,
+            actor: triggeredBy ?? "system",
+          });
+        } catch (error) {
+          await appendRiskAuditEvent({
+            organizationId,
+            riskRunId: riskRun.id,
+            actor: triggeredBy ?? "system",
+            action: "ATTRIBUTION_FAILED",
+            inputStateHash: evidenceCtx.inputStateHash,
+            metadata: {
+              message: error instanceof Error ? error.message : "unknown error",
+            },
+          });
+        }
+      }
+
       await appendRiskAuditEvent({
         organizationId,
         riskRunId: riskRun.id,
@@ -242,7 +281,7 @@ export class RiskAssessmentService {
       // Mark older succeeded runs for this org as STALE
       await staleOlderRuns(organizationId, riskRun.id);
 
-      // ⑧ Return the compatibility payload with authoritative totals, the v2
+      // ⑨ Return the compatibility payload with authoritative totals, the v2
       //    engine block, and the provenance envelope.
       return {
         ...legacyResult,
@@ -251,6 +290,7 @@ export class RiskAssessmentService {
           ? engineResult.drivers.slice(0, 5).map((driver) => driver.name)
           : legacyResult.topRiskDrivers,
         ...(engineResult ? { riskEngineV2: engineResult } : {}),
+        ...(attribution ? { riskAttribution: attribution } : {}),
         // ── P1 provenance additions ──────────────────────────────────────
         _provenance: buildProvenanceEnvelope({
           riskRun: succeededRun,

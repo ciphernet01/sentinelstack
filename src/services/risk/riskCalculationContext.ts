@@ -102,6 +102,12 @@ export interface RiskCalculationContext {
 // Result
 // ---------------------------------------------------------------------------
 
+/**
+ * Canonical driver vocabulary (P3 spec §6.1).
+ *
+ * P2 emitted the first seven; P3 widened the union to the full governance
+ * vocabulary. Widening is additive, so existing P2 producers stay valid.
+ */
 export type RiskDriverType =
   | "VULNERABILITY"
   | "EXPOSURE"
@@ -109,7 +115,15 @@ export type RiskDriverType =
   | "CONTROL"
   | "DEPENDENCY"
   | "BUSINESS_IMPACT"
-  | "MODEL_SIGNAL";
+  | "ASSET_CRITICALITY"
+  | "SERVICE_CRITICALITY"
+  | "TELEMETRY_SIGNAL"
+  | "MODEL_SIGNAL"
+  | "DATA_COVERAGE"
+  | "OTHER";
+
+/** Model/evidence certainty. Distinct from human review status (P3 spec §29). */
+export type RiskDriverConfidence = "HIGH" | "MEDIUM" | "LOW" | "INSUFFICIENT";
 
 export interface RiskDriver {
   id: string;
@@ -120,7 +134,7 @@ export interface RiskDriver {
   contributionToVaR?: number;
   contributionToScore?: number;
   direction: "INCREASES_RISK" | "REDUCES_RISK";
-  confidence: string;
+  confidence: RiskDriverConfidence;
   evidenceRefs: string[];
 }
 

@@ -229,12 +229,30 @@ export async function persistRiskAssessment(
   });
 }
 
+/**
+ * Audit actions.
+ *
+ * RISK_RUN_* covers the P1 lifecycle; ATTRIBUTION_* and DRIVER_* cover the P3
+ * driver/evidence layer. Widening this union is additive.
+ */
+export type RiskAuditAction =
+  | "RISK_RUN_CREATED"
+  | "RISK_RUN_COMPLETED"
+  | "RISK_RUN_FAILED"
+  | "RISK_ASSESSMENT_PERSISTED"
+  | "ATTRIBUTION_PERSISTED"
+  | "ATTRIBUTION_FAILED"
+  | "ATTRIBUTION_RECALCULATED"
+  | "DRIVER_REVIEW_ANNOTATED"
+  | "EVIDENCE_LINK_CREATED"
+  | "EVIDENCE_LINK_REMOVED";
+
 /** Append-only audit event for PS 26105 risk operations. */
 export async function appendRiskAuditEvent(opts: {
   organizationId: string;
   riskRunId?: string;
   actor?: string;
-  action: "RISK_RUN_CREATED" | "RISK_RUN_COMPLETED" | "RISK_RUN_FAILED" | "RISK_ASSESSMENT_PERSISTED";
+  action: RiskAuditAction;
   inputStateHash?: string;
   resultHash?: string;
   metadata?: object;

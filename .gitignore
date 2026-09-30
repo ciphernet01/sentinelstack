@@ -33,6 +33,8 @@
 *.xlsx
 *.zip
 next-build.log
+dev-frontend.log
+dev-backend.log
 .modified
 .idx/
 /reports/

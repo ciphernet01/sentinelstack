@@ -163,3 +163,70 @@ export {
 } from "./driverAttribution.service";
 export type { AttributionInput, AnalyticLossResult, CounterfactualState } from "./driverAttribution.service";
 
+// ── P3 — Risk Driver Attribution & Evidence ─────────────────────────────────
+export {
+  EVIDENCE_MODEL_VERSION,
+  DRIVER_KEY_VERSION,
+  ATTRIBUTION_VERSION,
+  EVIDENCE_FRESHNESS_DAYS,
+  capConfidenceByEvidence,
+  dedupeEvidence,
+  evidenceForAsset,
+  evidenceForBusinessImpact,
+  evidenceForCalculation,
+  evidenceForTelemetry,
+  evidenceForVulnerability,
+  evidenceSourceForTelemetry,
+  reliabilityForSource,
+  resolveEvidence,
+  summariseEvidenceQuality,
+} from "./evidence.service";
+export type {
+  EvidenceDraft,
+  EvidenceLink,
+  EvidenceQualityState,
+  EvidenceReliabilityState,
+  EvidenceSourceTypeName,
+  ResolvedEvidence,
+} from "./evidence.service";
+
+export {
+  DRIVER_ATTRIBUTION_P3_VERSION,
+  DEFAULT_ATTRIBUTION_COSTS,
+  attributeDriversForAssessment,
+  buildDriverKey,
+  collectEvidenceForDriver,
+  inferEntityType,
+} from "./riskAttribution.service";
+export type {
+  AttributionCostControls,
+  AttributionResult,
+  DriverRecord,
+  PersistedEvidence,
+  RiskAttributionInput,
+} from "./riskAttribution.service";
+
+export {
+  AttributionScopeError,
+  EvidenceNotFoundError,
+  RiskDriverNotFoundError,
+  annotateDriverReview,
+  getEvidenceRecord,
+  getRiskDriver,
+  hashAttributionSet,
+  listDriverEvidence,
+  listRiskDrivers,
+  persistAttribution,
+} from "./driverStore.service";
+export type { ListDriversFilters, PersistAttributionResult } from "./driverStore.service";
+
+export { compareAssessments, collectVersionChanges, diffDrivers } from "./riskChange.service";
+export type {
+  DriverChange,
+  DriverChangeType,
+  MetricDelta,
+  RiskChangeReport,
+  VersionChange,
+} from "./riskChange.service";
+
+
