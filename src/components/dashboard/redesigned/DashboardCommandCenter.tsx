@@ -11,6 +11,7 @@ import {
   CircleDollarSign,
   FileDown,
   Gauge,
+  Globe2,
   Landmark,
   Network,
   RefreshCw,
@@ -31,7 +32,7 @@ import {
   YAxis,
 } from 'recharts';
 import type { Assessment, AssessmentStatus } from '@prisma/client';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 
 import type { CyberRiskResponse } from '@/hooks/use-cyber-risk';
 import { SentinelGlobe } from './globe/SentinelGlobe';
@@ -516,6 +517,7 @@ export function DashboardCommandCenter({
   isCyberRiskLoading,
   onRefresh,
 }: DashboardCommandCenterProps) {
+  const [globeVisible, setGlobeVisible] = useState(false);
   const healthText = cyberRisk ? 'Risk model synchronized' : 'Core telemetry online';
 
   return (
@@ -597,16 +599,46 @@ export function DashboardCommandCenter({
 
         <AdminQueue data={scanQueueStats} loading={isScanQueueLoading} />
 
-        <section className="mt-4 grid gap-3 xl:grid-cols-[minmax(0,1fr)_300px]">
-          <CyberPanel className="relative min-h-[510px] overflow-hidden bg-[#02090d]" accent="cyan">
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_52%_48%,rgba(23,199,218,0.13),transparent_37%)]" />
-            <div className="absolute inset-0">
-              <SentinelGlobe className="h-full w-full" />
+        {/* The button lives outside the section so it stays reachable once the
+            section is collapsed. Toggling hides the whole block, including the
+            risk distribution panel beside the globe. */}
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+          <div className="min-w-0">
+            <div className="mb-1 font-mono text-[9px] font-semibold uppercase tracking-[0.22em] text-cyan-200/50">
+              Infrastructure surface
             </div>
-          </CyberPanel>
+            <h2 className="text-sm font-semibold tracking-tight text-slate-100">Digital Earth</h2>
+            <p className="mt-1 text-[11px] leading-relaxed text-slate-400">
+              {globeVisible
+                ? 'Rendered on demand. Rotation only; no zoom or pan.'
+                : 'Collapsed to reduce GPU and battery cost on the command center.'}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setGlobeVisible((visible) => !visible)}
+            aria-pressed={globeVisible}
+            aria-label={globeVisible ? 'Hide digital Earth section' : 'Show digital Earth section'}
+            aria-expanded={globeVisible}
+            className="inline-flex shrink-0 items-center gap-2 rounded-lg border border-cyan-300/20 bg-[#0a1a20] px-3 py-2 text-[11px] font-semibold text-cyan-100/90 transition hover:border-cyan-300/45 hover:bg-[#0d2229] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300/70"
+          >
+            <Globe2 className="h-4 w-4" />
+            {globeVisible ? 'Hide Globe' : 'Show Globe'}
+          </button>
+        </div>
 
-          <RiskDistribution stats={stats} analytics={analytics} />
-        </section>
+        {globeVisible ? (
+          <section className="mt-3 grid gap-3 xl:grid-cols-[minmax(0,1fr)_300px]">
+            <CyberPanel className="relative min-h-[340px] overflow-hidden bg-[#02090d]" accent="cyan">
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_52%_48%,rgba(23,199,218,0.13),transparent_37%)]" />
+              <div className="absolute inset-0">
+                <SentinelGlobe className="h-full w-full" />
+              </div>
+            </CyberPanel>
+
+            <RiskDistribution stats={stats} analytics={analytics} />
+          </section>
+        ) : null}
 
         <section className="mt-3 grid gap-3 lg:grid-cols-2">
           <FindingsTrend data={findingsOverTime} />
