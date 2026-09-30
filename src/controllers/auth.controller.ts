@@ -93,6 +93,12 @@ class AuthController {
               emailVerificationToken: null,
               emailVerificationExpiry: null,
             },
+            include: {
+              memberships: {
+                orderBy: { createdAt: 'asc' },
+                include: { organization: true },
+              },
+            },
           });
         } else {
           return res.status(403).json({

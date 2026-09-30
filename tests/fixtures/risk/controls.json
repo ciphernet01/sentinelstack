@@ -1,0 +1,91 @@
+{
+  "$comment": "Synthetic, deterministic security controls + asset-control effectiveness for PS 26105 contract tests.",
+  "organizationId": "org_test_001",
+  "controls": [
+    {
+      "controlId": "CTRL-IAM-MFA",
+      "name": "Privileged MFA",
+      "category": "IAM",
+      "description": "Phishing-resistant MFA for all privileged and administrative access.",
+      "baseCostInr": "650000",
+      "iso27001": ["A.5.17"],
+      "nistCsf": ["PR.AA-03"],
+      "cisControls": ["CIS-6.5"],
+      "rbiFramework": ["RBI-CS-4"],
+      "sebiFramework": []
+    },
+    {
+      "controlId": "CTRL-ENDPOINT-EDR",
+      "name": "Endpoint Detection and Response",
+      "category": "ENDPOINT",
+      "description": "Managed EDR coverage on servers and privileged workstations.",
+      "baseCostInr": "880000",
+      "iso27001": ["A.8.7"],
+      "nistCsf": ["DE.CM-01"],
+      "cisControls": ["CIS-10.1"],
+      "rbiFramework": [],
+      "sebiFramework": []
+    },
+    {
+      "controlId": "CTRL-NET-SEG",
+      "name": "Network Segmentation",
+      "category": "NETWORK",
+      "description": "Micro-segmentation between internet edge and core data services.",
+      "baseCostInr": "1800000",
+      "iso27001": ["A.8.22"],
+      "nistCsf": ["PR.IR-01"],
+      "cisControls": ["CIS-12.2"],
+      "rbiFramework": ["RBI-CS-13"],
+      "sebiFramework": []
+    },
+    {
+      "controlId": "CTRL-CLOUD-CSPM",
+      "name": "Cloud Security Posture Management",
+      "category": "CLOUD",
+      "description": "Continuous CSPM scanning with automated misconfiguration remediation.",
+      "baseCostInr": "520000",
+      "iso27001": ["A.8.9"],
+      "nistCsf": ["ID.AM-04"],
+      "cisControls": ["CIS-3.3"],
+      "rbiFramework": [],
+      "sebiFramework": ["SEBI-CSCRF-8"]
+    }
+  ],
+  "assetControls": [
+    {
+      "assetId": "AST-WEB-001",
+      "controlId": "CTRL-IAM-MFA",
+      "coveragePercent": 60,
+      "effectivenessPercent": 70,
+      "status": "PARTIAL"
+    },
+    {
+      "assetId": "AST-WEB-001",
+      "controlId": "CTRL-NET-SEG",
+      "coveragePercent": 45,
+      "effectivenessPercent": 65,
+      "status": "PARTIAL"
+    },
+    {
+      "assetId": "AST-DB-002",
+      "controlId": "CTRL-IAM-MFA",
+      "coveragePercent": 95,
+      "effectivenessPercent": 90,
+      "status": "IMPLEMENTED"
+    },
+    {
+      "assetId": "AST-DB-002",
+      "controlId": "CTRL-ENDPOINT-EDR",
+      "coveragePercent": 80,
+      "effectivenessPercent": 75,
+      "status": "PARTIAL"
+    },
+    {
+      "assetId": "AST-CLOUD-003",
+      "controlId": "CTRL-CLOUD-CSPM",
+      "coveragePercent": 70,
+      "effectivenessPercent": 68,
+      "status": "PARTIAL"
+    }
+  ]
+}

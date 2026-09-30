@@ -1,0 +1,71 @@
+{
+  "$comment": "Synthetic, deterministic vulnerabilities for PS 26105 contract tests. No real customer data.",
+  "organizationId": "org_test_001",
+  "vulnerabilities": [
+    {
+      "assetId": "AST-WEB-001",
+      "cve": "CVE-2026-10001",
+      "title": "Remote code execution in API gateway request parser",
+      "cvss": 9.8,
+      "epss": 0.72,
+      "exploitAvailable": true,
+      "patchAvailable": true,
+      "status": "OPEN",
+      "source": "VULNERABILITY_MANAGER",
+      "firstSeenAt": "2026-08-01T00:00:00.000Z",
+      "lastSeenAt": "2026-09-28T00:00:00.000Z"
+    },
+    {
+      "assetId": "AST-WEB-001",
+      "cve": "CVE-2026-10002",
+      "title": "Authentication bypass via token confusion",
+      "cvss": 8.1,
+      "epss": 0.31,
+      "exploitAvailable": false,
+      "patchAvailable": true,
+      "status": "OPEN",
+      "source": "VULNERABILITY_MANAGER",
+      "firstSeenAt": "2026-09-10T00:00:00.000Z",
+      "lastSeenAt": "2026-09-28T00:00:00.000Z"
+    },
+    {
+      "assetId": "AST-DB-002",
+      "cve": "CVE-2026-10003",
+      "title": "Privilege escalation in database stored procedure",
+      "cvss": 7.5,
+      "epss": 0.18,
+      "exploitAvailable": false,
+      "patchAvailable": true,
+      "status": "OPEN",
+      "source": "VULNERABILITY_MANAGER",
+      "firstSeenAt": "2026-07-15T00:00:00.000Z",
+      "lastSeenAt": "2026-09-27T00:00:00.000Z"
+    },
+    {
+      "assetId": "AST-DB-002",
+      "cve": null,
+      "title": "Weak TLS ciphers enabled on database listener",
+      "cvss": 5.3,
+      "epss": 0.04,
+      "exploitAvailable": false,
+      "patchAvailable": false,
+      "status": "OPEN",
+      "source": "CSPM",
+      "firstSeenAt": "2026-09-01T00:00:00.000Z",
+      "lastSeenAt": "2026-09-27T00:00:00.000Z"
+    },
+    {
+      "assetId": "AST-CLOUD-003",
+      "cve": "CVE-2026-10005",
+      "title": "Public object storage bucket ACL misconfiguration",
+      "cvss": 8.6,
+      "epss": 0.44,
+      "exploitAvailable": true,
+      "patchAvailable": false,
+      "status": "OPEN",
+      "source": "CSPM",
+      "firstSeenAt": "2026-09-20T00:00:00.000Z",
+      "lastSeenAt": "2026-09-29T00:00:00.000Z"
+    }
+  ]
+}

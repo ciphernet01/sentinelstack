@@ -1,0 +1,53 @@
+{
+  "$comment": "Synthetic, deterministic telemetry window for PS 26105 contract tests.",
+  "organizationId": "org_test_001",
+  "windowDays": 30,
+  "asOf": "2026-09-29T10:00:00.000Z",
+  "telemetry": [
+    {
+      "assetId": "AST-WEB-001",
+      "source": "EDR",
+      "eventType": "SUSPICIOUS_PROCESS_EXECUTION",
+      "severity": "HIGH",
+      "signalScore": 1.4,
+      "observedAt": "2026-09-25T04:12:00.000Z",
+      "metadata": { "rule": "T1059.004", "confidence": 0.71 }
+    },
+    {
+      "assetId": "AST-WEB-001",
+      "source": "SIEM",
+      "eventType": "REPEATED_AUTH_FAILURES",
+      "severity": "MEDIUM",
+      "signalScore": 1.1,
+      "observedAt": "2026-09-26T22:48:00.000Z",
+      "metadata": { "sourceIp": "198.51.100.77", "attempts": 412 }
+    },
+    {
+      "assetId": "AST-DB-002",
+      "source": "IAM",
+      "eventType": "PRIVILEGED_ROLE_GRANT",
+      "severity": "HIGH",
+      "signalScore": 1.3,
+      "observedAt": "2026-09-22T09:05:00.000Z",
+      "metadata": { "principal": "svc-etl", "role": "db_admin" }
+    },
+    {
+      "assetId": "AST-CLOUD-003",
+      "source": "CSPM",
+      "eventType": "PUBLIC_BUCKET_DETECTED",
+      "severity": "CRITICAL",
+      "signalScore": 1.8,
+      "observedAt": "2026-09-28T13:31:00.000Z",
+      "metadata": { "bucket": "acme-analytics-prod", "acl": "public-read" }
+    },
+    {
+      "assetId": "AST-CLOUD-003",
+      "source": "SIEM",
+      "eventType": "ANOMALOUS_EGRESS_VOLUME",
+      "severity": "LOW",
+      "signalScore": 0.9,
+      "observedAt": "2026-09-29T02:15:00.000Z",
+      "metadata": { "bytesOut": 4830000000, "baselineBytesOut": 120000000 }
+    }
+  ]
+}

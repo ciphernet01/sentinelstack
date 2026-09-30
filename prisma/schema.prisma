@@ -101,6 +101,8 @@ model Organization {
   securityControls SecurityControl[]
   riskSnapshots    RiskSnapshot[]
   riskScenarios    RiskScenario[]
+  riskRuns         RiskRun[]
+  riskAssessments  RiskAssessment[]
   createdAt        DateTime                 @default(now())
   updatedAt        DateTime                 @updatedAt
 }
@@ -740,4 +742,104 @@ model RiskScenario {
   createdAt             DateTime         @default(now())
 
   @@index([organizationId, createdAt])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PS 26105 P1 — Risk Run Lineage & Assessment Foundation
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum RiskRunStatus {
+  QUEUED
+  RUNNING
+  SUCCEEDED
+  FAILED
+  STALE
+}
+
+/// One authoritative calculation run. Every result must trace back to a RiskRun.
+model RiskRun {
+  id                      String        @id @default(cuid())
+  organizationId          String
+  organization            Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  scopeType               String        // ENTERPRISE | BUSINESS_UNIT | ASSET
+  scopeId                 String        // organization/BU/asset id depending on scopeType
+  asOf                    DateTime      // point-in-time the inputs were collected
+  status                  RiskRunStatus @default(QUEUED)
+  riskEngineVersion       String        @default("deterministic-baseline-v0")
+  parameterVersion        String        @default("params-2026-09")
+  modelBundleVersion      String        @default("deterministic-baseline-v0")
+  featureSetVersion       String        @default("features-v1")
+  simulationConfigVersion String        @default("mc-config-v1")
+  inputStateHash          String        // sha256 of canonical input bundle
+  resultHash              String?       // sha256 of canonical result bundle (set on SUCCEEDED)
+  coverageState           Json?         // coverage metadata (asset/control/telemetry counts)
+  errorCode               String?
+  errorMessage            String?
+  startedAt               DateTime?
+  completedAt             DateTime?
+  triggeredBy             String?       // user id or "system"
+  triggerReason           String?       // "MANUAL" | "TELEMETRY_CHANGE" | "SCHEDULED"
+  createdAt               DateTime      @default(now())
+  updatedAt               DateTime      @updatedAt
+
+  assessments             RiskAssessment[]
+  auditEvents             RiskAuditEvent[]
+
+  @@index([organizationId, status])
+  @@index([organizationId, createdAt])
+  @@index([organizationId, scopeType, scopeId])
+}
+
+/// Immutable, append-only result record produced by a RiskRun.
+model RiskAssessment {
+  id                        String       @id @default(cuid())
+  riskRunId                 String
+  riskRun                   RiskRun      @relation(fields: [riskRunId], references: [id], onDelete: Cascade)
+  organizationId            String
+  organization              Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  scopeType                 String
+  scopeId                   String
+  computedAt                DateTime     @default(now())
+  asOf                      DateTime
+  // Core financials
+  totalFinancialExposureInr BigInt       @default(0)
+  expectedAnnualLossInr     BigInt       @default(0)
+  valueAtRisk95Inr          BigInt       @default(0)
+  averageLikelihood         Float        @default(0)
+  controlEffectiveness      Float        @default(0)
+  // Versioned risk score (0-100 index)
+  riskScore                 Int?
+  // Attribution and evidence
+  drivers                   Json?        // structured driver attribution rows
+  topDrivers                Json?        // legacy-compatible top driver list
+  assumptions               Json?
+  // Provenance
+  riskEngineVersion         String
+  parameterVersion          String
+  modelBundleVersion        String
+  inputStateHash            String
+  resultHash                String?
+
+  createdAt DateTime @default(now())
+
+  @@index([organizationId, createdAt])
+  @@index([riskRunId])
+  @@index([organizationId, scopeType, scopeId, computedAt])
+}
+
+/// Append-only audit ledger for material risk operations.
+model RiskAuditEvent {
+  id             String   @id @default(cuid())
+  organizationId String
+  riskRunId      String?
+  riskRun        RiskRun? @relation(fields: [riskRunId], references: [id], onDelete: SetNull)
+  actor          String?  // user id or "system"
+  action         String   // RISK_RUN_CREATED | RISK_RUN_COMPLETED | RISK_RUN_FAILED | RISK_ASSESSMENT_PERSISTED
+  inputStateHash String?
+  resultHash     String?
+  metadata       Json?
+  createdAt      DateTime @default(now())
+
+  @@index([organizationId, createdAt])
+  @@index([riskRunId])
 }

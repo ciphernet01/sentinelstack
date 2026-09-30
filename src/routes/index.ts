@@ -15,6 +15,7 @@ import complianceRoutes from './compliance.routes';
 import adminRoutes from './admin.routes';
 import aiRoutes from './ai.routes';
 import cyberRiskRoutes from './cyber-risk.routes';
+import riskRoutes from './risk.routes';
 
 const router = Router();
 
@@ -28,6 +29,9 @@ router.use('/billing', billingRoutes);
 router.use('/scheduled-scans', scheduledScanRoutes);
 router.use('/webhooks', webhookRoutes);
 router.use('/api-keys', apiKeyRoutes);
+// PS 26105 risk API — Firebase-authenticated. Mounted before the API-key
+// public API at /v1 so /api/v1/risk/* is not intercepted by apiKeyAuth.
+router.use('/v1/risk', riskRoutes);
 router.use('/v1', publicApiRoutes); // Public API endpoints
 router.use('/branding', brandingRoutes);
 router.use('/compliance', complianceRoutes);
