@@ -22,6 +22,7 @@ import { Router } from 'express';
 import { firebaseAuth, requireOrganizationRole } from '../middleware/auth';
 import { cyberRiskController } from '../controllers/cyber-risk.controller';
 import { riskDriverController } from '../controllers/risk-driver.controller';
+import { scenarioController } from '../controllers/scenario.controller';
 
 const router = Router();
 
@@ -102,6 +103,60 @@ router.get(
   firebaseAuth,
   anyRole,
   riskDriverController.getEvidence.bind(riskDriverController),
+);
+
+// ── P4 — scenarios ────────────────────────────────────────────────────────
+//
+// Sub-routes are registered before `/scenarios/:scenarioId` so the intent is
+// unambiguous and a future refactor cannot accidentally shadow them.
+
+// POST /api/v1/risk/scenarios
+router.post(
+  '/scenarios',
+  firebaseAuth,
+  adminOnly,
+  scenarioController.create.bind(scenarioController),
+);
+
+// GET /api/v1/risk/scenarios
+router.get(
+  '/scenarios',
+  firebaseAuth,
+  anyRole,
+  scenarioController.list.bind(scenarioController),
+);
+
+// POST /api/v1/risk/scenarios/:scenarioId/validate
+router.post(
+  '/scenarios/:scenarioId/validate',
+  firebaseAuth,
+  anyRole,
+  scenarioController.validate.bind(scenarioController),
+);
+
+// POST /api/v1/risk/scenarios/:scenarioId/run
+// Running a what-if recalculates the estate, so it is admin-gated.
+router.post(
+  '/scenarios/:scenarioId/run',
+  firebaseAuth,
+  adminOnly,
+  scenarioController.run.bind(scenarioController),
+);
+
+// GET /api/v1/risk/scenarios/:scenarioId/compare
+router.get(
+  '/scenarios/:scenarioId/compare',
+  firebaseAuth,
+  anyRole,
+  scenarioController.compare.bind(scenarioController),
+);
+
+// GET /api/v1/risk/scenarios/:scenarioId
+router.get(
+  '/scenarios/:scenarioId',
+  firebaseAuth,
+  anyRole,
+  scenarioController.get.bind(scenarioController),
 );
 
 export default router;
