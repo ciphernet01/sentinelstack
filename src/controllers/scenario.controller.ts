@@ -23,6 +23,13 @@ import {
   runPersistedScenario,
   validateScenario,
 } from '../services/scenario/scenarioStore.service';
+import {
+  buildInvestmentOutcome,
+  normaliseScenarioCost,
+  type CostBasis,
+  type CostSemantics,
+  type ScenarioCostInput,
+} from '../services/scenario/scenarioCost.service';
 import type {
   ScenarioChangeType,
   ScenarioChange,
@@ -62,6 +69,18 @@ const OPERATIONS = [
   'PATCH', 'UNPATCH', 'ISOLATE', 'EXPOSE', 'UNEXPOSE', 'REASSIGN', 'REPLACE',
 ] as const;
 
+const COST_SEMANTICS = [
+  'CAPEX', 'OPEX', 'ONE_TIME', 'ANNUAL', 'MONTHLY',
+  'LICENSE', 'IMPLEMENTATION', 'PERSONNEL', 'SERVICE_PROVIDER',
+] as const;
+
+const COST_BASES = [
+  'INVESTMENT_OPTION',
+  'IMPLEMENTATION_ESTIMATE',
+  'USER_ASSUMPTION',
+  'APPROVED_CATALOG',
+] as const;
+
 function requireOrganization(req: AuthenticatedRequest, res: Response): string | null {
   if (!req.user?.id) {
     res.status(401).json({ message: 'User not found.' });
@@ -73,6 +92,47 @@ function requireOrganization(req: AuthenticatedRequest, res: Response): string |
     return null;
   }
   return organizationId;
+}
+
+/**
+ * Validate a structured cost breakdown.
+ *
+ * Returns `null` when absent, `"invalid"` when present but malformed, and the
+ * typed cost input otherwise. A cost of zero across the board is invalid rather
+ * than free: a scenario priced at zero would rank as infinitely good.
+ */
+function readStructuredCost(raw: unknown): ScenarioCostInput | 'invalid' | null {
+  if (raw === undefined || raw === null) return null;
+
+  const entry = (raw ?? {}) as Record<string, unknown>;
+  const oneTime = entry.oneTime;
+  const annual = entry.annual;
+  const currency = entry.currency;
+  const semantics = Array.isArray(entry.semantics) ? entry.semantics : [];
+  const basis = oneOf(entry.basis, COST_BASES);
+
+  const validAmount = (value: unknown): boolean =>
+    value === undefined || (typeof value === 'number' && Number.isFinite(value) && value >= 0);
+
+  if (!validAmount(oneTime) || !validAmount(annual)) return 'invalid';
+  if ((oneTime ?? 0) === 0 && (annual ?? 0) === 0) return 'invalid';
+  if (typeof currency !== 'string' || !currency) return 'invalid';
+  if (!basis) return 'invalid';
+
+  const parsedSemantics = semantics
+    .map((value) => oneOf(value, COST_SEMANTICS))
+    .filter((value): value is CostSemantics => Boolean(value));
+
+  if (parsedSemantics.length === 0) return 'invalid';
+
+  return {
+    ...(typeof oneTime === 'number' ? { oneTime } : {}),
+    ...(typeof annual === 'number' ? { annual } : {}),
+    currency,
+    semantics: parsedSemantics,
+    basis: basis as CostBasis,
+    ...(typeof entry.sourceReference === 'string' ? { sourceReference: entry.sourceReference } : {}),
+  };
 }
 
 function oneOf<T extends string>(value: unknown, allowed: readonly T[]): T | undefined {
@@ -268,12 +328,43 @@ class ScenarioController {
         return res.status(400).json({ message: 'cost must be a non-negative number.' });
       }
 
+      // Structured cost input is preferred: a single `cost` figure collapses
+      // one-time and recurring spend, which the spec forbids (P4 §35).
+      const structured = readStructuredCost(req.body?.costBreakdown);
+      if (structured === 'invalid') {
+        return res.status(400).json({
+          message:
+            'costBreakdown requires positive oneTime and/or annual amounts, a currency, ' +
+            'at least one semantics entry, and a basis.',
+        });
+      }
+
       const outcome = await runPersistedScenario({
         organizationId,
         scenarioId: req.params.scenarioId,
         actor: req.user!.id,
         ...(cost === undefined ? {} : { cost }),
       });
+
+      // Derive the investment economics from whatever cost was supplied.
+      const normalised = structured
+        ? normaliseScenarioCost(structured)
+        : cost === undefined
+          ? null
+          : normaliseScenarioCost({
+              oneTime: cost,
+              currency: 'INR',
+              semantics: ['IMPLEMENTATION'],
+              basis: 'USER_ASSUMPTION',
+            });
+
+      const investment = normalised
+        ? buildInvestmentOutcome({
+            scenarioId: outcome.scenarioId,
+            result: outcome.result,
+            cost: normalised,
+          })
+        : null;
 
       res.status(200).json({
         data: {
@@ -290,12 +381,15 @@ class ScenarioController {
           cost: outcome.result.cost,
           // Modelled reduction, not a guaranteed saving.
           avoidedEal: outcome.result.avoidedEal,
+          costBreakdown: normalised,
+          // The shape P5 consumes. Present only when a cost was supplied.
+          investment,
           scenarioStateHash: outcome.result.scenarioStateHash,
           calculationHash: outcome.result.scenarioResultHash,
           drivers: outcome.attribution?.drivers ?? [],
           versions: outcome.result.versions,
           uncertainty: outcome.result.uncertainty,
-          warnings: outcome.warnings,
+          warnings: [...outcome.warnings, ...(normalised?.warnings ?? [])],
         },
       });
     } catch (error) {
