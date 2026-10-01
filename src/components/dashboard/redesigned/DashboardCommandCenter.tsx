@@ -34,7 +34,8 @@ import {
 import type { Assessment, AssessmentStatus } from '@prisma/client';
 import { useMemo, useState } from 'react';
 
-import type { CyberRiskResponse } from '@/hooks/use-cyber-risk';
+import type { CyberRiskResponse, NormalizedRiskDriver } from '@/hooks/use-cyber-risk';
+import { useRiskDrivers } from '@/hooks/use-cyber-risk';
 import { SentinelGlobe } from './globe/SentinelGlobe';
 import { CyberPanel, CyberPanelHeader, CyberStatusDot } from './ui/CyberPanel';
 
@@ -95,19 +96,6 @@ function riskColor(score: number) {
   if (score >= 60) return 'text-amber-300';
   if (score >= 40) return 'text-yellow-200';
   return 'text-emerald-300';
-}
-
-function severityTone(severity: string) {
-  switch (severity.toUpperCase()) {
-    case 'CRITICAL':
-      return 'text-rose-300 bg-rose-400/10 border-rose-300/15';
-    case 'HIGH':
-      return 'text-amber-200 bg-amber-300/10 border-amber-300/15';
-    case 'MEDIUM':
-      return 'text-yellow-200 bg-yellow-300/10 border-yellow-300/15';
-    default:
-      return 'text-cyan-200 bg-cyan-300/10 border-cyan-300/15';
-  }
 }
 
 function statusClass(status: AssessmentStatus) {
@@ -354,60 +342,119 @@ function FinancialRisk({
   );
 }
 
-function RiskDrivers({ data }: { data?: CyberRiskResponse | null }) {
-  const drivers = data?.topRiskDrivers?.slice(0, 5) ?? [];
+/** Colour cue for a driver type. Presentation only — carries no meaning beyond grouping. */
+function driverTypeTone(type: string) {
+  switch (type) {
+    case 'VULNERABILITY':
+      return 'border-rose-300/20 bg-rose-300/[0.08] text-rose-200';
+    case 'EXPOSURE':
+      return 'border-amber-300/20 bg-amber-300/[0.08] text-amber-200';
+    case 'CONTROL':
+      return 'border-cyan-300/20 bg-cyan-300/[0.08] text-cyan-200';
+    case 'DEPENDENCY':
+      return 'border-violet-300/20 bg-violet-300/[0.08] text-violet-200';
+    case 'BUSINESS_IMPACT':
+      return 'border-emerald-300/20 bg-emerald-300/[0.08] text-emerald-200';
+    default:
+      return 'border-slate-300/15 bg-slate-300/[0.06] text-slate-300';
+  }
+}
+
+function confidenceTone(confidence: NormalizedRiskDriver['confidence']) {
+  if (confidence === 'HIGH') return 'text-emerald-300';
+  if (confidence === 'MEDIUM') return 'text-amber-300';
+  if (confidence === 'LOW') return 'text-rose-300';
+  return 'text-slate-500';
+}
+
+function driverDirectionLabel(direction: NormalizedRiskDriver['direction']) {
+  if (direction === 'REDUCES_RISK') return 'MITIGATES';
+  if (direction === 'LIMITS_CONFIDENCE') return 'CONFIDENCE ONLY';
+  return 'INCREASES RISK';
+}
+
+/**
+ * P3 — evidence-linked risk drivers.
+ *
+ * Replaces the legacy "top risk drivers" asset list. The difference is not
+ * cosmetic: a sorted asset list says *where* loss sits, whereas a driver says
+ * *which factor* produced it, with a modelled contribution, a direction, a
+ * confidence, and a count of the evidence records behind it.
+ *
+ * Wording is deliberately modelled. These are contributions to modelled risk,
+ * not realised losses, and the panel says so (P3 spec §47).
+ */
+function RiskDrivers() {
+  const { data: drivers, isLoading, isError } = useRiskDrivers(5);
 
   return (
     <CyberPanel accent="warning">
       <CyberPanelHeader
-        eyebrow="Risk attribution"
+        eyebrow="Evidence-linked attribution"
         title="Top Financial Risk Drivers"
-        description="Assets contributing most to expected annual loss."
+        description="Factors contributing most to modelled expected annual loss, with the evidence behind each."
         action={<Target className="h-4 w-4 text-amber-200/70" />}
       />
-      <div className="divide-y divide-white/[0.045]">
-        {drivers.length ? (
-          drivers.map((driver, index) => (
-            <div key={driver.assetId} className="grid gap-3 px-4 py-3.5 sm:grid-cols-[28px_1fr_auto] sm:items-center sm:px-5">
-              <div className="font-mono text-[10px] text-slate-600">0{index + 1}</div>
+
+      {isLoading ? (
+        <div className="px-5 py-8 text-center text-xs text-slate-500">Loading driver attribution…</div>
+      ) : isError ? (
+        <div className="px-5 py-8 text-center text-xs text-slate-500">
+          Driver attribution is unavailable. Run a risk calculation to generate it.
+        </div>
+      ) : !drivers?.length ? (
+        <div className="px-5 py-8 text-center text-xs text-slate-500">
+          No modelled risk drivers are available yet. Run a risk calculation to produce them.
+        </div>
+      ) : (
+        <div className="divide-y divide-white/[0.045]">
+          {drivers.map((driver) => (
+            <div
+              key={driver.id}
+              className="grid gap-3 px-4 py-3.5 sm:grid-cols-[28px_1fr_auto] sm:items-center sm:px-5"
+            >
+              <div className="font-mono text-[10px] text-slate-600">
+                {String(driver.rank).padStart(2, '0')}
+              </div>
+
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="truncate text-xs font-medium text-slate-200">{driver.serviceName}</span>
-                  <span className={`rounded border px-1.5 py-0.5 text-[8px] font-semibold uppercase tracking-wider ${severityTone(driver.criticality)}`}>
-                    {driver.criticality}
+                  <span className="truncate text-xs font-medium text-slate-200">{driver.name}</span>
+                  <span
+                    className={`rounded border px-1.5 py-0.5 text-[8px] font-semibold uppercase tracking-wider ${driverTypeTone(driver.type)}`}
+                  >
+                    {driver.type.replace(/_/g, ' ')}
                   </span>
-                  {driver.internetExposed ? (
-                    <span className="rounded border border-rose-300/10 bg-rose-300/[0.07] px-1.5 py-0.5 text-[8px] text-rose-200">
-                      INTERNET EXPOSED
-                    </span>
+                </div>
+                <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-slate-500">
+                  <span>{driverDirectionLabel(driver.direction)}</span>
+                  <span>
+                    Confidence{' '}
+                    <span className={confidenceTone(driver.confidence)}>{driver.confidence}</span>
+                  </span>
+                  <span>
+                    {driver.evidenceCount} evidence record{driver.evidenceCount === 1 ? '' : 's'}
+                  </span>
+                  {driver.reviewStatus !== 'UNREVIEWED' ? (
+                    <span className="text-cyan-300/70">{driver.reviewStatus}</span>
                   ) : null}
                 </div>
-                <div className="mt-1 truncate text-[10px] text-slate-500">
-                  {driver.businessUnit} · {driver.hostname}
-                </div>
               </div>
-              <div className="grid grid-cols-3 gap-3 text-right sm:min-w-[270px]">
-                <div>
-                  <div className="text-[8px] uppercase tracking-wider text-slate-600">EAL</div>
-                  <div className="mt-0.5 text-[10px] font-semibold text-slate-200">{formatInr(driver.expectedAnnualLossInr)}</div>
+
+              <div className="text-right sm:min-w-[170px]">
+                <div className="text-[8px] uppercase tracking-wider text-slate-600">
+                  Modelled EAL contribution
                 </div>
-                <div>
-                  <div className="text-[8px] uppercase tracking-wider text-slate-600">Likelihood</div>
-                  <div className="mt-0.5 text-[10px] font-semibold text-slate-200">{formatPercent(driver.annualLikelihood)}</div>
-                </div>
-                <div>
-                  <div className="text-[8px] uppercase tracking-wider text-slate-600">Open / Exploit</div>
-                  <div className="mt-0.5 text-[10px] font-semibold text-slate-200">{driver.openVulnerabilities} / {driver.exploitableVulnerabilities}</div>
+                <div className="mt-0.5 text-[10px] font-semibold text-slate-200">
+                  {driver.contributionToEal === null
+                    ? 'Not modelled'
+                    : formatInr(driver.contributionToEal)}
                 </div>
               </div>
             </div>
-          ))
-        ) : (
-          <div className="px-5 py-8 text-center text-xs text-slate-500">
-            No modeled risk drivers are available yet.
-          </div>
-        )}
-      </div>
+          ))}
+        </div>
+      )}
     </CyberPanel>
   );
 }
@@ -646,7 +693,7 @@ export function DashboardCommandCenter({
         </section>
 
         <section className="mt-3">
-          <RiskDrivers data={cyberRisk} />
+          <RiskDrivers />
         </section>
 
         <section className="mt-3">
