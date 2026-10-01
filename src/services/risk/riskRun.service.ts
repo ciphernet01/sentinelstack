@@ -245,7 +245,10 @@ export type RiskAuditAction =
   | "ATTRIBUTION_RECALCULATED"
   | "DRIVER_REVIEW_ANNOTATED"
   | "EVIDENCE_LINK_CREATED"
-  | "EVIDENCE_LINK_REMOVED";
+  | "EVIDENCE_LINK_REMOVED"
+  | "SCENARIO_CREATED"
+  | "SCENARIO_RUN_COMPLETED"
+  | "SCENARIO_RUN_FAILED";
 
 /** Append-only audit event for PS 26105 risk operations. */
 export async function appendRiskAuditEvent(opts: {

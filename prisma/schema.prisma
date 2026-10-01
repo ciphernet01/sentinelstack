@@ -105,6 +105,7 @@ model Organization {
   riskAssessments  RiskAssessment[]
   riskDrivers      RiskDriver[]
   evidenceRecords  EvidenceRecord[]
+  scenarios        Scenario[]
   createdAt        DateTime                 @default(now())
   updatedAt        DateTime                 @updatedAt
 }
@@ -1036,6 +1037,204 @@ model RiskDriverEvidence {
 }
 
 /// Append-only audit ledger for material risk operations.
+// ─── PS 26105 P4 — Scenario Engine & What-If ───────────────────────────────
+//
+// A scenario is a set of DECLARED, TYPED changes evaluated against a baseline
+// assessment. It stores the baseline it was created from plus the resolved
+// state hash, so a historical scenario stays reproducible even after production
+// state moves on (P4 spec §5.4, §29).
+//
+// ScenarioResult rows are immutable. Re-running a scenario appends a new run and
+// a new assessment rather than mutating the previous one, so two results can be
+// compared honestly (§104).
+
+enum ScenarioType {
+  CONTROL
+  VULNERABILITY_REMEDIATION
+  EXPOSURE
+  SEGMENTATION
+  IDENTITY
+  ENDPOINT
+  CLOUD_HARDENING
+  THREAT_RESPONSE
+  BUSINESS_CONTINUITY
+  ASSET_CHANGE
+  DEPENDENCY
+  INVESTMENT
+  COMBINED
+  CUSTOM
+}
+
+enum ScenarioStatus {
+  DRAFT
+  READY
+  RUNNING
+  COMPLETED
+  FAILED
+  EXPIRED
+  ARCHIVED
+}
+
+enum ScenarioRunStatus {
+  RUNNING
+  SUCCEEDED
+  FAILED
+}
+
+enum ScenarioChangeTargetType {
+  ASSET
+  SERVICE
+  VULNERABILITY
+  CONTROL
+  ASSET_CONTROL
+  DEPENDENCY
+  BUSINESS_UNIT
+  THREAT_SIGNAL
+  BUSINESS_PARAMETER
+}
+
+enum ScenarioChangeOperation {
+  SET
+  INCREASE
+  DECREASE
+  ENABLE
+  DISABLE
+  ADD
+  REMOVE
+  PATCH
+  UNPATCH
+  ISOLATE
+  EXPOSE
+  UNEXPOSE
+  REASSIGN
+  REPLACE
+}
+
+model Scenario {
+  id           String         @id @default(cuid())
+  organizationId String
+  organization Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  name         String
+  description  String?
+  type         ScenarioType   @default(CUSTOM)
+  status       ScenarioStatus @default(DRAFT)
+
+  // The baseline this scenario is a what-if *against*. Retained so the scenario
+  // remains explainable after the baseline is superseded.
+  baselineRiskAssessmentId String
+  baselineRiskRunId        String
+  baselineInputStateHash   String
+
+  /// Hash of the resolved scenario state at the time of the last run.
+  scenarioStateHash String?
+
+  createdById String?
+  archivedAt  DateTime?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  changes   ScenarioChange[]
+  runs      ScenarioRun[]
+
+  @@index([organizationId, createdAt])
+  @@index([organizationId, status])
+  @@index([baselineRiskAssessmentId])
+}
+
+model ScenarioChange {
+  id         String                   @id @default(cuid())
+  scenarioId String
+  scenario   Scenario                 @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
+
+  targetType ScenarioChangeTargetType
+  targetId   String
+  fieldPath  String
+  operation  ScenarioChangeOperation
+  /// Declared resulting value. Old value is recorded per-run, not here.
+  newValue   Json
+  oldValue   Json?
+
+  reason            String?
+  sourceDriverId    String?
+  investmentOptionId String?
+
+  /// Deterministic application order (spec §15).
+  sequence Int
+  createdAt DateTime @default(now())
+
+  @@unique([scenarioId, sequence])
+  @@index([scenarioId])
+}
+
+model ScenarioRun {
+  id          String            @id @default(cuid())
+  scenarioId  String
+  scenario    Scenario          @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
+  organizationId String
+  status      ScenarioRunStatus @default(RUNNING)
+
+  scenarioStateHash String
+  engineResultHash  String?
+  errorMessage      String?
+  warnings          Json?
+  startedAt         DateTime  @default(now())
+  completedAt       DateTime?
+
+  assessments ScenarioAssessment[]
+
+  @@index([scenarioId, startedAt])
+  @@index([organizationId, status])
+}
+
+model ScenarioAssessment {
+  id          String      @id @default(cuid())
+  scenarioRunId String
+  scenarioRun ScenarioRun @relation(fields: [scenarioRunId], references: [id], onDelete: Cascade)
+  organizationId String
+
+  /// The P3-compatible assessment this scenario produced, when attribution ran.
+  riskAssessmentId String?
+
+  // Scenario-side figures
+  eal                Float
+  var95              Float
+  var99              Float
+  financialExposure  Float
+  riskScore          Int
+  currency           String     @default("INR")
+
+  // Baseline-side figures, captured so the delta survives the baseline moving on.
+  baselineEal               Float
+  baselineVar95             Float
+  baselineVar99             Float
+  baselineFinancialExposure Float
+  baselineRiskScore         Int
+
+  // Signed deltas (scenario - baseline).
+  deltaEal               Float
+  deltaVar95             Float
+  deltaVar99             Float
+  deltaFinancialExposure Float
+  deltaRiskScore         Int
+
+  /// Implementation cost from an investment option or user assumption.
+  costInr BigInt?
+  /// baselineEal - eal. A modelled reduction, not a realised saving.
+  avoidedEal Float?
+
+  riskEngineVersion   String
+  parameterVersion    String
+  modelBundleVersion  String
+  scenarioStateHash   String
+  calculationHash     String?
+  drivers             Json?
+  metadata            Json?
+  createdAt           DateTime @default(now())
+
+  @@index([scenarioRunId])
+  @@index([organizationId, createdAt])
+}
+
 model RiskAuditEvent {
   id             String   @id @default(cuid())
   organizationId String

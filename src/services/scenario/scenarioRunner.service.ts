@@ -109,6 +109,54 @@ export function computeDeltas(
   return { delta, riskReduction };
 }
 
+/**
+ * Assemble a scenario result from two already-computed engine results.
+ *
+ * Split out so a caller that needs the scenario's engine result for something
+ * else (P3 attribution, for instance) can calculate once and reuse it, rather
+ * than paying for a second Monte Carlo pass.
+ */
+export function buildScenarioResult(input: {
+  type: ScenarioChangeType;
+  baselineResult: RiskEngineResult;
+  scenarioResult: RiskEngineResult;
+  scenarioStateHash: string;
+  appliedChanges: ScenarioChange[];
+  validationIssues: ScenarioValidationIssue[];
+  warnings: string[];
+  cost?: number;
+}): ScenarioResult {
+  const baseline = extractMetrics(input.baselineResult);
+  const scenario = extractMetrics(input.scenarioResult);
+  const { delta, riskReduction } = computeDeltas(baseline, scenario);
+
+  return {
+    version: SCENARIO_RESULT_VERSION,
+    type: input.type,
+    baseline,
+    scenario,
+    delta,
+    riskReduction,
+    residualRisk: {
+      // Residual is the post-change figure, not the reduction.
+      eal: scenario.eal,
+      var95: scenario.var95,
+      riskScore: scenario.riskScore,
+    },
+    cost: input.cost ?? null,
+    avoidedEal: riskReduction.eal,
+    scenarioStateHash: input.scenarioStateHash,
+    baselineResultHash: input.baselineResult.resultHash,
+    scenarioResultHash: input.scenarioResult.resultHash,
+    appliedChanges: input.appliedChanges,
+    validationIssues: input.validationIssues,
+    warnings: [...input.warnings, ...input.scenarioResult.uncertainty.warnings],
+    uncertainty: input.scenarioResult.uncertainty,
+    versions: input.scenarioResult.versions,
+    simulation: input.scenarioResult.simulation,
+  };
+}
+
 export class ScenarioNotApplicableError extends Error {
   constructor(message: string) {
     super(message);
@@ -150,33 +198,14 @@ export async function runScenario(input: RunScenarioInput): Promise<ScenarioResu
   // Only the input state differs.
   const scenarioResult = await calculateRisk(resolved.context);
 
-  const baseline = extractMetrics(baselineResult);
-  const scenario = extractMetrics(scenarioResult);
-  const { delta, riskReduction } = computeDeltas(baseline, scenario);
-
-  return {
-    version: SCENARIO_RESULT_VERSION,
+  return buildScenarioResult({
     type,
-    baseline,
-    scenario,
-    delta,
-    riskReduction,
-    residualRisk: {
-      // Residual is the post-change figure, not the reduction.
-      eal: scenario.eal,
-      var95: scenario.var95,
-      riskScore: scenario.riskScore,
-    },
-    cost: cost ?? null,
-    avoidedEal: riskReduction.eal,
+    baselineResult,
+    scenarioResult,
     scenarioStateHash: resolved.scenarioStateHash,
-    baselineResultHash: baselineResult.resultHash,
-    scenarioResultHash: scenarioResult.resultHash,
     appliedChanges: resolved.applied,
     validationIssues: resolved.issues,
-    warnings: [...resolved.warnings, ...scenarioResult.uncertainty.warnings],
-    uncertainty: scenarioResult.uncertainty,
-    versions: scenarioResult.versions,
-    simulation: scenarioResult.simulation,
-  };
+    warnings: resolved.warnings,
+    ...(cost === undefined ? {} : { cost }),
+  });
 }
