@@ -100,6 +100,7 @@ test("P4 runs, persists and compares a what-if scenario", async (t) => {
     const baselineBefore = await prisma.riskAssessment.findUniqueOrThrow({
       where: { id: baselineAssessmentId },
     });
+    const baselineInputStateHash = baselineBefore.inputStateHash;
 
     // ── Define the scenario against that baseline ──────────────────────────
     const scenario = await createScenario({
@@ -150,6 +151,26 @@ test("P4 runs, persists and compares a what-if scenario", async (t) => {
     assert.equal(run.result.cost, 750_000);
     assert.match(run.result.scenarioStateHash, /^sha256:/);
     assert.ok(run.attribution, "the scenario must carry P3 attribution");
+
+    // Attribution describes the scenario state, so it must be labelled with the
+    // scenario assessment — not the production baseline it was compared against.
+    assert.equal(run.attribution.riskAssessmentId, run.assessmentId);
+    assert.notEqual(run.attribution.riskAssessmentId, baselineAssessmentId);
+
+    // Staleness is measured against live evidence and recorded, so a reader can
+    // see whether the baseline still reflects production.
+    assert.equal(typeof run.staleBaseline, "boolean");
+    const assessmentRow = await prisma.scenarioAssessment.findUniqueOrThrow({
+      where: { id: run.assessmentId },
+    });
+    const metadata = assessmentRow.metadata as Record<string, unknown>;
+    assert.equal(metadata.staleBaseline, run.staleBaseline);
+    assert.equal(typeof metadata.currentInputStateHash, "string");
+    assert.equal(metadata.baselineInputStateHash, baselineInputStateHash);
+    assert.ok(
+      (assessmentRow.drivers as unknown[]).length > 0,
+      "scenario drivers must be persisted against the scenario assessment"
+    );
 
     // ── The baseline assessment must be untouched ──────────────────────────
     const baselineAfter = await prisma.riskAssessment.findUniqueOrThrow({

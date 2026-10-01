@@ -386,6 +386,24 @@ function applyToDependency(
 }
 
 /**
+ * Recursively freeze a context.
+ *
+ * Already-frozen objects are skipped rather than re-walked: `resolveScenarioState`
+ * is called on every run, and a cycle (or a shared sub-object) would otherwise
+ * turn this into an infinite recursion or a needless full traversal.
+ */
+function deepFreeze<T>(value: T, seen = new WeakSet<object>()): T {
+  if (value === null || typeof value !== "object") return value;
+  if (seen.has(value as object)) return value;
+  seen.add(value as object);
+
+  for (const nested of Object.values(value as Record<string, unknown>)) {
+    deepFreeze(nested, seen);
+  }
+  return Object.freeze(value);
+}
+
+/**
  * Resolve the scenario state.
  *
  * Returns a NEW context. The baseline is frozen first, so if any future code path
@@ -400,8 +418,11 @@ export function resolveScenarioState(
   const warnings: string[] = [];
   const applied: ScenarioChange[] = [];
 
-  Object.freeze(baseline);
-  Object.freeze(baseline.assets);
+  // Deep-freeze the baseline, not just its top level. Freezing only
+  // `baseline` and `baseline.assets` would still allow
+  // `baseline.assets[0].vulnerabilities[0].cvss = 10` to succeed in sloppy mode
+  // and corrupt the very baseline this module exists to protect.
+  deepFreeze(baseline);
 
   // Deterministic ordering: sequence first, id as a stable tie-break (spec §15).
   const ordered = [...changes].sort(

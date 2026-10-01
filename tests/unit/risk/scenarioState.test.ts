@@ -20,7 +20,10 @@ import {
   type ScenarioChange,
 } from "../../../src/services/scenario/scenarioState.service";
 import { calculateRisk } from "../../../src/services/risk/riskEngine.service";
-import type { RiskAssetContext } from "../../../src/services/risk/riskCalculationContext";
+import type {
+  RiskAssetContext,
+  RiskVulnerabilityContext,
+} from "../../../src/services/risk/riskCalculationContext";
 import {
   buildControl,
   buildEngineAsset,
@@ -201,6 +204,25 @@ test("the baseline context is frozen, so an accidental write throws", () => {
   assert.throws(() => {
     (before.assets as unknown as RiskAssetContext[])[0] = before.assets[0];
   }, TypeError, "frozen baseline must reject mutation");
+});
+
+test("the baseline is frozen deeply, not just at the top level", () => {
+  const before = baseline();
+  resolveScenarioState(before, [change()]);
+
+  // A shallow freeze leaves these writable in sloppy mode, which would corrupt
+  // the very baseline the scenario is measured against.
+  assert.throws(() => {
+    (before.assets[0].businessImpact as unknown as Record<string, number>).breachCost = 999;
+  }, TypeError, "nested business impact must be frozen");
+
+  assert.throws(() => {
+    (before.assets[0].vulnerabilities as unknown as RiskVulnerabilityContext[]).length = 0;
+  }, TypeError, "nested vulnerability array must be frozen");
+
+  assert.throws(() => {
+    (before.assets[0].controls[0] as unknown as Record<string, number>).coverage = 0;
+  }, TypeError, "nested control must be frozen");
 });
 
 test("re-running a scenario lands in the same state, it does not compound", () => {

@@ -384,6 +384,8 @@ class ScenarioController {
           costBreakdown: normalised,
           // The shape P5 consumes. Present only when a cost was supplied.
           investment,
+          // True when the baseline no longer reflects live production evidence.
+          staleBaseline: outcome.staleBaseline,
           scenarioStateHash: outcome.result.scenarioStateHash,
           calculationHash: outcome.result.scenarioResultHash,
           drivers: outcome.attribution?.drivers ?? [],

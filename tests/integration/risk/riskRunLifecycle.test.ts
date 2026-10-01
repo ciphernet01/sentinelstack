@@ -167,9 +167,12 @@ async function runLifecycleAssertions(
     })
   ).map((event) => event.action);
 
+  // Attribution is persisted between the run completing and the assessment
+  // being written, so it has its own audit event in the sequence.
   assert.deepEqual(auditActions, [
     "RISK_RUN_CREATED",
     "RISK_RUN_COMPLETED",
+    "ATTRIBUTION_PERSISTED",
     "RISK_ASSESSMENT_PERSISTED",
   ]);
 

@@ -15,13 +15,14 @@ import type { Prisma } from "@prisma/client";
 import { RiskDomainError } from "../risk/errors";
 import { appendRiskAuditEvent } from "../risk/riskRun.service";
 import { buildRiskCalculationContext } from "../risk/riskContext.builder";
+import { buildEvidenceContext } from "../risk/evidenceContext.service";
+import { hashRiskInput } from "../provenance/canonicalHash.service";
 import { calculateRisk, type RiskEngineResult } from "../risk/riskEngine.service";
 import type { RiskCalculationContext } from "../risk/riskCalculationContext";
 import {
   attributeDriversForAssessment,
   type AttributionResult,
 } from "../risk/riskAttribution.service";
-import { persistAttribution } from "../risk/driverStore.service";
 import {
   resolveScenarioState,
   type ScenarioChange,
@@ -149,7 +150,59 @@ async function loadBaseline(organizationId: string, assessmentId: string) {
     inputStateHash: assessment.inputStateHash,
   });
 
-  return { assessment, context };
+  // `buildRiskCalculationContext` cannot produce a live hash — it takes one as
+  // input. So recompute the canonical hash from current production state and
+  // compare it to the hash stored on the assessment. Comparing the stored hash
+  // to itself would always match, and a drifted baseline would be silently
+  // reported as fresh (P4 spec §32, §83).
+  const currentInputStateHash = await computeLiveInputStateHash({
+    organizationId,
+    scopeType: assessment.scopeType as RiskCalculationContext["scopeType"],
+    scopeId: assessment.scopeId,
+    asOf: assessment.asOf,
+  });
+
+  // `null` means staleness could not be determined (a scope the evidence bundle
+  // cannot evidence). That is reported as "unknown", never as "fresh".
+  const isStaleBaseline =
+    currentInputStateHash === null
+      ? null
+      : currentInputStateHash !== assessment.inputStateHash;
+
+  return {
+    assessment,
+    context,
+    currentInputStateHash,
+    isStaleBaseline,
+  };
+}
+
+/**
+ * Recompute the canonical input hash from live data.
+ *
+ * The assessment's own `asOf` is reused so the comparison isolates evidence
+ * drift: a different evaluation timestamp would otherwise show up as a false
+ * positive on every single run.
+ */
+async function computeLiveInputStateHash(options: {
+  organizationId: string;
+  scopeType: RiskCalculationContext["scopeType"];
+  scopeId: string;
+  asOf: Date;
+}): Promise<string | null> {
+  // The evidence bundle is keyed by organisation, not scope, so it only accepts
+  // the scopes it can actually evidence. A SERVICE-scoped baseline is not one of
+  // them, and forcing it through would emit a hash for a bundle that was never
+  // really built. Returning null lets the caller disclose rather than guess.
+  if (options.scopeType === "SERVICE") return null;
+
+  const { bundle, inputStateHash } = await buildEvidenceContext({
+    organizationId: options.organizationId,
+    scopeType: options.scopeType,
+    scopeId: options.scopeId,
+    asOf: options.asOf,
+  });
+  return inputStateHash ?? hashRiskInput(bundle);
 }
 
 /** Recalculate the baseline with the current engine rather than trusting the row. */
@@ -322,6 +375,11 @@ export interface PersistedScenarioRun {
   result: ScenarioResult;
   attribution: AttributionResult | null;
   warnings: string[];
+  /**
+   * Whether the baseline no longer reflects live production evidence.
+   * `null` means it could not be determined — not that it was verified fresh.
+   */
+  staleBaseline: boolean | null;
 }
 
 /**
@@ -346,7 +404,7 @@ export async function runPersistedScenario(
   });
   if (!scenario) throw new ScenarioNotFoundError();
 
-  const { assessment, context } = await loadBaseline(
+  const { assessment, context, currentInputStateHash, isStaleBaseline } = await loadBaseline(
     organizationId,
     scenario.baselineRiskAssessmentId
   );
@@ -371,11 +429,18 @@ export async function runPersistedScenario(
 
   // Stale-baseline disclosure (P4 §32, §83). The context is rebuilt from live
   // state, so a hash mismatch means production moved after the assessment.
-  if (scenario.baselineInputStateHash !== context.inputStateHash) {
+  if (isStaleBaseline === true) {
     warnings.push(
       "The baseline assessment was produced from a different input state than current " +
         "production. The scenario was recalculated against current state, so the delta " +
         "includes environmental drift as well as the declared change."
+    );
+  } else if (isStaleBaseline === null) {
+    // Unknown is not fresh. Saying nothing here would let an unverifiable
+    // baseline read as a verified-current one.
+    warnings.push(
+      "Baseline staleness could not be verified for this scope; the delta is presented " +
+        "against current state but the original baseline could not be re-evidenced."
     );
   }
 
@@ -407,15 +472,6 @@ export async function runPersistedScenario(
       ...(cost === undefined ? {} : { cost }),
     });
 
-    // P3 attribution on the scenario state, reusing the result just computed.
-    const attribution = attributeDriversForAssessment({
-      organizationId,
-      riskRunId: run.id,
-      riskAssessmentId: assessment.id,
-      context: resolved.context,
-      result: scenarioResult,
-    });
-
     const allWarnings = [...warnings, ...result.warnings];
 
     const scenarioAssessment = await prisma.scenarioAssessment.create({
@@ -445,14 +501,42 @@ export async function runPersistedScenario(
         modelBundleVersion: result.versions.modelBundle,
         scenarioStateHash: result.scenarioStateHash,
         calculationHash: result.scenarioResultHash,
-        drivers: attribution.drivers as unknown as Prisma.InputJsonValue,
+        // Drivers are written immediately after this row exists, so they can
+        // reference their own assessment. See the attribution call below.
+        drivers: [] as unknown as Prisma.InputJsonValue,
         metadata: {
           uncertainty: result.uncertainty,
           simulation: result.simulation,
           baselineResultHash: result.baselineResultHash,
+          // Both hashes are retained so a reader can see the baseline the run
+          // started from and the live state it was compared against.
+          baselineInputStateHash: assessment.inputStateHash,
+          currentInputStateHash,
+          staleBaseline: isStaleBaseline,
         } as unknown as Prisma.InputJsonValue,
       },
       select: { id: true },
+    });
+
+    // P3 attribution over the scenario state, reusing the result just computed.
+    // It is attributed against the scenario assessment so the drivers are
+    // labelled with the state they actually describe — attributing them to the
+    // *baseline* assessment would present a what-if as a production finding.
+    const attribution = attributeDriversForAssessment({
+      organizationId,
+      riskRunId: run.id,
+      riskAssessmentId: scenarioAssessment.id,
+      context: resolved.context,
+      result: scenarioResult,
+    });
+
+    // Scenario drivers are stored on the scenario assessment rather than as
+    // RiskDriver rows: they describe a hypothetical state that has no production
+    // RiskAssessment to hang off, and writing them into the P3 graph would let a
+    // what-if be read as a real finding. They stay immutable with the run.
+    await prisma.scenarioAssessment.update({
+      where: { id: scenarioAssessment.id },
+      data: { drivers: attribution.drivers as unknown as Prisma.InputJsonValue },
     });
 
     await Promise.all([
@@ -493,6 +577,7 @@ export async function runPersistedScenario(
       result,
       attribution,
       warnings: allWarnings,
+      staleBaseline: isStaleBaseline,
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : "unknown error";
