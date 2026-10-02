@@ -4,59 +4,97 @@
 
 @layer base {
   :root {
-    --background: 210 100% 98%;
-    --foreground: 214 35% 12%;
+    --background: 200 25% 97%;
+    --foreground: 202 40% 12%;
     --card: 0 0% 100%;
-    --card-foreground: 214 35% 12%;
+    --card-foreground: 202 40% 12%;
     --popover: 0 0% 100%;
-    --popover-foreground: 214 35% 12%;
-    --primary: 213 82% 50%;
+    --popover-foreground: 202 40% 12%;
+    /* Darkened for contrast against a light surface; the dark-mode value
+       (98% lightness cyan) fails WCAG on white. */
+    --primary: 194 90% 30%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 210 55% 94%;
-    --secondary-foreground: 214 35% 18%;
-    --muted: 210 45% 94%;
-    --muted-foreground: 211 22% 43%;
-    --accent: 210 65% 92%;
-    --accent-foreground: 214 35% 18%;
-    --destructive: 348 72% 46%;
+    --secondary: 195 20% 94%;
+    --secondary-foreground: 202 40% 16%;
+    --muted: 195 18% 94%;
+    --muted-foreground: 202 18% 38%;
+    --accent: 193 40% 92%;
+    --accent-foreground: 202 40% 14%;
+    --destructive: 350 72% 42%;
     --destructive-foreground: 0 0% 100%;
-    --border: 211 32% 84%;
-    --input: 211 32% 84%;
-    --ring: 213 82% 50%;
-    --chart-1: 213 82% 50%;
-    --chart-2: 175 70% 38%;
-    --chart-3: 37 86% 48%;
-    --chart-4: 348 72% 46%;
-    --chart-5: 155 62% 38%;
+    --border: 200 16% 86%;
+    --input: 200 16% 86%;
+    --ring: 194 90% 30%;
+    --chart-1: 194 90% 34%;
+    --chart-2: 172 70% 28%;
+    --chart-3: 32 90% 38%;
+    --chart-4: 350 72% 45%;
+    --chart-5: 158 70% 28%;
     --radius: 0.65rem;
+
+    /* Command-center surfaces. Separated from the shadcn tokens above so the
+       dashboard can be re-themed without restyling every dialog and form. */
+    --cc-bg: 200 25% 97%;
+    --cc-surface: 0 0% 100%;
+    --cc-elevated: 200 20% 96%;
+    --cc-hover: 193 45% 92%;
+    --cc-hairline: 202 22% 32%;
+    --cc-text: 202 40% 12%;
+    --cc-muted: 202 18% 38%;
+    --cc-dim: 202 14% 46%;
+    --cc-faint: 202 12% 58%;
+    --cc-cyan: 194 90% 30%;
+    --cc-critical: 350 72% 42%;
+    --cc-warning: 32 90% 34%;
+    --cc-success: 158 70% 28%;
+    /* The globe renders additive cyan glow on near-black; it stays dark in both
+       themes, like a map viewport on a paper map. */
+    --cc-viewport: 200 60% 5%;
   }
 
   .dark {
-    --background: 195 69% 3%;
-    --foreground: 192 28% 96%;
-    --card: 192 37% 6%;
-    --card-foreground: 192 28% 96%;
-    --popover: 192 37% 6%;
-    --popover-foreground: 192 28% 96%;
-    --primary: 193 98% 56%;
-    --primary-foreground: 195 69% 3%;
-    --secondary: 193 45% 9%;
-    --secondary-foreground: 192 28% 92%;
-    --muted: 193 35% 10%;
-    --muted-foreground: 195 10% 56%;
-    --accent: 192 55% 12%;
-    --accent-foreground: 192 28% 96%;
-    --destructive: 348 100% 68%;
-    --destructive-foreground: 195 69% 3%;
-    --border: 193 38% 15%;
-    --input: 193 38% 13%;
-    --ring: 193 98% 56%;
-    --chart-1: 193 98% 56%;
-    --chart-2: 175 85% 45%;
-    --chart-3: 37 96% 58%;
-    --chart-4: 348 100% 68%;
-    --chart-5: 155 70% 48%;
-    --radius: 0.65rem;
+    --background: 196 62% 5%;
+    --foreground: 190 30% 95%;
+    --card: 193 40% 8.5%;
+    --card-foreground: 190 30% 95%;
+    --popover: 193 40% 8.5%;
+    --popover-foreground: 190 30% 95%;
+    --primary: 188 92% 58%;
+    --primary-foreground: 200 70% 6%;
+    --secondary: 193 30% 13%;
+    --secondary-foreground: 190 28% 92%;
+    --muted: 193 26% 14%;
+    --muted-foreground: 193 14% 62%;
+    --accent: 192 45% 16%;
+    --accent-foreground: 190 30% 95%;
+    --destructive: 350 90% 70%;
+    --destructive-foreground: 200 70% 6%;
+    --border: 193 30% 18%;
+    --input: 193 30% 16%;
+    --ring: 188 92% 58%;
+    --chart-1: 188 92% 58%;
+    --chart-2: 172 78% 50%;
+    --chart-3: 38 95% 60%;
+    --chart-4: 350 90% 70%;
+    --chart-5: 158 72% 58%;
+
+    /* Exposure lift. The previous surfaces sat at 2-6% lightness with body text
+       at slate-500/600, which is below a comfortable contrast ratio for long
+       reading. Surfaces are raised and the text ramp is lifted to match. */
+    --cc-bg: 197 58% 5%;
+    --cc-surface: 193 36% 8.5%;
+    --cc-elevated: 193 30% 12.5%;
+    --cc-hover: 193 40% 17%;
+    --cc-hairline: 195 30% 72%;
+    --cc-text: 190 30% 95%;
+    --cc-muted: 192 18% 76%;
+    --cc-dim: 193 14% 64%;
+    --cc-faint: 195 12% 50%;
+    --cc-cyan: 188 90% 62%;
+    --cc-critical: 350 90% 76%;
+    --cc-warning: 40 95% 64%;
+    --cc-success: 158 72% 60%;
+    --cc-viewport: 200 60% 4%;
   }
 
   * {
@@ -64,16 +102,17 @@
   }
 
   html {
-    background: #f7fbff;
+    /* Token-driven, not hardcoded, so the theme class actually reaches the
+       page background. */
+    background: hsl(var(--background));
     overscroll-behavior-y: none;
   }
 
   body {
     @apply bg-background text-foreground;
     min-width: 320px;
-    margin: 0;
-    background: #f7fbff;
-    color: #0c1522;
+    background: hsl(var(--background));
+    color: hsl(var(--foreground));
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   }
 

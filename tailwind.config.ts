@@ -62,6 +62,27 @@ export default {
           '4': 'hsl(var(--chart-4))',
           '5': 'hsl(var(--chart-5))',
         },
+        // Command-center surfaces. These resolve through the `--cc-*` variables
+        // so the dashboard re-themes with the `.dark` class instead of needing
+        // hardcoded hex per component. Kept separate from the shadcn tokens so a
+        // dashboard restyle does not ripple into dialogs and form controls.
+        cc: {
+          bg: 'hsl(var(--cc-bg))',
+          surface: 'hsl(var(--cc-surface))',
+          elevated: 'hsl(var(--cc-elevated))',
+          hover: 'hsl(var(--cc-hover))',
+          hairline: 'hsl(var(--cc-hairline))',
+          text: 'hsl(var(--cc-text))',
+          muted: 'hsl(var(--cc-muted))',
+          dim: 'hsl(var(--cc-dim))',
+          faint: 'hsl(var(--cc-faint))',
+          cyan: 'hsl(var(--cc-cyan))',
+          critical: 'hsl(var(--cc-critical))',
+          warning: 'hsl(var(--cc-warning))',
+          success: 'hsl(var(--cc-success))',
+          // Always dark, in both themes: the globe composites additive glow.
+          viewport: 'hsl(var(--cc-viewport))',
+        },
       },
       borderRadius: {
         lg: 'var(--radius)',

@@ -21,7 +21,7 @@ export function CyberPanel({
   return (
     <section
       className={cn(
-        'cyber-panel relative overflow-hidden rounded-xl border border-cyan-300/[0.10] bg-[#071317]/[0.90] shadow-[0_18px_60px_rgba(0,0,0,0.24)] backdrop-blur-md',
+        'cyber-panel relative overflow-hidden rounded-xl border border-cc-hairline/25 bg-cc-surface/95 shadow-[0_18px_60px_rgba(0,0,0,0.14)] backdrop-blur-md',
         'before:pointer-events-none before:absolute before:left-0 before:top-0 before:h-px before:w-20 before:content-[""]',
         accentClasses[accent],
         className,
@@ -45,16 +45,16 @@ export function CyberPanelHeader({
   action?: React.ReactNode;
 }) {
   return (
-    <div className="flex items-start justify-between gap-4 border-b border-white/[0.055] px-4 py-3.5 sm:px-5">
+    <div className="flex items-start justify-between gap-4 border-b border-cc-hairline/20 px-4 py-3.5 sm:px-5">
       <div className="min-w-0">
         {eyebrow ? (
-          <div className="mb-1 font-mono text-[9px] font-semibold uppercase tracking-[0.22em] text-cyan-200/50">
+          <div className="mb-1 font-mono text-[9px] font-semibold uppercase tracking-[0.22em] text-cc-cyan/70">
             {eyebrow}
           </div>
         ) : null}
-        <h2 className="text-sm font-semibold tracking-tight text-slate-100">{title}</h2>
+        <h2 className="text-sm font-semibold tracking-tight text-cc-text">{title}</h2>
         {description ? (
-          <p className="mt-1 text-[11px] leading-relaxed text-slate-400">{description}</p>
+          <p className="mt-1 text-[11px] leading-relaxed text-cc-muted">{description}</p>
         ) : null}
       </div>
       {action ? <div className="shrink-0">{action}</div> : null}

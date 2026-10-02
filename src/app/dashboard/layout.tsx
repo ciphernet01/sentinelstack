@@ -9,7 +9,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = React.useState(false);
 
   return (
-    <div className="flex min-h-screen w-full flex-col overflow-x-hidden bg-[#02080b] text-slate-100">
+    <div className="flex min-h-screen w-full flex-col overflow-x-hidden bg-cc-bg text-cc-text">
       <DashboardTopBar
         sidebarOpen={sidebarOpen}
         onToggleSidebar={() => setSidebarOpen((value) => !value)}
@@ -19,7 +19,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
         <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
         <main
           className={
-            `relative min-h-[calc(100vh-60px)] w-full min-w-0 bg-[#02080b] will-change-transform ` +
+            `relative min-h-[calc(100vh-60px)] w-full min-w-0 bg-cc-bg will-change-transform ` +
             `transition-transform duration-[180ms] ease-[cubic-bezier(.22,1,.36,1)] ` +
             (sidebarOpen ? 'translate-x-[252px]' : 'translate-x-0')
           }
