@@ -31,6 +31,11 @@
 .resourceMenu a { display:block; padding:10px 11px; border-radius:10px; font-size:13px; }
 .resourceMenu a:hover { background:rgba(221,236,250,.7); }
 .navActions { display:flex; align-items:center; gap:12px; }
+.themeToggle { display:inline-flex; align-items:center; justify-content:center; gap:7px; min-height:42px; padding:0 13px; border:1px solid rgba(136,169,201,.28); border-radius:22px; background:var(--surface-strong); color:var(--ink); box-shadow:0 5px 16px rgba(57,91,123,.07),inset 0 1px 0 rgba(255,255,255,.72); font:inherit; font-size:12px; font-weight:750; cursor:pointer; }
+.themeToggle:hover { border-color:rgba(23,105,232,.42); color:var(--blue); transform:translateY(-1px); }
+.themeSun { color:#e59a26; }
+.themeMoon { display:none; color:#7fc5ff; }
+.themeToggleLabel { line-height:1; }
 .loginLink,.navCta,.primaryCta,.secondaryCta,.priceCta { display:inline-flex; align-items:center; justify-content:center; white-space:nowrap; }
 .loginLink { min-width:98px; height:48px; border-radius:25px; background:rgba(255,255,255,.88); border:1px solid rgba(255,255,255,.94); font-size:14px; font-weight:700; box-shadow:inset 0 1px 0 #fff; }
 .navCta { min-height:48px; gap:11px; padding:0 23px; border-radius:25px; background:#0b1420; color:#fff; font-size:14px; font-weight:700; box-shadow:0 10px 22px rgba(11,20,32,.14); }
@@ -164,6 +169,120 @@
 .footerLinks a:hover { color:#1769e8; }
 .footerBottom { max-width:1180px; margin:42px auto 0; padding-top:18px; border-top:1px solid rgba(101,129,153,.14); display:flex; justify-content:space-between; gap:20px; color:#7b8ea2; font-size:11px; }
 
+:global(.dark) .page {
+  --ink:#eaf3ff;
+  --muted:#9db2ca;
+  --blue:#72bcff;
+  --blue-soft:rgba(58,137,220,.2);
+  --surface:rgba(9,27,47,.72);
+  --surface-strong:rgba(12,34,58,.9);
+  --line:rgba(139,198,255,.18);
+  color:var(--ink);
+  background:#06101c;
+}
+
+:global(.dark) .page .environment { background:linear-gradient(180deg,#061323 0%,#081b30 48%,#040b14 100%); }
+:global(.dark) .page .windowGlow { background:radial-gradient(circle at 72% 19%,rgba(39,135,225,.22),transparent 31%),radial-gradient(circle at 18% 35%,rgba(33,91,151,.13),transparent 34%); }
+:global(.dark) .page .architectureLines { opacity:.58; background-image:linear-gradient(90deg,transparent 0 7.5%,rgba(87,157,222,.13) 7.55%,transparent 7.7%,transparent 20%,rgba(87,157,222,.11) 20.05%,transparent 20.2%,transparent 38%,rgba(87,157,222,.11) 38.05%,transparent 38.2%,transparent 58%,rgba(87,157,222,.1) 58.05%,transparent 58.2%,transparent 77%,rgba(87,157,222,.1) 77.05%,transparent 77.2%,transparent 92%,rgba(87,157,222,.1) 92.05%,transparent 92.2%),linear-gradient(180deg,transparent 0 16%,rgba(87,157,222,.1) 16.1%,transparent 16.3%,transparent 42%,rgba(87,157,222,.1) 42.1%,transparent 42.3%,transparent 70%,rgba(87,157,222,.09) 70.1%,transparent 70.3%); }
+:global(.dark) .page .floorGlow { background:linear-gradient(180deg,transparent,rgba(27,102,170,.2)); }
+:global(.dark) .page .navShell { border-color:rgba(126,193,255,.2); background:rgba(8,26,45,.78); box-shadow:0 15px 40px rgba(0,0,0,.28),inset 0 1px 0 rgba(178,222,255,.08); }
+:global(.dark) .page .desktopNav { color:#c7d9ed; }
+:global(.dark) .page .resourceMenu { border-color:rgba(126,193,255,.2); background:rgba(8,26,45,.96); box-shadow:0 18px 45px rgba(0,0,0,.34); }
+:global(.dark) .page .resourceMenu a:hover { background:rgba(72,155,235,.13); }
+:global(.dark) .page .menuButton { border-color:rgba(126,193,255,.2); background:rgba(12,34,58,.86); color:#dcecff; }
+:global(.dark) .page .mobileNav { border-color:rgba(126,193,255,.2); background:rgba(8,26,45,.96); box-shadow:0 16px 35px rgba(0,0,0,.34); }
+:global(.dark) .page .mobileNav > a:hover { background:rgba(72,155,235,.13); }
+:global(.dark) .page .themeToggle { border-color:rgba(126,193,255,.24); background:rgba(12,34,58,.9); color:#dcecff; box-shadow:0 6px 18px rgba(0,0,0,.2),inset 0 1px 0 rgba(194,229,255,.08); }
+:global(.dark) .page .themeSun { display:none; }
+:global(.dark) .page .themeMoon { display:block; }
+:global(.dark) .page .loginLink { border-color:rgba(126,193,255,.2); background:rgba(14,38,65,.8); color:#dcecff; box-shadow:inset 0 1px 0 rgba(194,229,255,.08); }
+:global(.dark) .page .navCta,
+:global(.dark) .page .primaryCta { background:linear-gradient(135deg,#2176d5,#1648a7); box-shadow:0 12px 28px rgba(20,96,190,.28); }
+:global(.dark) .page .hero h1,
+:global(.dark) .page .sectionHeading h2,
+:global(.dark) .page .complianceIntro h2,
+:global(.dark) .page .previewCopy h2 { color:#eef6ff; }
+:global(.dark) .page .eyebrow { color:#8eb3d8; }
+:global(.dark) .page .eyebrow span { background:#58aeff; box-shadow:0 0 0 5px rgba(88,174,255,.13),0 0 18px rgba(88,174,255,.35); }
+:global(.dark) .page .heroCopy p,
+:global(.dark) .page .sectionHeading p,
+:global(.dark) .page .previewCopy p { color:#9ab1c9; }
+:global(.dark) .page .secondaryCta { border-color:rgba(126,193,255,.25); background:rgba(11,32,54,.82); color:#dcecff; box-shadow:0 8px 22px rgba(0,0,0,.2); }
+:global(.dark) .page .playIcon { border-color:#77a7d0; color:#b9dcff; }
+:global(.dark) .page .hero::after { content:''; position:absolute; z-index:-1; width:620px; height:620px; right:4%; top:20px; border-radius:50%; background:radial-gradient(circle,rgba(21,113,211,.15),transparent 70%); pointer-events:none; }
+:global(.dark) .page .complianceCard { border-color:rgba(126,193,255,.2); background:rgba(10,31,53,.78); box-shadow:0 15px 32px rgba(0,0,0,.28),inset 0 1px 0 rgba(194,229,255,.08); color:#e3f0ff; }
+:global(.dark) .page .complianceCard svg { color:#69b8ff; }
+:global(.dark) .page .complianceCard small { color:#89b3da; }
+:global(.dark) .page .capabilityStrip { border-color:rgba(126,193,255,.18); background:rgba(9,28,48,.72); box-shadow:0 20px 48px rgba(0,0,0,.25),inset 0 1px 0 rgba(194,229,255,.08); }
+:global(.dark) .page .capability + .capability::before { background:rgba(126,193,255,.16); }
+:global(.dark) .page .glassIcon { border-color:rgba(126,193,255,.2); background:rgba(16,46,77,.78); color:#70baff; box-shadow:0 6px 18px rgba(0,0,0,.18),inset 0 1px 0 rgba(194,229,255,.08); }
+:global(.dark) .page .capabilityText strong,
+:global(.dark) .page .capabilityText b,
+:global(.dark) .page .featureCard h3,
+:global(.dark) .page .domainCard h3,
+:global(.dark) .page .differentiatorCard h3,
+:global(.dark) .page .frameworkCard strong,
+:global(.dark) .page .priceCard h3 { color:#e8f3ff; }
+:global(.dark) .page .capabilityText span,
+:global(.dark) .page .featureCard p,
+:global(.dark) .page .domainCard span,
+:global(.dark) .page .differentiatorCard p,
+:global(.dark) .page .frameworkCard > span:last-child,
+:global(.dark) .page .priceCard > p { color:#8fa8c2; }
+:global(.dark) .page .capabilityText .numericValue { color:#70baff; }
+:global(.dark) .page .platform { background:rgba(7,24,41,.82); border-top-color:rgba(126,193,255,.12); }
+:global(.dark) .page .domainsSection,
+:global(.dark) .page .whySection,
+:global(.dark) .page .pricingSection { background:rgba(5,18,31,.8); }
+:global(.dark) .page .featureCard,
+:global(.dark) .page .domainCard,
+:global(.dark) .page .differentiatorCard,
+:global(.dark) .page .frameworkCard,
+:global(.dark) .page .priceCard { border-color:rgba(126,193,255,.16); background:rgba(10,30,51,.72); box-shadow:0 16px 42px rgba(0,0,0,.24),inset 0 1px 0 rgba(194,229,255,.06); }
+:global(.dark) .page .featureCard:hover,
+:global(.dark) .page .domainCard:hover,
+:global(.dark) .page .differentiatorCard:hover { border-color:rgba(101,181,255,.4); box-shadow:0 20px 48px rgba(0,0,0,.32),0 0 24px rgba(42,134,226,.08); }
+:global(.dark) .page .cardArrow,
+:global(.dark) .page .frameworkMark { background:rgba(53,135,221,.16); color:#70baff; }
+:global(.dark) .page .processCard { border-color:rgba(126,193,255,.16); background:rgba(9,28,48,.72); box-shadow:0 11px 28px rgba(0,0,0,.22),inset 0 1px 0 rgba(194,229,255,.06); }
+:global(.dark) .page .processCard span { color:#89a4bf; }
+:global(.dark) .page .processCard svg { color:#70baff; }
+:global(.dark) .page .processArrow { color:#5b8ebd; }
+:global(.dark) .page .domainNumber { color:#7397bb; }
+:global(.dark) .page .complianceSection { background:linear-gradient(180deg,rgba(8,30,51,.86),rgba(5,18,31,.84)); }
+:global(.dark) .page .previewSection { background:rgba(7,25,43,.84); }
+:global(.dark) .page .dashboardMock { border-color:rgba(126,193,255,.18); background:rgba(9,29,49,.78); box-shadow:0 26px 65px rgba(0,0,0,.3),inset 0 1px 0 rgba(194,229,255,.06); }
+:global(.dark) .page .mockTop { border-bottom-color:rgba(126,193,255,.13); color:#83a1bf; }
+:global(.dark) .page .mockTop span:first-child { color:#e7f3ff; }
+:global(.dark) .page .mockScore,
+:global(.dark) .page .mockPanel > * { border-color:rgba(126,193,255,.16); background:rgba(13,39,65,.74); }
+:global(.dark) .page .mockScore small { color:#8fa8c2; }
+:global(.dark) .page .mockScore strong { color:#eef6ff; }
+:global(.dark) .page .mockScore span { color:#70baff; }
+:global(.dark) .page .mockBars span { background:#173957; }
+:global(.dark) .page .mockBars i { background:linear-gradient(90deg,#338cf0,#82ccff); }
+:global(.dark) .page .mockPanel > * { color:#9ab4cf; }
+:global(.dark) .page .billingToggle { border-color:rgba(126,193,255,.18); background:rgba(9,29,49,.78); box-shadow:0 9px 24px rgba(0,0,0,.22); }
+:global(.dark) .page .billingToggle button { color:#88a4bf; }
+:global(.dark) .page .billingToggle .toggleActive { background:#eaf5ff; color:#0a2b4d; }
+:global(.dark) .page .priceBadge { background:rgba(53,135,221,.18); color:#79c1ff; }
+:global(.dark) .page .featuredPrice { border-color:rgba(91,173,255,.46); box-shadow:0 22px 58px rgba(16,87,170,.22),inset 0 1px 0 rgba(194,229,255,.08); }
+:global(.dark) .page .price span,
+:global(.dark) .page .priceCard li { color:#9ab1c9; }
+:global(.dark) .page .priceNote { color:#70baff; }
+:global(.dark) .page .priceCard li svg { color:#70baff; }
+:global(.dark) .page .priceCta { border-color:rgba(126,193,255,.24); background:rgba(11,34,57,.82); color:#e6f3ff; }
+:global(.dark) .page .featuredPrice .priceCta { background:linear-gradient(135deg,#2176d5,#1648a7); border-color:#2176d5; color:#fff; }
+:global(.dark) .page .finalCta { background:linear-gradient(135deg,#081d32,#07111e); border-top-color:rgba(126,193,255,.15); }
+:global(.dark) .page .finalCtaInner { border-color:rgba(126,193,255,.18); background:rgba(10,32,54,.72); box-shadow:0 20px 48px rgba(0,0,0,.27),inset 0 1px 0 rgba(194,229,255,.06); }
+:global(.dark) .page .finalCta p { color:#8fa8c2; }
+:global(.dark) .page .footer { background:#040c16; border-top-color:rgba(126,193,255,.14); }
+:global(.dark) .page .footerBrand p,
+:global(.dark) .page .footerLinks a,
+:global(.dark) .page .footerBottom { color:#7893af; }
+:global(.dark) .page .footerLinks a:hover { color:#70baff; }
+:global(.dark) .page .footerBottom { border-top-color:rgba(126,193,255,.13); }
+
 @media (max-width:1100px) {
   .navShell { gap:22px; }
   .desktopNav { gap:22px; }
@@ -187,6 +306,7 @@
   .menuButton { display:grid; place-items:center; }
   .mobileNav { display:grid; gap:6px; margin-top:10px; padding:12px; border:1px solid rgba(255,255,255,.92); border-radius:20px; background:rgba(248,252,255,.94); box-shadow:0 16px 35px rgba(48,80,111,.11); backdrop-filter:blur(16px); }
   .mobileNav > a { padding:11px 12px; border-radius:12px; font-size:14px; font-weight:700; }
+  .mobileNav .themeToggle { justify-content:flex-start; width:100%; min-height:44px; border-radius:12px; padding-inline:12px; }
   .mobileNav .navCta { justify-content:center; margin-top:4px; color:#fff; background:#0a1420; }
   .hero { min-height:auto; padding:55px 24px 30px; }
   .heroCopy { width:100%; max-width:680px; padding-top:0; }

@@ -1,7 +1,9 @@
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
-import { useState } from 'react';
+import { useTheme } from 'next-themes';
+import { useEffect, useState } from 'react';
 import {
   Activity,
   ArrowRight,
@@ -10,9 +12,11 @@ import {
   FileText,
   LockKeyhole,
   Menu,
+  Moon,
   Search,
   ShieldCheck,
   Sparkles,
+  Sun,
   X,
   BarChart3,
   BrainCircuit,
@@ -137,6 +141,11 @@ export default function SentinelLandingPage() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [resourcesOpen, setResourcesOpen] = useState(false);
   const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'yearly'>('monthly');
+  const [mounted, setMounted] = useState(false);
+  const { resolvedTheme, setTheme } = useTheme();
+  const isDark = mounted && resolvedTheme === 'dark';
+
+  useEffect(() => setMounted(true), []);
 
   const currency = inferCurrencyFromTimezone();
   const proPrice = currency === 'INR'
@@ -156,6 +165,8 @@ export default function SentinelLandingPage() {
     setResourcesOpen(false);
   };
 
+  const toggleTheme = () => setTheme(isDark ? 'light' : 'dark');
+
   return (
     <div className={styles.page}>
       <div className={styles.environment} aria-hidden="true">
@@ -167,7 +178,7 @@ export default function SentinelLandingPage() {
       <header className={styles.header}>
         <div className={styles.navShell}>
           <Link href="/" className={styles.logo} onClick={closeMenu} aria-label="SentinelStack home">
-            <img src="/branding/sentinelstack-logo-dark.png" alt="SentinelStack" width={180} height={50} />
+            <Image src={isDark ? '/branding/sentinelstack-logo.png' : '/branding/sentinelstack-logo-dark.png'} alt="SentinelStack" width={180} height={50} priority />
           </Link>
 
           <nav className={styles.desktopNav} aria-label="Primary navigation">
@@ -189,6 +200,18 @@ export default function SentinelLandingPage() {
           </nav>
 
           <div className={styles.navActions}>
+            <button
+              type="button"
+              className={styles.themeToggle}
+              onClick={toggleTheme}
+              aria-label={isDark ? 'Switch to day mode' : 'Switch to night mode'}
+              aria-pressed={isDark}
+              title={isDark ? 'Switch to day mode' : 'Switch to night mode'}
+            >
+              <Sun className={styles.themeSun} size={16} aria-hidden="true" />
+              <Moon className={styles.themeMoon} size={16} aria-hidden="true" />
+              <span className={styles.themeToggleLabel}>{isDark ? 'Night' : 'Day'}</span>
+            </button>
             <Link href="/login" className={styles.loginLink}>Login</Link>
             <Link href="/signup" className={styles.navCta}>Get Started Free <ArrowRight size={16} /></Link>
           </div>
@@ -206,6 +229,17 @@ export default function SentinelLandingPage() {
             <a href="#compliance" onClick={closeMenu}>Compliance</a>
             <a href="#why" onClick={closeMenu}>Why SentinelStack</a>
             <Link href="/login" onClick={closeMenu}>Login</Link>
+            <button
+              type="button"
+              className={styles.themeToggle}
+              onClick={toggleTheme}
+              aria-label={isDark ? 'Switch to day mode' : 'Switch to night mode'}
+              aria-pressed={isDark}
+            >
+              <Sun className={styles.themeSun} size={16} aria-hidden="true" />
+              <Moon className={styles.themeMoon} size={16} aria-hidden="true" />
+              <span>{isDark ? 'Night mode' : 'Day mode'}</span>
+            </button>
             <Link href="/signup" onClick={closeMenu} className={styles.navCta}>Get Started Free <ArrowRight size={16} /></Link>
           </nav>
         )}
@@ -214,7 +248,7 @@ export default function SentinelLandingPage() {
       <main>
         <section className={styles.hero} aria-labelledby="hero-title">
           <div className={styles.heroGlobe} aria-hidden="true">
-            <SentinelGlobe transparentBackground lightTheme landingMode showTooltip={false} showStatusOverlay={false} />
+            <SentinelGlobe transparentBackground lightTheme={!isDark} landingMode showTooltip={false} showStatusOverlay={false} />
           </div>
 
           <div className={`${styles.complianceCard} ${styles.owasp}`}><ShieldCheck size={18} /><span><b>OWASP</b><small>Top 10</small></span></div>
@@ -276,7 +310,7 @@ export default function SentinelLandingPage() {
           <div className={styles.sectionHeading}>
             <div className={styles.eyebrow}><span /> Supported security domains</div>
             <h2>Comprehensive coverage across critical security areas.</h2>
-            <p>Representative tools from SentinelStack's security assessment stack.</p>
+            <p>Representative tools from SentinelStack&apos;s security assessment stack.</p>
           </div>
           <div className={styles.domainGrid}>
             {domains.map(([title, category, Icon], index) => (
@@ -326,7 +360,7 @@ export default function SentinelLandingPage() {
           <div className={styles.previewCopy}>
             <div className={styles.eyebrow}><span /> Interactive dashboard preview</div>
             <h2>See risk in business terms.</h2>
-            <p>Our dashboard shows not just what's vulnerable, but what it means for your business — financial impact, compliance exposure, and reputation risk.</p>
+            <p>Our dashboard shows not just what&apos;s vulnerable, but what it means for your business — financial impact, compliance exposure, and reputation risk.</p>
             <Link href="/dashboard" className={styles.primaryCta}>Explore Demo Dashboard <ArrowRight size={18} /></Link>
           </div>
           <div className={styles.dashboardMock} aria-label="Dashboard preview">
@@ -390,7 +424,7 @@ export default function SentinelLandingPage() {
       <footer className={styles.footer}>
         <div className={styles.footerTop}>
           <div className={styles.footerBrand}>
-            <img src="/branding/sentinelstack-logo-dark.png" alt="SentinelStack" width={180} height={50} />
+            <Image src={isDark ? '/branding/sentinelstack-logo.png' : '/branding/sentinelstack-logo-dark.png'} alt="SentinelStack" width={180} height={50} />
             <p>Continuous Offensive Security.</p>
           </div>
           <div className={styles.footerLinks}>

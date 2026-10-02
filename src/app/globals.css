@@ -3,7 +3,34 @@
 @tailwind utilities;
 
 @layer base {
-  :root,
+  :root {
+    --background: 210 100% 98%;
+    --foreground: 214 35% 12%;
+    --card: 0 0% 100%;
+    --card-foreground: 214 35% 12%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 214 35% 12%;
+    --primary: 213 82% 50%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 210 55% 94%;
+    --secondary-foreground: 214 35% 18%;
+    --muted: 210 45% 94%;
+    --muted-foreground: 211 22% 43%;
+    --accent: 210 65% 92%;
+    --accent-foreground: 214 35% 18%;
+    --destructive: 348 72% 46%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 211 32% 84%;
+    --input: 211 32% 84%;
+    --ring: 213 82% 50%;
+    --chart-1: 213 82% 50%;
+    --chart-2: 175 70% 38%;
+    --chart-3: 37 86% 48%;
+    --chart-4: 348 72% 46%;
+    --chart-5: 155 62% 38%;
+    --radius: 0.65rem;
+  }
+
   .dark {
     --background: 195 69% 3%;
     --foreground: 192 28% 96%;
@@ -48,6 +75,11 @@
     background: #f7fbff;
     color: #0c1522;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  .dark body {
+    background: #02080b;
+    color: #eaf3ff;
   }
 }
 

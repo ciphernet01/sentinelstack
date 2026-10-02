@@ -1,6 +1,6 @@
-# SentinelStack UI Redesign v2 — professional dark command center
+# SentinelStack UI Redesign v4 — bright and dark security platform
 
-Replace the files in this archive at the same paths in the SentinelStack repo.
+SentinelStack is an enterprise security assessment platform with a responsive command center, audit-ready reporting, and a consistent day/night interface across public and authenticated experiences.
 
 Changes:
 - Dark SentinelStack palette applied consistently through the shadcn CSS tokens.
@@ -12,3 +12,21 @@ Changes:
 - Settings cards/tabs now use the same dark cyan visual system.
 - Fixed several dashboard sub-pages with hard-coded light UI colors.
 - Preserved backend APIs, data fetching and existing workflows.
+
+## Bright and dark theme system
+
+SentinelStack now provides a consistent day/night experience across the landing page, authentication flows, pricing, legal, and Trust Center pages.
+
+- Theme selection persists across routes with `next-themes`.
+- Landing, login, signup, password recovery, verification, pricing, privacy, and terms pages share the same visual language.
+- Logos, navigation controls, forms, cards, buttons, notices, tables, and CTA sections adapt to the active theme.
+- The pricing CTA uses a readable navy/cyan palette in night mode and a bright blue/indigo palette in day mode.
+- Globe materials and public navigation controls update when the theme changes.
+
+## Verification
+
+The frontend build and lint checks pass. Browser smoke checks cover the day/night toggle on the landing page, authentication pages, pricing, privacy, and terms routes.
+
+## UI/UX credit
+
+UI/UX design and implementation: [@xo-satyam](https://github.com/xo-satyam).

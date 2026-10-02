@@ -160,7 +160,7 @@ function EarthPointCloud({ onReady, onError, sampleStep = 2, lightTheme = false 
     geometry.setAttribute('aSize', new THREE.BufferAttribute(points.sizes, 1));
     geometry.setAttribute('aSeed', new THREE.BufferAttribute(points.seeds, 1));
     return geometry;
-  }, [points, lightTheme]);
+  }, [points]);
   const material = useMemo(() => {
     if (!points) return null;
     return new THREE.ShaderMaterial({
@@ -200,7 +200,7 @@ function Atmosphere({ lightTheme = false }: { lightTheme?: boolean }) {
     depthWrite: false,
     blending: THREE.AdditiveBlending,
     uniforms: { uCameraPosition: { value: new THREE.Vector3() }, uColor: { value: lightTheme ? new THREE.Color('#a8c9e3') : new THREE.Color('#16d9ff') }, uIntensity: { value: lightTheme ? 0.22 : 0.72 } },
-  }), []);
+  }), [lightTheme]);
   useFrame(({ camera }) => materialRef.current?.uniforms.uCameraPosition.value.copy(camera.position));
   useEffect(() => () => material.dispose(), [material]);
   return <mesh scale={1.035}><sphereGeometry args={[1.79, 96, 64]} /><primitive ref={materialRef} object={material} attach="material" /></mesh>;
@@ -269,7 +269,7 @@ function NetworkNodes({ lightTheme = false }: { lightTheme?: boolean }) {
     fragmentShader: nodeFragmentShader,
     transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
     uniforms: { uColor: { value: lightTheme ? LIGHT_NETWORK : CYAN }, uPixelRatio: { value: Math.min(window.devicePixelRatio, lightTheme ? 1.5 : 2) } },
-  }), []);
+  }), [lightTheme]);
   useEffect(() => () => { geometry.dispose(); material.dispose(); }, [geometry, material]);
   return <points geometry={geometry} material={material} />;
 }
@@ -311,7 +311,7 @@ function StarField({ lightTheme = false }: { lightTheme?: boolean }) {
     for (let i = 0; i < count; i += 1) { const radius = 4.2 + random() * 2.8; const theta = random() * Math.PI * 2; const phi = Math.acos(2 * random() - 1); positions[i * 3] = radius * Math.sin(phi) * Math.cos(theta); positions[i * 3 + 1] = radius * Math.cos(phi); positions[i * 3 + 2] = radius * Math.sin(phi) * Math.sin(theta); }
     const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(positions, 3)); return g;
   }, [lightTheme]);
-  const material = useMemo(() => new THREE.PointsMaterial({ color: lightTheme ? '#9bbbd4' : '#78d8df', size: 0.018, transparent: true, opacity: 0.24, depthWrite: false, blending: THREE.AdditiveBlending }), []);
+  const material = useMemo(() => new THREE.PointsMaterial({ color: lightTheme ? '#9bbbd4' : '#78d8df', size: 0.018, transparent: true, opacity: 0.24, depthWrite: false, blending: THREE.AdditiveBlending }), [lightTheme]);
   useEffect(() => () => { geometry.dispose(); material.dispose(); }, [geometry, material]);
   return <points geometry={geometry} material={material} />;
 }

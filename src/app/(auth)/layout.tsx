@@ -1,6 +1,7 @@
 import React from 'react';
 import Link from 'next/link';
 import styles from '@/components/auth/AuthPage.module.css';
+import { AuthBrand, AuthThemeToggle } from '@/components/auth/AuthThemeControls';
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -11,9 +12,12 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
       <header className={styles.topbar}>
         <nav className={styles.nav} aria-label="Authentication navigation">
           <Link href="/" className={styles.logo} aria-label="SentinelStack home">
-            <img src="/branding/sentinelstack-logo-dark.png" alt="SentinelStack" width={172} height={47} />
+            <AuthBrand />
           </Link>
-          <Link href="/" className={styles.homeLink}>Back to website →</Link>
+          <div className={styles.navActions}>
+            <AuthThemeToggle />
+            <Link href="/" className={styles.homeLink}>Back to website →</Link>
+          </div>
         </nav>
       </header>
 

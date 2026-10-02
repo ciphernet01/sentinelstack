@@ -4,6 +4,7 @@ import { useParams } from 'next/navigation';
 import { usePublicTrustPage } from '@/hooks/use-compliance';
 import { Shield, CheckCircle, ExternalLink, Calendar } from 'lucide-react';
 import { ComplianceType } from '@prisma/client';
+import { ThemeModeToggle } from '@/components/layout/PublicThemeControls';
 
 const BADGE_ICONS: Record<ComplianceType, string> = {
   SOC2_TYPE1: '🛡️',
@@ -62,7 +63,8 @@ export default function TrustPage() {
         style={{ borderBottomColor: `${data.primaryColor}20` }}
       >
         <div className="max-w-4xl mx-auto px-4 py-8">
-          <div className="flex items-center gap-4">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex min-w-0 items-center gap-4">
             {data.logoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={data.logoUrl} alt={data.companyName} className="h-12 w-auto" />
@@ -80,6 +82,8 @@ export default function TrustPage() {
               </h1>
               <p className="text-slate-500">Security & Compliance</p>
             </div>
+            </div>
+            <ThemeModeToggle className="shrink-0" />
           </div>
         </div>
       </header>
