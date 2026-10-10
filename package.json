@@ -36,6 +36,9 @@
     "admin:grant-scans": "node scripts/admin/grant-scans.js",
     "test:razorpay:webhook": "node scripts/test-razorpay-webhook.js",
     "test:log-shipper": "node --test -r ts-node/register src/logging/*.test.ts",
+    "test": "node --test -r ts-node/register src/**/*.test.ts tests/**/*.test.ts",
+    "test:risk": "node --test -r ts-node/register tests/unit/risk/*.test.ts tests/contract/risk/*.test.ts",
+    "test:risk:integration": "node --test -r ts-node/register tests/integration/risk/*.test.ts",
     "seed:cyber-risk": "node scripts/seed-cyber-risk-digital-twin.js --org-name \"ACME Bank\" --reset-risk-data"
   },
   "keywords": [],

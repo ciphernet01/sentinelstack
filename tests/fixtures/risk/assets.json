@@ -1,0 +1,74 @@
+{
+  "$comment": "Synthetic, deterministic digital-twin assets for PS 26105 contract tests. No real customer data.",
+  "organizationId": "org_test_001",
+  "assets": [
+    {
+      "assetId": "AST-WEB-001",
+      "hostname": "api.acme.test",
+      "ipAddress": "203.0.113.10",
+      "serviceName": "Customer API Gateway",
+      "businessUnitId": "bu_test_001",
+      "environment": "INTERNET",
+      "criticality": "CRITICAL",
+      "internetExposed": true,
+      "revenueDependencyInr": "25000000",
+      "downtimeCostPerHourInr": "1500000",
+      "maxTolerableDowntimeHours": 2,
+      "dataSensitivity": 5,
+      "regulatoryExposureInr": "5000000",
+      "breachCostInr": "20000000",
+      "recoveryCostInr": "3000000",
+      "reputationCostInr": "8000000"
+    },
+    {
+      "assetId": "AST-DB-002",
+      "hostname": "core-db.acme.test",
+      "ipAddress": "10.20.30.40",
+      "serviceName": "Core Banking Database",
+      "businessUnitId": "bu_test_002",
+      "environment": "CORPORATE",
+      "criticality": "CRITICAL",
+      "internetExposed": false,
+      "revenueDependencyInr": "40000000",
+      "downtimeCostPerHourInr": "2500000",
+      "maxTolerableDowntimeHours": 1,
+      "dataSensitivity": 5,
+      "regulatoryExposureInr": "12000000",
+      "breachCostInr": "45000000",
+      "recoveryCostInr": "6000000",
+      "reputationCostInr": "15000000"
+    },
+    {
+      "assetId": "AST-CLOUD-003",
+      "hostname": "data-lake.acme.test",
+      "ipAddress": null,
+      "serviceName": "Analytics Data Lake",
+      "businessUnitId": "bu_test_001",
+      "environment": "CLOUD",
+      "criticality": "HIGH",
+      "internetExposed": false,
+      "revenueDependencyInr": "8000000",
+      "downtimeCostPerHourInr": "400000",
+      "maxTolerableDowntimeHours": 8,
+      "dataSensitivity": 4,
+      "regulatoryExposureInr": "2000000",
+      "breachCostInr": "12000000",
+      "recoveryCostInr": "1500000",
+      "reputationCostInr": "3000000"
+    }
+  ],
+  "dependencies": [
+    {
+      "sourceAssetId": "AST-WEB-001",
+      "targetAssetId": "AST-DB-002",
+      "dependencyType": "DATA",
+      "criticality": "CRITICAL"
+    },
+    {
+      "sourceAssetId": "AST-CLOUD-003",
+      "targetAssetId": "AST-DB-002",
+      "dependencyType": "DATA",
+      "criticality": "HIGH"
+    }
+  ]
+}

@@ -1,0 +1,67 @@
+{
+  "$comment": "Legacy-compatible enterprise contract fixture for PS 26105 tests. The `expected` block documents the stable, version-independent response shape that existing UI clients depend on.",
+  "organizationId": "org_test_001",
+  "request": {
+    "method": "GET",
+    "path": "/api/cyber-risk/enterprise",
+    "query": { "budgetInr": 10000000 }
+  },
+  "expectedTopLevelKeys": [
+    "computedAt",
+    "totals",
+    "topRiskDrivers",
+    "recommendations",
+    "optimization",
+    "scenarios",
+    "assumptions",
+    "_provenance"
+  ],
+  "expectedTotalsKeys": [
+    "assets",
+    "totalFinancialExposureInr",
+    "expectedAnnualLossInr",
+    "valueAtRisk95Inr",
+    "averageLikelihood",
+    "controlEffectiveness"
+  ],
+  "expectedAssumptionKeys": [
+    "model",
+    "formula",
+    "likelihoodInputs",
+    "impactInputs",
+    "note"
+  ],
+  "expectedProvenanceKeys": [
+    "riskRunId",
+    "assessmentId",
+    "computedAt",
+    "asOf",
+    "riskEngineVersion",
+    "parameterVersion",
+    "modelBundleVersion",
+    "featureSetVersion",
+    "simulationConfigVersion",
+    "inputStateHash",
+    "calculationHash",
+    "resultHash",
+    "coverageState",
+    "riskScore"
+  ],
+  "expectedCoverageStateKeys": [
+    "assetCount",
+    "vulnerabilityCount",
+    "controlCount",
+    "telemetryEventCount",
+    "hasTelemetry",
+    "hasVulnerabilities",
+    "hasControls"
+  ],
+  "$expectedNote": "Golden values are computed from the sibling fixtures by tests/helpers/riskFixture.ts. Update deliberately: a change here means the canonicalisation contract changed.",
+  "expected": {
+    "inputStateHash": "sha256:982fed103718651fe40db59635c704fc90ed99ee8c4fc1375e36a387a16aef23",
+    "assetCount": 3,
+    "vulnerabilityCount": 5,
+    "controlCount": 5,
+    "telemetryEventCount": 5
+  }
+}

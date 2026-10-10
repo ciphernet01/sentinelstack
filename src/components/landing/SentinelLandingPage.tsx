@@ -257,9 +257,11 @@ export default function SentinelLandingPage() {
           <div className={`${styles.complianceCard} ${styles.gdpr}`}><LockKeyhole size={18} /><span><b>GDPR</b></span></div>
 
           <div className={styles.heroCopy}>
-            <div className={styles.eyebrow}><span /> Security compliance for startups</div>
-            <h1 id="hero-title">Audit-ready<br />security in<br />weeks, not quarters.</h1>
-            <p>SentinelStack helps SaaS teams run continuous security assessments, map findings to OWASP, ISO 27001 and SOC 2, and ship reports customers and auditors can trust.</p>
+            <div className={styles.eyebrow}><span /> Enterprise security command center</div>
+            <h1 id="hero-title">Audit-ready security <em>in weeks,</em> not quarters.</h1>
+            <p className={styles.heroLead}>
+              SentinelStack helps teams run continuous security assessments, visualize posture across the stack, and produce audit-ready reports from a unified command center.
+            </p>
             <div className={styles.heroActions}>
               <Link href="/signup" className={styles.primaryCta}>Get Started Free <ArrowRight size={18} /></Link>
               <a href="mailto:sales@sentinel-stack.tech?subject=SentinelStack%20Demo" className={styles.secondaryCta}><span className={styles.playIcon}>›</span> Request a Demo</a>

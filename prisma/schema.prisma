@@ -101,6 +101,11 @@ model Organization {
   securityControls SecurityControl[]
   riskSnapshots    RiskSnapshot[]
   riskScenarios    RiskScenario[]
+  riskRuns         RiskRun[]
+  riskAssessments  RiskAssessment[]
+  riskDrivers      RiskDriver[]
+  evidenceRecords  EvidenceRecord[]
+  scenarios        Scenario[]
   createdAt        DateTime                 @default(now())
   updatedAt        DateTime                 @updatedAt
 }
@@ -740,4 +745,508 @@ model RiskScenario {
   createdAt             DateTime         @default(now())
 
   @@index([organizationId, createdAt])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PS 26105 P1 — Risk Run Lineage & Assessment Foundation
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum RiskRunStatus {
+  QUEUED
+  RUNNING
+  SUCCEEDED
+  FAILED
+  STALE
+}
+
+/// One authoritative calculation run. Every result must trace back to a RiskRun.
+model RiskRun {
+  id                      String        @id @default(cuid())
+  organizationId          String
+  organization            Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  scopeType               String        // ENTERPRISE | BUSINESS_UNIT | ASSET
+  scopeId                 String        // organization/BU/asset id depending on scopeType
+  asOf                    DateTime      // point-in-time the inputs were collected
+  status                  RiskRunStatus @default(QUEUED)
+  riskEngineVersion       String        @default("deterministic-baseline-v0")
+  parameterVersion        String        @default("params-2026-09")
+  modelBundleVersion      String        @default("deterministic-baseline-v0")
+  featureSetVersion       String        @default("features-v1")
+  simulationConfigVersion String        @default("mc-config-v1")
+  inputStateHash          String        // sha256 of canonical input bundle
+  resultHash              String?       // sha256 of canonical result bundle (set on SUCCEEDED)
+  coverageState           Json?         // coverage metadata (asset/control/telemetry counts)
+  errorCode               String?
+  errorMessage            String?
+  startedAt               DateTime?
+  completedAt             DateTime?
+  triggeredBy             String?       // user id or "system"
+  triggerReason           String?       // "MANUAL" | "TELEMETRY_CHANGE" | "SCHEDULED"
+  createdAt               DateTime      @default(now())
+  updatedAt               DateTime      @updatedAt
+
+  assessments             RiskAssessment[]
+  auditEvents             RiskAuditEvent[]
+  drivers                 RiskDriver[]
+
+  @@index([organizationId, status])
+  @@index([organizationId, createdAt])
+  @@index([organizationId, scopeType, scopeId])
+}
+
+/// Immutable, append-only result record produced by a RiskRun.
+model RiskAssessment {
+  id                        String       @id @default(cuid())
+  riskRunId                 String
+  riskRun                   RiskRun      @relation(fields: [riskRunId], references: [id], onDelete: Cascade)
+  organizationId            String
+  organization              Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  scopeType                 String
+  scopeId                   String
+  computedAt                DateTime     @default(now())
+  asOf                      DateTime
+  // Core financials
+  totalFinancialExposureInr BigInt       @default(0)
+  expectedAnnualLossInr     BigInt       @default(0)
+  valueAtRisk95Inr          BigInt       @default(0)
+  averageLikelihood         Float        @default(0)
+  controlEffectiveness      Float        @default(0)
+  // Versioned risk score (0-100 index)
+  riskScore                 Int?
+  // Attribution and evidence
+  drivers                   Json?        // structured driver attribution rows
+  topDrivers                Json?        // legacy-compatible top driver list
+  assumptions               Json?
+  // Provenance
+  riskEngineVersion         String
+  parameterVersion          String
+  modelBundleVersion        String
+  inputStateHash            String
+  resultHash                String?
+
+  createdAt DateTime @default(now())
+
+  // P1/P2 stored drivers as a JSON blob on this row. P3 adds the normalized
+  // `attributions` relation; the JSON column is retained for compatibility.
+  attributions RiskDriver[]
+
+  @@index([organizationId, createdAt])
+  @@index([riskRunId])
+  @@index([organizationId, scopeType, scopeId, computedAt])
+}
+
+// ─── PS 26105 P3 — Risk Driver Attribution & Evidence ────────────────────────
+//
+// Normalized, evidence-linked drivers. P1/P2 stored drivers as JSON on
+// RiskAssessment, which is useful but not queryable, not filterable by type, and
+// not able to link a driver back to the source records that produced it. P3
+// makes the driver a first-class record.
+//
+// Design rules enforced by these models:
+//   • Every driver belongs to exactly one RiskAssessment, which belongs to one
+//     RiskRun. A driver can therefore never float free of a calculation.
+//   • Contributions are stored per-metric (EAL / VaR95 / VaR99 / RiskScore) so a
+//     rupee amount and a 0-100 index contribution are never conflated.
+//   • Evidence is many-to-many, and a driver may legitimately have zero
+//     evidence — that is recorded as LOW confidence rather than hidden.
+//   • Human review state is stored alongside model output and never overwrites
+//     it. Confidence (model certainty) and review status (human governance) are
+//     separate fields, deliberately.
+
+enum RiskDriverType {
+  VULNERABILITY
+  EXPOSURE
+  THREAT
+  CONTROL
+  DEPENDENCY
+  BUSINESS_IMPACT
+  ASSET_CRITICALITY
+  SERVICE_CRITICALITY
+  TELEMETRY_SIGNAL
+  MODEL_SIGNAL
+  DATA_COVERAGE
+  OTHER
+}
+
+enum RiskDriverAttributionMethod {
+  MODEL
+  COUNTERFACTUAL
+  HIERARCHICAL
+  EVIDENCE_RANKING
+}
+
+enum RiskDriverDirection {
+  INCREASES_RISK
+  REDUCES_RISK
+  LIMITS_CONFIDENCE
+}
+
+enum RiskDriverConfidence {
+  HIGH
+  MEDIUM
+  LOW
+  INSUFFICIENT
+}
+
+/// Human governance state. NOT a confidence score (P3 spec §29).
+enum RiskDriverReviewStatus {
+  UNREVIEWED
+  REVIEWED
+  DISPUTED
+  ACCEPTED
+  REJECTED
+}
+
+enum EvidenceSourceType {
+  VULNERABILITY
+  SIEM
+  IAM
+  EDR
+  CSPM
+  ASSET_INVENTORY
+  THREAT_INTEL
+  BUSINESS_CONTEXT
+  MODEL
+  CALCULATION
+}
+
+enum EvidenceReliability {
+  HIGH
+  MEDIUM
+  LOW
+}
+
+enum EvidenceQuality {
+  HIGH
+  MEDIUM
+  LOW
+  UNAVAILABLE
+}
+
+enum DriverEvidenceRelationship {
+  PRIMARY_SUPPORT
+  SECONDARY_SUPPORT
+  CONTEXT
+  MODEL_INPUT
+}
+
+model RiskDriver {
+  id                 String          @id @default(cuid())
+  organizationId     String
+  organization       Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  riskAssessmentId   String
+  riskAssessment     RiskAssessment @relation(fields: [riskAssessmentId], references: [id], onDelete: Cascade)
+  riskRunId          String
+  riskRun            RiskRun         @relation(fields: [riskRunId], references: [id], onDelete: Cascade)
+
+  // Stable identity across runs, used for change comparison (P3 spec §21.2).
+  // Two runs describing the same underlying factor share a driverKey.
+  driverKey          String
+  driverKeyVersion   String          @default("driver-key-v1")
+
+  type               RiskDriverType
+  entityType         String          // ASSET | SERVICE | BUSINESS_UNIT | ORGANIZATION | CONTROL_CATEGORY | EDGE
+  entityId           String
+
+  name               String
+  description        String?
+
+  attributionMethod  RiskDriverAttributionMethod
+  attributionVersion String
+
+  // Contributions are per-metric and nullable. NULL means "this method does not
+  // support that metric" — it never means zero.
+  contributionToEal      Float?
+  contributionToVar95     Float?
+  contributionToVar99     Float?
+  contributionToRiskScore Float?
+
+  direction      RiskDriverDirection
+  confidence     RiskDriverConfidence
+  rank           Int  @default(0)
+
+  // Governance layer — annotates the model output above, never overwrites it.
+  reviewStatus    RiskDriverReviewStatus @default(UNREVIEWED)
+  reviewedById    String?
+  reviewedAt      DateTime?
+  reviewRationale String?
+
+  // Self-hash over identity + versions + contributions + evidence (P3 spec §39).
+  attributionHash String?
+
+  metadata        Json?
+  createdAt       DateTime             @default(now())
+
+  evidenceLinks   RiskDriverEvidence[]
+
+  @@unique([riskAssessmentId, driverKey])
+  @@index([organizationId, riskAssessmentId])
+  @@index([organizationId, type])
+  @@index([riskRunId])
+  @@index([entityType, entityId])
+  @@index([organizationId, driverKey])
+  @@index([organizationId, reviewStatus])
+}
+
+/// Immutable source-of-truth reference for a piece of supporting evidence.
+/// Deduplicated per (organization, sourceType, sourceRecordId) so a source
+/// record linked to many drivers is stored once.
+model EvidenceRecord {
+  id                  String          @id @default(cuid())
+  organizationId      String
+  organization        Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  sourceType          EvidenceSourceType
+  sourceRecordId      String
+  canonicalEntityType String?
+  canonicalEntityId   String?
+
+  // Freshness chain (P3 spec §20). observedAt is what the source reported;
+  // ingestedAt is when we stored it. Age is computed against RiskRun.asOf.
+  observedAt          DateTime?
+  collectedAt         DateTime?
+  ingestedAt          DateTime        @default(now())
+
+  sourceVersion       String?
+  evidenceHash        String?
+
+  reliability         EvidenceReliability @default(MEDIUM)
+  quality             EvidenceQuality     @default(MEDIUM)
+  metadata            Json?
+
+  createdAt           DateTime        @default(now())
+
+  driverLinks         RiskDriverEvidence[]
+
+  @@unique([organizationId, sourceType, sourceRecordId])
+  @@index([organizationId, sourceType])
+  @@index([organizationId, quality])
+  @@index([canonicalEntityType, canonicalEntityId])
+}
+
+model RiskDriverEvidence {
+  riskDriverId      String
+  riskDriver        RiskDriver                 @relation(fields: [riskDriverId], references: [id], onDelete: Cascade)
+  evidenceRecordId  String
+  evidenceRecord    EvidenceRecord             @relation(fields: [evidenceRecordId], references: [id], onDelete: Cascade)
+  relationshipType  DriverEvidenceRelationship @default(PRIMARY_SUPPORT)
+  createdAt         DateTime                   @default(now())
+
+  @@id([riskDriverId, evidenceRecordId])
+  @@index([evidenceRecordId])
+}
+
+/// Append-only audit ledger for material risk operations.
+// ─── PS 26105 P4 — Scenario Engine & What-If ───────────────────────────────
+//
+// A scenario is a set of DECLARED, TYPED changes evaluated against a baseline
+// assessment. It stores the baseline it was created from plus the resolved
+// state hash, so a historical scenario stays reproducible even after production
+// state moves on (P4 spec §5.4, §29).
+//
+// ScenarioResult rows are immutable. Re-running a scenario appends a new run and
+// a new assessment rather than mutating the previous one, so two results can be
+// compared honestly (§104).
+
+enum ScenarioType {
+  CONTROL
+  VULNERABILITY_REMEDIATION
+  EXPOSURE
+  SEGMENTATION
+  IDENTITY
+  ENDPOINT
+  CLOUD_HARDENING
+  THREAT_RESPONSE
+  BUSINESS_CONTINUITY
+  ASSET_CHANGE
+  DEPENDENCY
+  INVESTMENT
+  COMBINED
+  CUSTOM
+}
+
+enum ScenarioStatus {
+  DRAFT
+  READY
+  RUNNING
+  COMPLETED
+  FAILED
+  EXPIRED
+  ARCHIVED
+}
+
+enum ScenarioRunStatus {
+  RUNNING
+  SUCCEEDED
+  FAILED
+}
+
+enum ScenarioChangeTargetType {
+  ASSET
+  SERVICE
+  VULNERABILITY
+  CONTROL
+  ASSET_CONTROL
+  DEPENDENCY
+  BUSINESS_UNIT
+  THREAT_SIGNAL
+  BUSINESS_PARAMETER
+}
+
+enum ScenarioChangeOperation {
+  SET
+  INCREASE
+  DECREASE
+  ENABLE
+  DISABLE
+  ADD
+  REMOVE
+  PATCH
+  UNPATCH
+  ISOLATE
+  EXPOSE
+  UNEXPOSE
+  REASSIGN
+  REPLACE
+}
+
+model Scenario {
+  id           String         @id @default(cuid())
+  organizationId String
+  organization Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  name         String
+  description  String?
+  type         ScenarioType   @default(CUSTOM)
+  status       ScenarioStatus @default(DRAFT)
+
+  // The baseline this scenario is a what-if *against*. Retained so the scenario
+  // remains explainable after the baseline is superseded.
+  baselineRiskAssessmentId String
+  baselineRiskRunId        String
+  baselineInputStateHash   String
+
+  /// Hash of the resolved scenario state at the time of the last run.
+  scenarioStateHash String?
+
+  createdById String?
+  archivedAt  DateTime?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  changes   ScenarioChange[]
+  runs      ScenarioRun[]
+
+  @@index([organizationId, createdAt])
+  @@index([organizationId, status])
+  @@index([baselineRiskAssessmentId])
+}
+
+model ScenarioChange {
+  id         String                   @id @default(cuid())
+  scenarioId String
+  scenario   Scenario                 @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
+
+  targetType ScenarioChangeTargetType
+  targetId   String
+  fieldPath  String
+  operation  ScenarioChangeOperation
+  /// Declared resulting value. Old value is recorded per-run, not here.
+  newValue   Json
+  oldValue   Json?
+
+  reason            String?
+  sourceDriverId    String?
+  investmentOptionId String?
+
+  /// Deterministic application order (spec §15).
+  sequence Int
+  createdAt DateTime @default(now())
+
+  @@unique([scenarioId, sequence])
+  @@index([scenarioId])
+}
+
+model ScenarioRun {
+  id          String            @id @default(cuid())
+  scenarioId  String
+  scenario    Scenario          @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
+  organizationId String
+  status      ScenarioRunStatus @default(RUNNING)
+
+  scenarioStateHash String
+  engineResultHash  String?
+  errorMessage      String?
+  warnings          Json?
+  startedAt         DateTime  @default(now())
+  completedAt       DateTime?
+
+  assessments ScenarioAssessment[]
+
+  @@index([scenarioId, startedAt])
+  @@index([organizationId, status])
+}
+
+model ScenarioAssessment {
+  id          String      @id @default(cuid())
+  scenarioRunId String
+  scenarioRun ScenarioRun @relation(fields: [scenarioRunId], references: [id], onDelete: Cascade)
+  organizationId String
+
+  /// The P3-compatible assessment this scenario produced, when attribution ran.
+  riskAssessmentId String?
+
+  // Scenario-side figures
+  eal                Float
+  var95              Float
+  var99              Float
+  financialExposure  Float
+  riskScore          Int
+  currency           String     @default("INR")
+
+  // Baseline-side figures, captured so the delta survives the baseline moving on.
+  baselineEal               Float
+  baselineVar95             Float
+  baselineVar99             Float
+  baselineFinancialExposure Float
+  baselineRiskScore         Int
+
+  // Signed deltas (scenario - baseline).
+  deltaEal               Float
+  deltaVar95             Float
+  deltaVar99             Float
+  deltaFinancialExposure Float
+  deltaRiskScore         Int
+
+  /// Implementation cost from an investment option or user assumption.
+  costInr BigInt?
+  /// baselineEal - eal. A modelled reduction, not a realised saving.
+  avoidedEal Float?
+
+  riskEngineVersion   String
+  parameterVersion    String
+  modelBundleVersion  String
+  scenarioStateHash   String
+  calculationHash     String?
+  drivers             Json?
+  metadata            Json?
+  createdAt           DateTime @default(now())
+
+  @@index([scenarioRunId])
+  @@index([organizationId, createdAt])
+}
+
+model RiskAuditEvent {
+  id             String   @id @default(cuid())
+  organizationId String
+  riskRunId      String?
+  riskRun        RiskRun? @relation(fields: [riskRunId], references: [id], onDelete: SetNull)
+  actor          String?  // user id or "system"
+  action         String   // RISK_RUN_CREATED | RISK_RUN_COMPLETED | RISK_RUN_FAILED | RISK_ASSESSMENT_PERSISTED
+  inputStateHash String?
+  resultHash     String?
+  metadata       Json?
+  createdAt      DateTime @default(now())
+
+  @@index([organizationId, createdAt])
+  @@index([riskRunId])
 }

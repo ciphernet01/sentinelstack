@@ -1,0 +1,20 @@
+{
+  "organizationId": "org_test_001",
+  "name": "Acme Corp (Test)",
+  "businessUnits": [
+    {
+      "id": "bu_test_001",
+      "name": "Engineering",
+      "owner": "cto@acme.corp",
+      "annualRevenueInr": 50000000,
+      "criticality": "HIGH"
+    },
+    {
+      "id": "bu_test_002",
+      "name": "Finance",
+      "owner": "cfo@acme.corp",
+      "annualRevenueInr": 30000000,
+      "criticality": "CRITICAL"
+    }
+  ]
+}
