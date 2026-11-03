@@ -1,14 +1,15 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { SentinelStackLogo } from "@/lib/icons";
+import { ThemeAwarePublicLogo, ThemeModeToggle } from '@/components/layout/PublicThemeControls';
 
 export function Header() {
   return (
     <header className="px-4 lg:px-6 h-20 flex items-center bg-card/80 backdrop-blur-sm fixed top-0 left-0 right-0 z-50 border-b">
       <Link href="/" className="flex items-center justify-center">
-        <SentinelStackLogo width={200} />
+        <ThemeAwarePublicLogo width={200} />
       </Link>
-      <nav className="ml-auto flex gap-4 sm:gap-6 items-center">
+      <nav className="ml-auto flex gap-3 sm:gap-5 items-center">
+        <ThemeModeToggle />
         <Link
           href="#features"
           className="text-sm font-medium hover:underline underline-offset-4"

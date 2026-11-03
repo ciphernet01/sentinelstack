@@ -459,12 +459,12 @@ export default function PricingPage() {
         </section>
 
         {/* CTA */}
-        <section className="w-full py-20 md:py-32 bg-gradient-to-r from-blue-600 to-indigo-800 text-primary-foreground">
+        <section className="w-full bg-gradient-to-r from-blue-600 to-indigo-800 py-20 text-white md:py-32 dark:from-[#0b2d4b] dark:via-[#12335d] dark:to-[#17214a]">
           <div className="container flex flex-col items-center gap-6 px-4 text-center md:px-6">
             <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl font-headline">
               Ready to secure your applications?
             </h2>
-            <p className="max-w-[600px] text-primary-foreground/80">
+            <p className="max-w-[600px] text-white/80 dark:text-sky-100/80">
               Start your free trial today. No credit card required.
             </p>
             <div className="flex flex-col gap-4 min-[400px]:flex-row">
@@ -472,7 +472,7 @@ export default function PricingPage() {
                 onClick={() => handleSubscribe('PRO')}
                 variant="outline"
                 size="lg"
-                className="bg-primary-foreground text-primary hover:bg-primary-foreground/90"
+                className="border-white/20 bg-white text-blue-700 hover:bg-slate-100 dark:border-sky-100/20 dark:bg-sky-100 dark:text-slate-950 dark:hover:bg-white"
               >
                 Start 14-Day Free Trial <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
@@ -480,12 +480,12 @@ export default function PricingPage() {
                 asChild
                 variant="outline"
                 size="lg"
-                className="border-primary-foreground/50 text-primary-foreground hover:bg-primary-foreground/10"
+                className="border-white/50 bg-transparent text-white hover:bg-white/10 dark:border-sky-100/40 dark:text-sky-50 dark:hover:bg-sky-100/10"
               >
                 <Link href="/signup">Get Started Free</Link>
               </Button>
             </div>
-            <p className="text-xs text-primary-foreground/70">
+            <p className="text-xs text-white/70 dark:text-sky-100/70">
               No credit card required • 14-day free trial • Cancel anytime
             </p>
           </div>

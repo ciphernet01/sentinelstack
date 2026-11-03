@@ -7,12 +7,21 @@ const api = axios.create({
   },
 });
 
-// Interceptor to add the auth token from localStorage on initial app load
+// Always read the latest Firebase ID token immediately before a request.
+// Firebase can rotate ID tokens while the SPA remains open, so a token captured
+// only once at module load can become stale and make protected dashboard calls
+// fail even though the user is still signed in.
 if (typeof window !== 'undefined') {
+  api.interceptors.request.use((config) => {
     const token = localStorage.getItem('authToken');
     if (token) {
-      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      config.headers = config.headers ?? {};
+      config.headers.Authorization = `Bearer ${token}`;
+    } else if (config.headers) {
+      delete config.headers.Authorization;
     }
+    return config;
+  });
 }
 
 export default api;
