@@ -15,14 +15,19 @@ function seededRandom(seed: number) {
 /**
  * Converts an equirectangular black/white land mask into a GPU-friendly
  * point cloud. White pixels represent land.
+ *
+ * Typed as `HTMLImageElement` rather than the broader `CanvasImageSource`
+ * because the implementation reads `naturalWidth`/`naturalHeight`, which only
+ * an `<img>` has. Widening the type would let a canvas or video through to code
+ * that would then measure it as zero and silently produce an empty globe.
  */
 export function createEarthPoints(
-  image: CanvasImageSource,
+  image: HTMLImageElement,
   radius = 1.78,
   sampleStep = 3,
 ): EarthPointData {
-  const width = image instanceof HTMLImageElement ? image.naturalWidth : 0;
-  const height = image instanceof HTMLImageElement ? image.naturalHeight : 0;
+  const width = image.naturalWidth;
+  const height = image.naturalHeight;
 
   if (!width || !height) {
     return {

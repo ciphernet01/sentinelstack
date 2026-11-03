@@ -152,7 +152,18 @@ function EarthPointCloud({ onReady, onError, sampleStep = 2, lightTheme = false 
     return () => { mounted = false; };
   }, [onReady, onError]);
 
-  const points = useMemo(() => texture?.image ? createEarthPoints(texture.image, LAND_RADIUS, sampleStep) : null, [texture, sampleStep]);
+  // `Texture.image` is typed `{}` by three, so the element is narrowed here
+  // rather than asserted. An image that has not decoded yet has zero natural
+  // dimensions, and createEarthPoints would build an empty point cloud from it.
+  const image = useMemo(() => {
+    const source: unknown = texture?.image;
+    return source instanceof HTMLImageElement ? source : null;
+  }, [texture]);
+
+  const points = useMemo(
+    () => (image && image.naturalWidth > 0 ? createEarthPoints(image, LAND_RADIUS, sampleStep) : null),
+    [image, sampleStep],
+  );
   const geometry = useMemo(() => {
     if (!points || points.count === 0) return null;
     const geometry = new THREE.BufferGeometry();
